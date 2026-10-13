@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "//": "可选配置模板。想看面板时把它复制成同目录下的 config.json 再改；不复制也能跑——",
+  "//2": "库根默认是 <用户目录>/Research（可用环境变量 SCIWORK_LIBRARY 覆盖）。",
+  "libraryRoot": "~/Research",
+  "interpreter": null,
+  "launcher": null,
+  "origin": {
+    "pluginDir": null,
+    "server": null,
+    "mcpServerName": "origin",
+    "toolPrefix": "mcp__origin__",
+    "neverHijackRunningInstance": true
+  },
+  "defaults": {
+    "journal": null,
+    "figureFormat": "png",
+    "figureDpi": 600,
+    "language": "zh"
+  }
+}

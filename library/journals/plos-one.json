@@ -1,0 +1,77 @@
+{
+  "id": "plos-one",
+  "name": "PLOS ONE",
+  "nameZh": "《公共科学图书馆·综合》",
+  "publisher": "PLOS (Public Library of Science)",
+  "language": "en",
+  "homepage": "https://journals.plos.org/plosone/s/submission-guidelines",
+  "figure": {
+    "singleColumnMm": 132,
+    "doubleColumnMm": 190.5,
+    "maxHeightMm": 222.3,
+    "minFontPt": null,
+    "maxFontPt": null,
+    "fontFamily": null,
+    "lineWidthPt": null,
+    "rasterDpi": {
+      "photo": 300,
+      "line": 300,
+      "combination": 300
+    },
+    "vectorPreferred": [
+      "eps"
+    ],
+    "colorMode": "RGB",
+    "panelLabels": null,
+    "notes": [
+      "图件宽度下限 6.68 cm（300 dpi 下 789 px），上限 19.05 cm（2250 px）；高度上限 22.23 cm（2625 px）；正文文本栏宽 13.2 cm。图件尺寸不含图注、不含四周空白。",
+      "分辨率官网原话为 “Resolution 300–600 dpi”，PLOS 不按图像类型区分 dpi，故 rasterDpi 三个子项均记 300（下限）；低于 300 或高于 600 dpi 都不合格。",
+      "只接受 TIFF 或 EPS 两种图件格式；官网明确不接受 LaTeX 生成的矢量 EPS。",
+      "TIFF 必须已合层（无图层）、无 alpha 通道、使用 LZW 压缩；单个 TIFF 不得跨多页。",
+      "图注写在正文里，紧跟在首次引用该图的段落之后，不要放进图件文件、也不要单独交一个图注文档。",
+      "图注标签用 “Fig 1”（缩写 Fig，阿拉伯数字），标题控制在 15 个单词以内。",
+      "图件文件名按 Fig1.tif / Fig2.eps 顺序编号，必须与图注标签和正文引用完全对应；改图号时三处一起改。",
+      "图件内部不要写作者姓名、文章标题、图号或图题——这些只出现在图注中。",
+      "本次未在 PLOS 官方页面找到图内最小字号、字体族、线宽与分图标签格式的硬性规定，相应字段记为 null，勿套用其他出版社数值。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": 300,
+    "abstractStyle": "unstructured, one paragraph, no citations or references",
+    "titleMaxChars": null,
+    "sections": [
+      "Introduction",
+      "Materials and Methods",
+      "Results",
+      "Discussion",
+      "Conclusions"
+    ],
+    "wordLimitNote": null
+  },
+  "references": {
+    "style": "numbered-brackets (Vancouver / ICMJE citation-sequence)",
+    "inTextExample": "We used the techniques developed by our colleagues [19] to analyze the data.",
+    "entryExample": "Hou WR, Hou YL, Wu GF, Song Y, Su XL, Sun B, et al. cDNA, genomic sequence cloning and overexpression of ribosomal protein gene L9 (rpL9) of the giant panda (Ailuropoda melanoleuca). Genet Mol Res. 2011;10: 1576-1588.",
+    "maxAuthorsListed": 6,
+    "doiRequired": false
+  },
+  "submission": {
+    "coverLetterRequired": true,
+    "checklist": [
+      "单独上传 cover letter 文件，官网规定长度限制为 1 页。",
+      "标题页需包含 title、authors、affiliations，并作为正文文件的第一页。",
+      "通讯作者必须在提交时于用户资料中填写 ORCID iD。",
+      "每位作者至少填写一条贡献声明，使用 CRediT 分类法。",
+      "不允许使用脚注；把脚注内容并入正文或参考文献表。",
+      "正文引用文献用方括号数字、按出现顺序编号，作者超过 6 位时列前 6 位后加 et al.。",
+      "PLOS ONE 在稿件获得 provisional Editorial Accept 之前豁免全部格式要求，因此初投不必纠结排版。"
+    ],
+    "commonRejectionReasons": []
+  },
+  "sources": [
+    "https://journals.plos.org/plosone/s/figures",
+    "https://journals.plos.org/plosone/s/submission-guidelines"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "high"
+}

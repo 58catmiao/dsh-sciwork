@@ -1,0 +1,72 @@
+{
+  "id": "nature",
+  "name": "Nature",
+  "nameZh": "《自然》",
+  "publisher": "Springer Nature",
+  "language": "en",
+  "homepage": "https://www.nature.com/nature/for-authors/formatting-guide",
+  "figure": {
+    "singleColumnMm": 89,
+    "doubleColumnMm": 183,
+    "maxHeightMm": 247,
+    "minFontPt": 5,
+    "maxFontPt": 7,
+    "fontFamily": "Arial or Helvetica (sans-serif)",
+    "lineWidthPt": null,
+    "rasterDpi": {"photo": 300, "line": null, "combination": null},
+    "vectorPreferred": ["pdf", "eps", "ai"],
+    "colorMode": "RGB",
+    "panelLabels": "lowercase bold upright a, b, c ... 8 pt",
+    "notes": [
+      "标准图宽：单栏 89 mm，双栏 183 mm；整页最大深度 247 mm；必要时可用一栏半（120-136 mm）。",
+      "图内文字必须是无衬线体（Arial 或 Helvetica），最小 5 pt、最大 7 pt；分图标签用 8 pt 粗体、正体（非斜体）小写 a、b、c。",
+      "图内文字须保持可编辑：不要转曲（do not outline text），嵌入 TrueType 2 或 42 字体；Matplotlib 需设 rcParams['pdf.fonttype']=42。",
+      "照片类图像最低 300 dpi；在线校样分辨率上限 450 dpi；不要把线条图或文字栅格化。",
+      "务必用可编辑矢量格式（.pdf 或 .eps 优先，也接受 .ai）；配色用 RGB（印刷时会自动转 CMYK）。",
+      "线条/组合图的 dpi 与线宽：官网规格页未给出规定值，故 rasterDpi.line、rasterDpi.combination 与 lineWidthPt 记为 null（未规定，而非未知）。",
+      "每条图注不超过 300 words，误差棒与统计检验方法必须在图注中定义。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": 200,
+    "abstractStyle": "single 'summary paragraph', fully referenced, no headings; ideally <=200 words; 2-3 sentences of introduction, background and rationale, 'Here we show' conclusion, then 2-3 sentences of context; avoid numbers, abbreviations, acronyms and measurements unless essential",
+    "titleMaxChars": null,
+    "sections": ["Summary paragraph (bold first paragraph)", "Main text", "Main references", "Tables", "Figure legends", "Methods", "Methods references", "Acknowledgements", "Funding statement", "Author contributions", "Competing interest declaration", "Additional information"],
+    "wordLimitNote": "Article: ~2,500 words of text with 4 modest display items (6 pages), or ~4,300 words with 5-6 modest display items (8 pages); Methods typically <=3,000 words and contains no figures or tables; <=50 main-text references; title, author list, acknowledgements and references are excluded from word counts."
+  },
+  "references": {
+    "style": "numbered-superscript",
+    "inTextExample": "as previously reported13 (superscript number, no brackets unless the number could be confused with a superscript)",
+    "entryExample": "1. Author, A. B., Author, C. D. & Author, E. F. Title of the paper. Nature 123, 456-460 (2020).",
+    "maxAuthorsListed": 5,
+    "doiRequired": false
+  },
+  "submission": {
+    "coverLetterRequired": false,
+    "checklist": [
+      "Summary paragraph <=200 words, fully referenced, no headings, structured with 'Here we show'.",
+      "Main text <=50 references; references numbered in citation order, superscript in text.",
+      "Figures sized 89 mm (single) or 183 mm (double), page depth <=247 mm, centred on the page.",
+      "Supply figures as editable vector .pdf/.eps with text as real text (not outlined), fonts embedded (TrueType 2 or 42).",
+      "Photographic images >=300 dpi, RGB colour space; keep scale bars and labels on a separate editable layer.",
+      "Figure legends listed one after the other in the text document, after the main reference list, each <300 words.",
+      "Methods section placed in the main text file after the figure legends, with data and code availability statements.",
+      "Organize contributions in Nature's required order: title, authors, affiliations, bold first paragraph, main text, main references, tables, figure legends, methods, acknowledgements, funding, author contributions, competing interests, additional information."
+    ],
+    "commonRejectionReasons": [
+      "Conclusion not of interest to an interdisciplinary readership.",
+      "Results not judged novel and arresting (illuminating, unexpected or surprising).",
+      "Work lacks both immediate and far-reaching implications.",
+      "Referees raised considerable technical objections and/or the authors' claim was not adequately established.",
+      "Extremely selective: only about 8% of submitted manuscripts are accepted, and most submissions are declined without being sent for peer review."
+    ]
+  },
+  "sources": [
+    "https://www.nature.com/nature/for-authors/formatting-guide",
+    "https://www.nature.com/nature/for-authors/final-submission",
+    "https://www.nature.com/nature/for-authors/editorial-criteria-and-processes",
+    "http://research-figure-guide.nature.com/figures/preparing-figures-our-specifications/"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "high"
+}

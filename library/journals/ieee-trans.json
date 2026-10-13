@@ -1,0 +1,79 @@
+{
+  "id": "ieee-trans",
+  "name": "IEEE Transactions (generic)",
+  "nameZh": "《IEEE 会刊》（通用）",
+  "publisher": "IEEE",
+  "language": "en",
+  "homepage": "https://journals.ieeeauthorcenter.ieee.org/create-your-ieee-journal-article/",
+  "figure": {
+    "singleColumnMm": 88.9,
+    "doubleColumnMm": 182,
+    "maxHeightMm": 220,
+    "minFontPt": 9,
+    "maxFontPt": 10,
+    "fontFamily": null,
+    "lineWidthPt": null,
+    "rasterDpi": {
+      "photo": 300,
+      "line": 600,
+      "combination": null
+    },
+    "vectorPreferred": [
+      "ps",
+      "eps",
+      "pdf"
+    ],
+    "colorMode": null,
+    "panelLabels": null,
+    "notes": [
+      "单栏图宽 88.9 mm（3.5 in / 21 picas），双栏 182 mm（7.16 in / 43 picas）。",
+      "整图最大尺寸 7.16 × 8.8 in，即 182 × 220 mm（43 × 52 picas）。",
+      "彩色与灰度图像（非矢量）要求 >300 dpi；黑白线条图要求 >600 dpi。矢量格式不受 dpi 限制。",
+      "官网没有规定 combination（线条 + 半色调混合）图的 dpi，故记为 null——不要自行套用其他出版社的 500/600。",
+      "可接受格式：PS、EPS、PDF、PNG、TIFF。Microsoft Office 文档（DOC/PPT/XLS）仅当图形本来就在该程序中绘制时才可投；JPEG 仅限作者照片；VSD、GIF、BMP 一律不受理。",
+      "所有图像图层必须合并（flattened）。",
+      "投 EPS/PS/PDF 时，要么把全部文字转为轮廓（outline），要么嵌入字体；字体未嵌入会导致图形缺字或变形。",
+      "图内字体全篇与表格保持一致，在原始尺寸下应显示为约 9–10 pt；避免把图缩到小于单栏宽度，过度放大会失真。",
+      "未核实项：图内推荐字体清单（官网为 JS 渲染未取到）、线条/误差棒线宽、分图标签格式——字段记为 null。references 段的 style/inTextExample 来自 IEEE 编号引用通例，未取得 IEEE Reference Guide 原文，整体 confidence 因此降为 medium。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": 250,
+    "abstractStyle": "single paragraph, self-contained, no abbreviations, footnotes, references or equations",
+    "titleMaxChars": null,
+    "sections": [
+      "Introduction",
+      "Methodology",
+      "Results",
+      "Discussion",
+      "Conclusion"
+    ],
+    "wordLimitNote": null
+  },
+  "references": {
+    "style": "numbered-brackets",
+    "inTextExample": "[1]",
+    "entryExample": null,
+    "maxAuthorsListed": null,
+    "doiRequired": null
+  },
+  "submission": {
+    "coverLetterRequired": null,
+    "checklist": [
+      "摘要为单段、不超过 250 words，不得含缩写、脚注、参考文献或数学公式。",
+      "摘要后附 3–5 个关键词或词组，缩写需明确定义。",
+      "不要在标题或摘要中使用数学符号（可能无法正确显示）。",
+      "使用 IEEE 官方 Word / LaTeX 模板排版，可经 Overleaf 协作。",
+      "投稿前用 IEEE Author Tools 校验参考文献、PDF 与 LaTeX 文件。",
+      "作者姓名如需显示母语原名，用 Word 的 Insert Symbols 插入对应字符。"
+    ],
+    "commonRejectionReasons": []
+  },
+  "sources": [
+    "https://journals.ieeeauthorcenter.ieee.org/create-your-ieee-journal-article/create-graphics-for-your-article/resolution-and-size/",
+    "https://journals.ieeeauthorcenter.ieee.org/create-your-ieee-journal-article/create-graphics-for-your-article/file-formatting/",
+    "https://journals.ieeeauthorcenter.ieee.org/create-your-ieee-journal-article/create-the-text-of-your-article/structure-your-article/"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "medium"
+}

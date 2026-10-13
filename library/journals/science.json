@@ -1,0 +1,73 @@
+{
+  "id": "science",
+  "name": "Science",
+  "nameZh": "《科学》",
+  "publisher": "AAAS (American Association for the Advancement of Science)",
+  "language": "en",
+  "homepage": "https://www.science.org/content/page/science-information-authors",
+  "figure": {
+    "singleColumnMm": 57,
+    "doubleColumnMm": 121,
+    "maxHeightMm": null,
+    "minFontPt": 5,
+    "maxFontPt": null,
+    "fontFamily": "sans-serif（官方首选 Helvetica）；正文与图注建议 Times New Roman",
+    "lineWidthPt": 0.5,
+    "rasterDpi": {
+      "photo": 300,
+      "line": 300,
+      "combination": 300
+    },
+    "vectorPreferred": ["pdf", "eps", "ai"],
+    "colorMode": null,
+    "panelLabels": null,
+    "notes": [
+      "★ 本档数值于 2026-10-11 从 Science 官方作者指南原文取到（此前全部为 null，是入口找错）：官方图件规范不在 Information for Authors 页本身，而在它链接的两份子页 —— 《Instructions for preparing an initial manuscript》（初投）与《Guidelines for preparing a revised manuscript》（修回，图件要求更细）。这两个 URL 在浏览器里可直接打开；本机脚本直连 science.org 会被 Cloudflare 403，因此本档读的是这两份官方页面的 Wayback 快照（初投 2025-08-10、修回 2025-03-30、Information for Authors 2025-08-08）。数值取自官方原文，但**建议在浏览器里复核一次**。",
+      "栏宽（初投页与修回页原文一致）：\"The width of figures, when printed, will usually be 5.7 cm (2.24 inches or 1 column) or 12.1 cm (4.76 inches or 2 columns), or 18.4 cm (7.24 inches or 3 columns).\" → 本档 singleColumnMm=57、doubleColumnMm=121；**同一句还有第三档三栏 18.4 cm（184 mm），档案 schema 只有单/双栏两个字段，故记在此注**。bar graph／简单线图／凝胶图可缩到更窄。**maxHeightMm：官方未给高度上限 → null**。",
+      "字号与线宽（初投页原文）：\"Symbols and lettering should be large enough to be legible after reduction [a reduced size of about 7 points (2.5 mm) high, and not smaller than 5 points]\"；符号 \"6 point minimum\"；线宽 \"Line widths should be legible upon reduction (minimum of 0.5 point at the final reduced size)\" → minFontPt=5（官方明写的最低下限，推荐值约 7 pt）、lineWidthPt=0.5。**maxFontPt：官方未给上限 → null**。同一图内字号不要大幅变化。",
+      "分辨率（初投页 + 修回页原文）：初投 \"save images at a resolution of 300 dots per inch (dpi) for initial submission. A higher resolution applies for figures submitted at the revision stage\"；修回 \"Line art that is not available as a vector file should have a resolution of at least 300 dots per inch (dpi), preferably higher, at final size\"、\"Grayscale and color images should have a minimum resolution of 300 dpi at final size\"、TIFF \"minimum 300 dpi\"。→ photo / line / combination 三项均记 300。**注意：Science 对位图只有一条 300 dpi 下限（矢量优先），不像 Elsevier 那样分 300/500/1000 三档**；且分辨率以「最终印出尺寸」为准，放大尺寸会等比降低有效分辨率。",
+      "文件格式（修回页原文，按官方 preferred order）：矢量线条图与示意图（首选）= Adobe PDF、EPS 或 AI；位图线条图与示意图 = TIFF（最低 300 dpi）；照片/显微图的矢量+位图组合 = PDF 或 EPS；照片/显微图位图 = TIFF。初投页另写：\"We cannot accept PowerPoint files or files that are not readable by Adobe Photoshop or Adobe Illustrator.\"；修回阶段明确不接受「图内嵌在 Word 文件里」与「PowerPoint 文件」。→ vectorPreferred=[\"pdf\",\"eps\",\"ai\"]（按官方顺序）。",
+      "图内字体（初投页原文）：\"Use a sans-serif font whenever possible (Helvetica is preferred)\"、彩色区上的文字用粗体、避免彩色文字；正文与图注用 Times New Roman。",
+      "色彩：这两份官方页面**未规定色彩空间（RGB/CMYK）**，只给可读性规则（避免红绿并置；不要用相近色相区分不同部分；深色区上用白字与白色比例尺）→ **colorMode 记 null，不做推测**。另：Information for Authors 页给出彩色印刷费 —— 第一张彩图 $650，之后每张 $450（彩图转印另计）。",
+      "图注与表格（初投页原文）：\"Figure captions should be single-spaced in numerical order. A short figure title should be included in bold-face type as the first line of the caption... No single caption should be longer than 200 words.\"；图题不得引用分图编号、文献或其他图。表格：每个纵列都要有表头并在括号内给单位，表题第一句为简短描述性标题。**panelLabels（分图 A/B/C 的字号与样式）官方未规定 → null**。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": null,
+    "abstractStyle": "Research Article：单段叙述式摘要（不给小标题），写给非专业读者 —— 先一两句 BACKGROUND（领域概览 + 本研究背景），再交代 OBJECTIVES/METHODS，最后说明结果与重要性；官方未给 Research Article 摘要字数上限。Reviews 与 Analytical Reviews 另用三段式增强摘要（Background / Advances / Outlook）+ 摘要图：Reviews 500 词、Analytical Reviews 550–600 词。",
+    "titleMaxChars": 96,
+    "sections": "Research Article 与 Reviews 的正文按小标题分节；小标题必须是描述性短语、不能是完整句子；可用三级（一级粗体、二级粗斜、三级斜体，各级独占一行并以换行与正文隔开）。Methods 排在正文之后作为文章的一部分，其余支撑数据与图放补充材料（单独一个 .docx 或 PDF 文件）；参考文献后是结构化致谢（Acknowledgments），再后是 Data and materials availability 段。",
+    "wordLimitNote": "Research Article：正文 ≤3000 词 + 摘要 + 3–5 个展示项（图或表，带简短图注）+ 约 50 条正文参考文献 + 结构化致谢；个别确需更长篇幅的可走 online extended format（须在 cover letter 说明理由），印刷版给一页 ~500 词的四段式概要（Introduction / Rationale / Results / Conclusion）+ 摘要图（图注 ≤65 词）。Reviews ≤5500 词 / ≤150 refs / 4–6 展示项；Analytical Reviews ≤6000 词 / ≤150 refs / 4–6 展示项；Policy Forum 2000–3000 词 / 1–2 图 / ≤15 refs；Perspective ~1000 词（stand-alone ~1800 词）/ 15 refs / 1 图。单条图注 ≤200 词。"
+  },
+  "references": {
+    "style": "顺序编码制：按正文出现顺序编号，顺序为 正文 → 文本框 → 图表题注 → 注释与致谢 → 补充材料；正文引用写成括号内斜体数字 (1)。全文只有一份合并的参考文献表（正文与补充材料引用的文献合在一起），每条只出现一次；只在补充材料里引用的文献在印刷版与主文 HTML 中会被抑制。",
+    "inTextExample": "(1)——括号内斜体数字；表格/图注里同样用这一格式，且不得把完整条目塞进表内或表下。",
+    "entryExample": "期刊条目要求完整：全部作者、完整标题、起止页码；刊名斜体、卷号粗体；卷号与括号前不加逗号；页码用 en dash（无连续页码时用文章号）；epub ahead of print 用 DOI 代替卷号与页码。",
+    "maxAuthorsListed": null,
+    "doiRequired": false
+  },
+  "submission": {
+    "coverLetterRequired": true,
+    "checklist": [
+      "初投用官方 Word 模板排版并把所有图表直接嵌进一个 .docx（官方的首选形态），LaTeX 稿件要转 .docx 或用官方 LaTeX 模板；补充材料单独一个 .docx 或 PDF。",
+      "图件：优先交矢量（PDF / EPS / AI）；位图用 TIFF，最终印出尺寸下不低于 300 dpi；不要交 PowerPoint，也不要交 Photoshop/Illustrator 打不开的格式；修回阶段不接受把图嵌在 Word 里。",
+      "图内文字用无衬线字体（首选 Helvetica），缩小后不小于 5 pt（推荐约 7 pt）；线宽最终尺寸下不低于 0.5 pt；用比例尺代替或补充放大倍数；避免红绿并置与相近色相区分。",
+      "版式核对：单栏 57 mm、双栏 121 mm（三栏 184 mm）；单条图注 ≤200 词、首行为粗体短标题；表格每列都有表头并在括号内给单位。",
+      "参考文献按引用顺序编号、正文写成括号内斜体数字 (1)，最终合并成唯一一份文献表（含补充材料引用），条目给全作者、完整标题与起止页码。",
+      "字数与栏目：Research Article 正文 ≤3000 词、3–5 个展示项、约 50 条正文文献；投稿前按目标栏目核对上限（Reviews 5500 / Analytical 6000 / Policy Forum 2000–3000 / Perspective ~1000 词）。",
+      "cover letter 必须写：官方列明 cover letter 应包含的内容；正文超过 3000 词走 extended format 时须在 cover letter 里说明理由，申请加速在线出版也在 cover letter 里说明。",
+      "作者信息：所有作者的有效邮箱必填；>50 位作者用批量模板；文章至少一位作者的 ORCID iD 要与 Dryad 数据所有者的 ORCID 一致；数据与代码建议存永久仓库并给可引用 DOI（作为文献表最后一条编号）。"
+    ],
+    "commonRejectionReasons": []
+  },
+  "sources": [
+    "https://www.science.org/content/page/science-information-authors",
+    "https://www.science.org/content/page/instructions-preparing-initial-manuscript",
+    "https://www.science.org/content/page/instructions-preparing-revised-manuscript",
+    "https://web.archive.org/web/20250810105213id_/https://www.science.org/content/page/instructions-preparing-initial-manuscript",
+    "https://web.archive.org/web/20250330182956id_/https://www.science.org/content/page/instructions-preparing-revised-manuscript",
+    "https://web.archive.org/web/20250808075821id_/https://www.science.org/content/page/science-information-authors"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "medium"
+}

@@ -1,0 +1,63 @@
+{
+  "id": "mdpi",
+  "name": "MDPI (generic)",
+  "nameZh": "MDPI 期刊（通用）",
+  "publisher": "MDPI (Multidisciplinary Digital Publishing Institute)",
+  "language": "en",
+  "homepage": "https://www.mdpi.com/authors/layout",
+  "figure": {
+    "singleColumnMm": null,
+    "doubleColumnMm": null,
+    "maxHeightMm": null,
+    "minFontPt": null,
+    "maxFontPt": null,
+    "fontFamily": null,
+    "lineWidthPt": null,
+    "rasterDpi": {
+      "photo": 600,
+      "line": 600,
+      "combination": 600
+    },
+    "vectorPreferred": null,
+    "colorMode": null,
+    "panelLabels": null,
+    "notes": [
+      "分辨率官网原话为 “we recommend a minimum resolution of 600 dpi”（推荐最低 600 dpi），MDPI 不按照片/线条/混合分档，故 rasterDpi 三个子项统一记 600。",
+      "图件格式：任何常见格式均可使用，包括（但不限于）tif、jpg、png。CAD 等专用格式可在正文中放 png 预览图，并把原始文件作为补充材料一并提交。",
+      "图形摘要（Graphical Abstract）最小尺寸 560 × 1100 像素（高 × 宽）；推荐字体 Times、Arial、Courier、Helvetica、Ubuntu、Calibri。",
+      "未核实项：本次在 MDPI 官方 Layout Style Guide（https://www.mdpi.com/authors/layout，原始 388142 字节，去标签正文 112368 字符）中未检索到单栏/双栏毫米宽度、图内最小字号、线宽、分图标签格式与色彩模式要求，相应字段一律记 null——不要套用其他出版社的数值。",
+      "该官方页面也未出现 Highlights 要求（MDPI 的 Highlights 是部分期刊的可选项，不是通用硬性要求）。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": 200,
+    "abstractStyle": "single paragraph, no images or tables, no running title, no website links, no equations, no figures or structures requiring display on a separate line",
+    "titleMaxChars": null,
+    "sections": null,
+    "wordLimitNote": null
+  },
+  "references": {
+    "style": "numbered-brackets; MDPI uses three styles depending on the journal: (1) based on ACS style, (2) based on Chicago style, (3) based on APA style",
+    "inTextExample": "These uncertainties are due to the directivity of the body-worn antennas [5], or body shadowing in which the body shields part of the EM fields.",
+    "entryExample": "Fisher, J.A.; Krapf, C.B.E.; Lang, S.C.; Nichols, G.J.; Payenberg, T.H.D. Sedimentology and architecture of the Douglas Creek terminal splay, Lake Eyre, central Australia. Sedimentology 2008, 55, 1915-1930.",
+    "maxAuthorsListed": null,
+    "doiRequired": null
+  },
+  "submission": {
+    "coverLetterRequired": null,
+    "checklist": [
+      "先查目标期刊自己的 Instructions for Authors，确认它采用 ACS / Chicago / APA 三种参考文献风格中的哪一种——MDPI 各刊不同，模板不能通用。",
+      "摘要不超过 200 words 且只能是一段，不得含图片、表格、公式、网址链接或需要独立成行的结构。",
+      "参考文献表只放“静态内容”（期刊/报纸论文、专利、具体设备信息）；公司网站、github 等项目类链接写在正文里。",
+      "图件按最低 600 dpi 准备，格式用 tif / jpg / png 等常见格式即可。",
+      "如期刊要求 Graphical Abstract，按最小 560 × 1100 像素（高 × 宽）制作，字体从 Times、Arial、Courier、Helvetica、Ubuntu、Calibri 中选。",
+      "图件用 Word 模板直接插入，正文与图件同一文件；原始高分辨率图另行作为补充材料上传。"
+    ],
+    "commonRejectionReasons": []
+  },
+  "sources": [
+    "https://www.mdpi.com/authors/layout"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "high"
+}

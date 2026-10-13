@@ -1,0 +1,78 @@
+{
+  "id": "acs",
+  "name": "ACS journals (generic)",
+  "nameZh": "美国化学会期刊（通用）",
+  "publisher": "American Chemical Society (ACS)",
+  "language": "en",
+  "homepage": "https://researcher-resources.acs.org/publish/author_guidelines?coden=jacsat",
+  "figure": {
+    "singleColumnMm": 85,
+    "doubleColumnMm": 178,
+    "maxHeightMm": 233,
+    "minFontPt": 4.5,
+    "maxFontPt": null,
+    "fontFamily": "Helvetica 或 Arial",
+    "lineWidthPt": 0.5,
+    "rasterDpi": {
+      "photo": 300,
+      "line": 1200,
+      "combination": 600
+    },
+    "vectorPreferred": null,
+    "colorMode": null,
+    "panelLabels": null,
+    "notes": [
+      "★ 本档数值于 2026-10-11 从 ACS 官方作者指南原文取到（此前全部为 null，原因是入口找错）：ACS 的作者指南**不在**被 Cloudflare 强防护的 pubs.acs.org，而在 researcher-resources.acs.org —— `https://researcher-resources.acs.org/publish/author_guidelines?coden=<期刊 coden>`（JACS = jacsat，Accounts of Chemical Research = achre4；页面顶部有期刊下拉框可切换）。本机用无头 Edge + CDP 真浏览器渲染后取到全文（JACS 页 92 413 字符）。",
+      "制图规范在该页最末的 **Appendix 2: Preparing Graphics**。已在 jacsat 与 achre4 两本刊上逐字比对：Appendix 2 正文完全相同 → 视为 ACS 通用制图规范；但页面其余部分（栏目字数、封面图尺寸）**分刊不同**，投稿时按目标刊页面为准。",
+      "官方 PDF：页面右上角红色 PDF 图标是该刊作者指南的官方 PDF 直链 `https://researcher-resources.acs.org/publish/author_guidelines/pdf?coden=<coden>`（JACS 版 313 166 B / 29 页，服务端渲染）。已下载并抽文核对：Appendix 2 的 1200/600/300 dpi、240/504/660 points、4.5 points、0.5 point、Helvetica or Arial 各命中 1 次，与网页版逐字一致。原件 `acs-authorguidelines-jacsat.pdf` 由档案作者本机留存、未随仓库分发。",
+      "栏宽与高度（Appendix 2 原文）：\"Graphics must fit a one- or two-column format. Single-column graphics can be sized up to 240 points wide (3.33 in.) and double-column graphics must be sized between 300 and 504 points (4.167 in. and 7 in.). The maximum depth for all graphics is 660 points (9.167 in.) including the caption (allow 12 pts. For each line of caption text).\" → 240 pt = 84.7 mm（单栏上限）、504 pt = 177.8 mm（双栏上限；官方允许 300–504 pt = 105.8–177.8 mm）、660 pt = 232.8 mm（**含图题**的最大高度，每行图题预留 12 pt）。档案只存一个单栏值/双栏值，故 singleColumnMm=85（84.7 进位）、doubleColumnMm=178（上限 177.8）。",
+      "字号、线宽与字体（Appendix 2 原文）：\"Lettering should be no smaller than 4.5 points in the final published format. The text should be legible when the graphic is viewed full-size. Helvetica or Arial fonts work well for lettering. Lines should be no thinner than 0.5 point.\" → minFontPt=4.5（**指最终印出尺寸**，不是投稿原图上的字号）、fontFamily=\"Helvetica 或 Arial\"、lineWidthPt=0.5。**maxFontPt：官方未给上限 → null**。",
+      "分辨率（Appendix 2 原文）：\"Digital graphics pasted into manuscripts should have the following minimum resolutions: Black and white line art, 1200 dpi; Grayscale art, 600 dpi; Color art, 300 dpi\"。ACS 自己的三分类是「黑白线图 / 灰度图 / 彩图」，与档案 schema 的「photo / line / combination」名称不同，本档按内容映射为 line（黑白线图）=1200、combination（灰度图）=600、photo（彩图）=300 —— **判断时请按「有没有中间灰阶、是不是纯线条」而不是按字段名**。",
+      "色彩（Appendix 2 原文）：\"Color may be used to enhance the clarity of complex structures, figures, spectra, and schemes, etc., and color reproduction of graphics is provided at no additional cost to the author. Graphics intended to appear in black and white or grayscale should not be submitted in color.\"；另有无障碍要求：不要只靠颜色传达信息（用符号/文字/底纹），文字对比度 ≥4.5:1、非文字元素 ≥3:1（WCAG），可参考官方推荐的色盲友好配色文章。**官方未规定 RGB/CMYK 色彩空间 → colorMode 记 null，不做推测**；分图标签（A/B/C）的字号与位置官方也未规定 → **panelLabels 记 null**。",
+      "文件格式：Appendix 2 **没有**给正文图件的接受格式清单（只明确化学结构要用 ChemDraw 一类绘图程序绘制、谱图与结构式不要用位图截图）；格式要求写在投稿系统的 “Acceptable Software, File Designations, and TeX/LaTeX” 清单里，本档不推测 → **vectorPreferred 记 null**。已知的明确格式条款只在封面图：接受 TIF / JPG / PNG / EPS，像素图 ≥300 dpi。",
+      "图题与图内元素（Appendix 2 原文）：\"A caption giving the figure number and a brief description must be included below each figure. The caption should be understandable without reference to the text. It is preferable to place any key to symbols used in the artwork itself, not in the caption.\"；Charts（不表示反应的结构群）与 Schemes（反应序列）只需简短图题；Tables 表题一句话、细节放脚注、避免合并或拆分单元格；\"Figures, charts, tables, schemes, and equations should be embedded in the text at the point of relevance. Separate graphics can be supplied later at revision, if necessary.\"（正文图表优先嵌在正文相应位置，单独图形文件可留到修回阶段）。",
+      "封面图与 TOC 图（分刊条款，勿当通用值）：JACS 版 Cover Art 要求 7.38 in × 8.13 in（18.73 cm × 20.64 cm）、TIF/JPG/PNG/EPS、像素图 ≥300 dpi、附 <50 词说明、随修回稿提交；Accounts of Chemical Research 版的尺寸数值与此不同。目录/摘要图（TOC/Abstract Graphic）另有独立官方规范 PDF：《Guidelines for Table of Contents/Abstract Graphics》（2 页；原件 `acs-toc-abstract-graphics-guidelines.pdf` 由档案作者本机留存、未随仓库分发）。",
+      "化学结构与补充材料：结构式必须用 ChemDraw 等**绘图程序**生成（不用截图）；Supporting Information 必须与稿件同时提交，分 Review Only 与 Publication 两种用途，且要在正文文末（文献表之前）给每个 SI 文件一句说明；Appendix 章节只能放 SI；JACS 稿件与 SI 不允许 Disclaimers；Dedications 只能出现在 Acknowledgment。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": 250,
+    "abstractStyle": "单段叙述式摘要。JACS 原文：\"All manuscripts (Communications and Articles) must contain an abstract, which should summarize the reason for the work, the most significant results, and the conclusions. The abstract should not exceed about 250 words.\"；且摘要必须写在稿件正文里——“在投稿网页文本框里粘贴摘要不能替代稿件中的摘要”。",
+    "titleMaxChars": null,
+    "sections": "JACS Article：使用标准章节 —— Introduction、Experimental Section（若放 SI 则说明）、Results、Discussion，并建议末尾加 Conclusion；章节标题可用阿拉伯数字、小节用小数编号（如 2.1、2.2）。JACS Communication：**不使用章节标题**（Introduction / Experimental Section / Conclusion 等一律不要）。Communication 必须同时含 Abstract 与 TOC 图。附录放 SI、Dedications 放 Acknowledgment、不允许 Disclaimers。",
+    "wordLimitNote": "JACS：Article 无硬性字数上限（但官方明确不接受大篇幅文献综述）；Communication 全文（含标题/脚注/图表元素）不超过 **2200 词**。标题要求：准确、清楚、简洁，**不得使用系列号或部分号**，也不得出现 “Novel”“First” 之类的词；缩写仅在通用时可用。摘要 ≤250 词。**注意：栏目与字数上限分刊不同**（本档取自 JACS 页面原文；如投 Organic Letters / JACS Au 等请核对目标刊页面）。titleMaxChars 官方未给字符数 → null。"
+  },
+  "references": {
+    "style": "顺序编码制：文献与全部注释（表内除外）合并编号成一个连续序列，文末统一列出；正文引用处写**上标阿拉伯数字、不加括号**（官方原文：\"Reference numbers in the text should be prepared as superscripts without parentheses, and in the references and notes section following the text, the reference numbers should be formatted as Arabic numerals on baseline\"）；重复引用同一文献时直接复用原编号。参考文献必须含**文章标题**，刊名缩写用 CASSI，**必须有起止页码**；ASAP/在线优先与 in press/submitted 的文献必须补 DOI（形如 http://dx.doi.org/10.1021/ar000000a），DOI 在文章正式出版前也是可接受的引用形式。不得引用保密文献或公众无法获取的未发表材料（个人通信/未发表/在印材料需取得书面许可，许可信随 cover letter 提交）。投稿时官方允许“任意样式但必须完整、含标题”，最终按 The ACS Style Guide (3rd ed., 2006) 统一；作者须自行保证条目准确（网页版会加超链接）。",
+    "inTextExample": "…was reported previously.^1（上标数字、无括号；同处引用多条写成 …^1,2 或 …^1-3）",
+    "entryExample": "期刊：Doe, J. S.; Smith, J.; Roe, P. Stereochemistry of Diels–Alder Reactions. J. Am. Chem. Soc. 1968, 90, 8234–8265. ｜ 在线优先/in press：Doe, J. S.; Smith, J.; Roe, P. Stereochemistry of Diels–Alder Reactions. J. Am. Chem. Soc. 2012, DOI: http://dx.doi.org/10.1021/ja300123a. ｜ 书：Smith, A. B. Textbook of Organic Chemistry; D. C. Jones: New York, 1961; pp 123–126. ｜ 书章：Wawzonek, S. Potentiometry: Oxidation–Reduction Potentials. In Techniques of Chemistry; Weissburger, A., Rossiter, B. W., Eds.; Wiley-Interscience: New York, 1971; Vol. IIA, Chapter 1.",
+    "maxAuthorsListed": null,
+    "doiRequired": false
+  },
+  "submission": {
+    "coverLetterRequired": true,
+    "checklist": [
+      "封面图/致编辑信：JACS 原文 “A cover letter must accompany every manuscript submission.” —— 必须随稿提交；信中要给通讯作者姓名、通讯地址、邮箱与电话，并明确声明稿件未在他处发表或投稿（预印本须说明），可推荐 6–8 位审稿人、也可要求回避特定审稿人。",
+      "图件分辨率：彩图 ≥300 dpi、灰度图 ≥600 dpi、黑白线图 ≥1200 dpi（均为最低值，以最终印出尺寸计）。",
+      "图件尺寸：单栏 ≤240 pt（84.7 mm）、双栏 300–504 pt（105.8–177.8 mm）、最大高度 660 pt（232.8 mm，**含图题**，每行图题预留 12 pt）。",
+      "图内文字：Helvetica 或 Arial，最终印出后不小于 4.5 pt；线宽不小于 0.5 pt；整图缩小到版面尺寸后仍要可读；符号键尽量画在图内而不是写在图题里。",
+      "化学结构式与反应式用 ChemDraw 等绘图程序绘制（不要用截图/位图）；图、表、Scheme 嵌在正文相应位置，单独的图形文件可留到修回阶段。",
+      "参考文献：上标数字顺序编码、文末合并成一份列表，条目必须含文章标题、CASSI 刊名缩写与起止页码；ASAP / in press / submitted 的条目必须给 DOI。",
+      "字数与栏目：Communication 全文（含标题、脚注、图表元素）≤2200 词；Article 无字数上限但不接受冗长综述；Abstract 与 TOC 图两者都必须有。",
+      "标题：准确简洁、不得含系列/部分编号、不得用 “Novel”/“First”；摘要 ≤250 词且必须写在稿件正文中（网页文本框粘贴不算）。",
+      "补充材料：SI 与稿件同时提交，文末（文献表前）给每个 SI 文件一句说明；附录只能放 SI；JACS 稿件与 SI 内不允许 Disclaimers。",
+      "投稿系统：文件类型必须属于官方 “Acceptable Software / File Designations” 清单（TeX/LaTeX 稿件另有说明）；作者信息需提供机构归属（投稿第 2 步 Authors and Affiliations）。"
+    ],
+    "commonRejectionReasons": []
+  },
+  "sources": [
+    "https://researcher-resources.acs.org/publish/author_guidelines?coden=jacsat",
+    "https://researcher-resources.acs.org/publish/author_guidelines?coden=achre4",
+    "https://researcher-resources.acs.org/publish/author_guidelines/pdf?coden=jacsat",
+    "https://researcher-resources.acs.org/publish/author_guidelines/pdf?coden=achre4",
+    "https://pubsapp.acs.org/paragonplus/submission/toc_abstract_graphics_guidelines.pdf",
+    "https://pubs.acs.org/page/authorguidelines/submission.html"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "medium"
+}

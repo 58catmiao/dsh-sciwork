@@ -1,0 +1,29 @@
+# dsh-sciwork — EditorConfig
+# https://editorconfig.org
+# 统一约定：UTF-8、LF、缩进 2 空格；Python 用 4 空格；.cmd 用 CRLF。
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# ------------------------------------------------------------ 4 空格
+[*.py]
+indent_size = 4
+
+# ------------------------------------------------------------ 2 空格（显式声明）
+[*.{js,mjs,cjs,json,yml,yaml,md}]
+indent_size = 2
+
+# Markdown 保留上述默认：UTF-8、LF、2 空格、
+# trim_trailing_whitespace = true、insert_final_newline = true
+
+# ------------------------------------------------------------ Windows 批处理例外
+# .cmd 必须是 CRLF，否则 cmd.exe 解析可能出问题。
+[*.{cmd,bat}]
+end_of_line = crlf

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    name: self-tests (${{ matrix.os }} / node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['20', '22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 语法检查：所有源码必须能过 node --check（本仓库零 npm 依赖，无需 install）
+      - name: Syntax check
+        run: |
+          node --check lib/client.js
+          node --check lib/actions.js
+          node --check lib/library.js
+          node --check lib/replot.js
+          node --check lib/index.js
+          node --check lib/config.js
+          node --check lib/import.js
+          node --check lib/archive.js
+          node --check lib/refmeta.js
+          node --check lib/table.js
+          node --check lib/transform.js
+          node --check scripts/selftest-host.mjs
+          node --check scripts/selftest-actions.mjs
+          node --check scripts/selftest-client.mjs
+          node --check scripts/install.mjs
+
+      # 不配科研库也能跑：内容类检查自动记为 SKIP 或「未运行」，退出码仍为 0
+      # （要跑真库基线，给自己设 SCIWORK_LIBRARY 指过去即可，例如写动作的 120 通过）
+      - name: Host self-test
+        run: node scripts/selftest-host.mjs
+
+      - name: Action self-test
+        run: node scripts/selftest-actions.mjs
+
+      - name: Client self-test
+        run: node scripts/selftest-client.mjs
+
+      - name: Patch preflight
+        run: python scripts/validate-patch.py

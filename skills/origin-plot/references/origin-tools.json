@@ -1,0 +1,961 @@
+{
+ "serverInfo": {
+  "name": "origin",
+  "version": "2.0.0"
+ },
+ "count": 74,
+ "tools": [
+  {
+   "name": "origin_status",
+   "description": "检查 Origin 连接状态 + 版本能力握手（先调用它可确认 Origin 是否可用）。\n\n    首次调用会自动启动 Origin（约 5~45 秒）。返回 plot_types / templates /\n    capabilities（含 origin_version_label、known_risks 版本坑清单、features\n    特性可用性）。isolated 会话模式下检测到已运行 Origin 会返回\n    origin_busy_user_session 而不是劫持用户窗口。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_help",
+   "description": "【优先调用】快速使用速查：工具清单、数据格式、典型调用模板。\n\n    画图/分析前先调用本工具（不连接 Origin，秒回），按返回的 templates 直接调用。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_catalog",
+   "description": "动态工具目录：按分类列出全部工具（文档即实现，永不与代码脱节）。\n\n    Args:\n        group: 分类名（连接与诊断/数据/画图/数据编辑/拟合与统计/统计批）；留空返回全部分类。\n    Returns:\n        {\"ok\": true, \"groups\": {...}, \"total\": N}",
+   "required": [],
+   "properties": [
+    "group"
+   ]
+  },
+  {
+   "name": "origin_error_codes",
+   "description": "列出全部稳定错误码与恢复建议（供模型安全分支/重试）。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_diagnose",
+   "description": "系统级自检：Origin 安装路径/COM 注册/残留进程/导出目录权限/环境策略。\n\n    连接失败或导出失败时先调用本工具定位问题（不启动 Origin，无副作用）。\n    connect_probe=True 时额外尝试真实连接 Origin（可能启动 Origin，约 5~45 秒）。",
+   "required": [],
+   "properties": [
+    "connect_probe"
+   ]
+  },
+  {
+   "name": "origin_cookbook",
+   "description": "场景→工具组合速查（离线秒回，不连 Origin）。\n\n    返回常见调用链与推荐默认参数。scenario 可选：\n    quick_plot/from_file/journal/multi_compare/edit/fit/recover/deliver；\n    留空返回全部场景 + 高频工具默认参数 + 快速/正式路径说明。",
+   "required": [],
+   "properties": [
+    "scenario"
+   ]
+  },
+  {
+   "name": "origin_list_graphs",
+   "description": "列出当前 Origin 项目里的图页短名（供 export/view/apply_style 引用）。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_list_sheets",
+   "description": "列出当前 Origin 项目的工作簿/工作表页短名。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_write_data",
+   "description": "把多列数据写入 Origin 工作表。\n\n    Args:\n        columns: 数据 {\"列名\": [数值列表], ...}，第一列自动设为 X，其余为 Y；\n                 也可传二维列表或一维数值列表。\n        worksheet: 已有工作表引用如 \"[Book1]Sheet1\"；留空则新建唯一工作表。\n    Returns:\n        {\"ok\": true, \"worksheet\": \"[Book]Sheet\", \"columns\": [...], \"rows\": N}",
+   "required": [
+    "columns"
+   ],
+   "properties": [
+    "columns",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_load_file",
+   "description": "导入本地表格文件到 Origin 工作表（CSV/TXT/TSV/DAT/XLSX/XLSM/XLS）。\n\n    中文路径/中文列名安全；编码自动探测（utf-8-sig/gbk/utf-16）；分隔符自动\n    嗅探（逗号/分号/制表符/竖线/空白）；首行表头自动识别；XLSX 需要 openpyxl。\n\n    Args:\n        path: 文件绝对路径。\n        worksheet: 已有工作表引用；留空则新建唯一工作表。\n        sheet: XLSX/XLS 的工作表名或序号（从 1 起）；留空取第一个。\n        max_preview_rows: 返回的预览行数（默认 5）。\n    Returns:\n        {\"ok\": true, \"worksheet\": \"[Book]Sheet\", \"columns\": [...], \"rows\": N,\n         \"column_types\": {...}, \"preview_rows\": [[...], ...]}",
+   "required": [
+    "path"
+   ],
+   "properties": [
+    "max_preview_rows",
+    "path",
+    "sheet",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_read_worksheet",
+   "description": "读取工作表列数据。\n\n    Args:\n        worksheet: 工作表引用 \"[Book]Sheet\"。\n        columns: 列名列表；留空则全部列。\n        max_rows: 可选，每列最多读取前 N 行。\n    Returns:\n        {\"ok\": true, \"columns\": {列名: [数值...]}, \"column_meta\": [...], \"n_rows\": N}",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "columns",
+    "max_rows",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_plot_plan",
+   "description": "生成绘图计划（不连 Origin，离线秒回）。数据含义不确定时先走这一步。\n\n    返回逐列画像（dtype/缺失/范围/单调性）、角色建议（X/Y/误差棒/标签）、\n    图形元素清单（图型/排版/调色板+使用约束/轴标题）、待确认问题 questions\n    （混合列/高缺失/多个X候选/无单调X）。**questions 非空时应先向用户确认\n    再执行**；计划缓存于服务端，执行只需 plan_id。\n\n    Args:\n        columns: 数据 {\"列名\": [值...]}。\n        其余参数同 origin_plot。\n    Returns:\n        {\"ok\": true, \"plan_id\": \"...\", \"columns_meta\": [...], \"roles\": {...},\n         \"elements\": {...}, \"questions\": [...], \"science_boundaries\": [...]}",
+   "required": [
+    "columns"
+   ],
+   "properties": [
+    "columns",
+    "family",
+    "fmt",
+    "graph_name",
+    "plot_type",
+    "style_mode",
+    "title",
+    "x_column",
+    "y_columns",
+    "yerr_column"
+   ]
+  },
+  {
+   "name": "origin_execute_plan",
+   "description": "按 plan_id 执行绘图计划：写数 -> 画图 -> 导出。\n\n    Args:\n        plan_id: origin_plot_plan 返回的计划 ID（服务端缓存，重启失效）。\n        fmt / file_path / graph_name / width: 可选，覆盖计划中的对应参数。\n        expect_hash: 可选，传入 origin_plot_plan 返回的 plan_hash 做陈旧校验；\n            数据/映射变化后不匹配会返回 plan_stale。\n        force: 数据/映射变更检测到更新的同签名计划时，force=true 可强制执行旧计划。\n    Returns:\n        {\"ok\": true, \"file\": ..., \"graph\": ..., \"worksheet\": ..., \"plan_id\": ...}\n        计划含未确认 questions 时附带 confirmation_reminder 提醒。",
+   "required": [
+    "plan_id"
+   ],
+   "properties": [
+    "expect_hash",
+    "file_path",
+    "fmt",
+    "force",
+    "graph_name",
+    "plan_id",
+    "width"
+   ]
+  },
+  {
+   "name": "origin_spec_export",
+   "description": "把已有绘图计划导出为 FigureSpec YAML 文件（可 diff/可重放/可版本化）。\n\n    spec 含 data（内联完整数据）/plot/style/export 四节；同 spec 重导入\n    得到同一 plan_id（内容哈希）。",
+   "required": [
+    "plan_id",
+    "path"
+   ],
+   "properties": [
+    "path",
+    "plan_id"
+   ]
+  },
+  {
+   "name": "origin_spec_import",
+   "description": "读取 FigureSpec YAML 重建绘图计划（离线秒回）。\n\n    声明式路径：spec 先行 -> （有 questions 先经用户确认）-> origin_execute_plan。\n    spec.data 只有 data_ref（文件路径）时，先 origin_load_file 导入再用\n    origin_plot_plan 重建。",
+   "required": [
+    "path"
+   ],
+   "properties": [
+    "path"
+   ]
+  },
+  {
+   "name": "origin_import_matplotlib",
+   "description": "导入 matplotlib Figure pickle 为 Origin 图（提取每条 Line2D 的数据、\n    颜色、线宽、符号并映射）。\n\n    生成 pickle：在 matplotlib 侧 `pickle.dump(fig, open('fig.pickle','wb'))`\n    （同版本 matplotlib 可靠）。各线 X 不同时按并集线性插值对齐。",
+   "required": [
+    "pickle_path"
+   ],
+   "properties": [
+    "graph_name",
+    "pickle_path",
+    "title"
+   ]
+  },
+  {
+   "name": "origin_export_pptx",
+   "description": "图导出高分辨率 PNG 并组装 PowerPoint 页（论文组图交付）。\n\n    Args:\n        graph: 图页短名。\n        file_path: 输出 .pptx 绝对路径（同目录同时保留 PNG）。\n        width: PNG 像素宽（默认 2400，印刷级）。\n        panel_label: 面板字母（如 \"a\"；hzsci 约定字母放 PPT 不进 Origin）。\n        title/notes: 页脚标题与来源注记。",
+   "required": [
+    "graph",
+    "file_path"
+   ],
+   "properties": [
+    "file_path",
+    "graph",
+    "notes",
+    "panel_label",
+    "title",
+    "width"
+   ]
+  },
+  {
+   "name": "origin_template_search",
+   "description": "搜索 OriginLab Graph Gallery 官方模板（可选下载 .zip；离线可调）。\n\n    Args:\n        keyword: 搜索关键词（如 \"box chart\"、\"bullet chart\"）。\n        max_items: 最多处理条数（1-20）。\n        download_dir: 给定则逐个解析详情页并下载 .zip 到该目录。",
+   "required": [
+    "keyword"
+   ],
+   "properties": [
+    "download_dir",
+    "keyword",
+    "max_items"
+   ]
+  },
+  {
+   "name": "origin_figure",
+   "description": "端到端一张图：一次调用完成 导入/写数 → 画图 →（可选）验证 → 导出 →（可选）交付。\n\n    这是**提速主路径**——把常用流程从 6-10 次工具调用收敛为 1 次（性能分析：\n    感知耗时的 80% 在模型决策轮次，不在 Origin 执行）。\n\n    Args:\n        columns: 内联数据 dict{列名: [值...]}（与 origin_write_data 同语义）。\n        data_source: 本地 CSV/XLSX 路径（优先于 columns）。\n        intent: auto | journal（期刊单栏）| presentation | quick（800px 快速预览）。\n        verify: 是否跑一次 origin_verify_graph（默认 True）。\n        label_peaks: True 时自动找峰并标注（NMR/PL/拉曼标峰场景，一次成型）。\n        deliver: 是否额外做一键交付目录（图片+OPJU+csv+报告）。\n    返回：graph / file / steps（逐步耗时 ms）/ proof_level（verified|readback_only|unverified）。",
+   "required": [],
+   "properties": [
+    "columns",
+    "data_source",
+    "deliver",
+    "family",
+    "file_path",
+    "fmt",
+    "graph_name",
+    "intent",
+    "label_peaks",
+    "output_dir",
+    "peak_top_n",
+    "plot_type",
+    "source_path",
+    "style_mode",
+    "title",
+    "verify",
+    "width",
+    "x_column",
+    "y_columns"
+   ]
+  },
+  {
+   "name": "origin_warmup",
+   "description": "预热 Origin 连接（把冷启动成本挪到用户不感知的时刻）。",
+   "required": [],
+   "properties": [
+    "start_origin"
+   ]
+  },
+  {
+   "name": "origin_pages_gc",
+   "description": "页堆积治理：项目页超阈值时报告（dry_run=true）或清理（false）。\n\n    实测：793 页时 list_pages 30.9s、单次 close 59.2s（险撞 90s 看门狗）。",
+   "required": [],
+   "properties": [
+    "dry_run",
+    "threshold"
+   ]
+  },
+  {
+   "name": "origin_template_save",
+   "description": "把成品图存为可复用模板，供课题组统一风格后套用。\n\n    实现说明：Origin 的 .otpu 保存通道实测不可用（save -i/-t/-it 静默不落盘），\n    因此采用**样式快照**（JSON 侧车记录颜色/线宽/符号/轴/图例/页面几何）+ opju 备份。",
+   "required": [
+    "graph",
+    "template_name"
+   ],
+   "properties": [
+    "category",
+    "graph",
+    "overwrite",
+    "template_name"
+   ]
+  },
+  {
+   "name": "origin_template_list",
+   "description": "列出可用模板/样式快照（离线秒回，不连 Origin）。",
+   "required": [],
+   "properties": [
+    "category"
+   ]
+  },
+  {
+   "name": "origin_template_apply",
+   "description": "把模板样式套到指定图（逐项返回 applied/readback_only/unverified）。",
+   "required": [
+    "graph",
+    "template_name"
+   ],
+   "properties": [
+    "graph",
+    "template_name"
+   ]
+  },
+  {
+   "name": "origin_capabilities",
+   "description": "从本机 Origin 安装的 oPlotIDs.h 提取真实图型能力表（非文档抄录）。\n\n    找不到头文件时如实返回 capability_unavailable，不伪造数据。",
+   "required": [],
+   "properties": [
+    "force_refresh"
+   ]
+  },
+  {
+   "name": "origin_capability_diff",
+   "description": "能力表 vs 引擎硬编码图型表的差异（暴露文档/实现脱节）。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_layout_info",
+   "description": "布局几何一次返回：数据↔像素映射（反向轴自动翻转）、轴范围、页尺寸(cm)、\n    现有文本对象清单（TextN）、图例位置。\n\n    标注/图例落位前**先调这个**——用它精确计算坐标，替代\"渲染-看图-再调\"的试错循环\n    （甲烷 NMR 案例：两行注释烧了 15 次 add_text 的教训）。",
+   "required": [
+    "graph"
+   ],
+   "properties": [
+    "graph",
+    "width_px"
+   ]
+  },
+  {
+   "name": "origin_annotate",
+   "description": "批量文本标注：一次调用加 N 个文本，统一样式，返回逐项落位与对象名。\n\n    items: [{\"text\":\"...\",\"x\":数据坐标,\"y\":数据坐标,\"size\"?:7,\"color\"?:Origin色号,\"bold\"?:false}]\n    style: {\"size\":7, \"just_left\":true(尝试左对齐，不支持时标注 just_applied=false)}\n    先调 origin_layout_info 拿映射再算坐标；返回的 object_name（TextN）可用\n    origin_labtalk 后续微调。",
+   "required": [
+    "graph",
+    "items"
+   ],
+   "properties": [
+    "graph",
+    "items",
+    "style"
+   ]
+  },
+  {
+   "name": "origin_simulate",
+   "description": "物理模型谱图模拟（多峰+噪声，纯计算）。返回 columns 可直接喂 origin_figure。\n\n    ⚠️ 返回强制 simulated=true：图注与报告必须注明\"模拟数据\"，\n    不得作为实验数据呈现（项目纪律：不虚构数据）。本工具用于方法演示与拟合验证。\n    kind: lorentzian | gaussian | pseudovoigt；width=FWHM。",
+   "required": [],
+   "properties": [
+    "centers",
+    "heights",
+    "kind",
+    "n_points",
+    "noise",
+    "seed",
+    "widths",
+    "x_label",
+    "x_range",
+    "y_label"
+   ]
+  },
+  {
+   "name": "origin_find_peaks",
+   "description": "找局部极大峰（numpy）。返回 peaks=[{x,y,label}]，可直接转 origin_annotate\n    的 items（建议 y 抬升量程 5% 放峰顶上方）。",
+   "required": [
+    "x_list",
+    "y_list"
+   ],
+   "properties": [
+    "label_template",
+    "min_height_frac",
+    "top_n",
+    "x_list",
+    "x_prefix",
+    "y_list"
+   ]
+  },
+  {
+   "name": "origin_plot",
+   "description": "基于工作表数据画图。\n\n    Args:\n        worksheet: write_data 返回的工作表引用 \"[Book]Sheet\"。\n        plot_type: line(折线) | scatter(散点) | line_symbol(线+符号) | column(柱状)\n                   | histogram(直方图) | box(箱线图) | bar(条形图)。\n        x_column / y_columns: X/Y 列（默认 X=第一列，Y=其余数值列）。\n        yerr_column: 可选 Y 误差棒列。\n        title: 图标题。\n        graph_name: 可选图页短名；重复调用同名时清旧重画（幂等，不产生 Graph2/3）。\n        style_mode: default | journal | presentation —— 排版预设（字号/线宽/几何）。\n        family: 可选调色板家族（ocean/nightfall/duo_warm/forest/grey_tone/\n                low_saturation/paired）。\n        style_overrides: 可选显式样式 {\"series_colors\": [\"#RRGGBB\", ...],\n                \"line_width_pt\": 2.0, \"x_title\": \"...\", \"y_title\": \"...\"}；\n                每项回报 applied/kept_default/rejected，未验证字段明确拒绝不静默忽略。\n    Returns:\n        {\"ok\": true, \"graph\": \"<图引用>\", \"style\": {...}, \"style_decisions\": [...]}",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "family",
+    "graph_name",
+    "plot_type",
+    "style_mode",
+    "style_overrides",
+    "title",
+    "worksheet",
+    "x_column",
+    "y_columns",
+    "yerr_column"
+   ]
+  },
+  {
+   "name": "origin_plot_file",
+   "description": "一键完成：写数据 -> 画图 -> 导出文件（最常用）。\n\n    Args:\n        columns: 数据 {\"列名\": [数值列表], ...} 或二维列表；第一列自动为 X。\n        plot_type: line | scatter | line_symbol | column | histogram | box | bar。\n        fmt: png | svg | pdf | tif | emf。\n        file_path: 完整输出路径（含扩展名）；留空自动命名到 ~/dsch_origin_plugin/output。\n        width: PNG 宽度像素。\n        graph_name / style_mode / family / style_overrides: 同 origin_plot。\n        title: 图标题。\n    Returns:\n        {\"ok\": true, \"file\": \"绝对路径\", \"size\": N, \"format\": ..., \"graph\": ..., \"style\": ...}",
+   "required": [
+    "columns"
+   ],
+   "properties": [
+    "columns",
+    "family",
+    "file_path",
+    "fmt",
+    "graph_name",
+    "plot_type",
+    "style_mode",
+    "style_overrides",
+    "title",
+    "width",
+    "x_column",
+    "y_columns"
+   ]
+  },
+  {
+   "name": "origin_plot_template",
+   "description": "领域模板绘图（科研高频图型，全部由真机验证过的原语组合）。\n\n    Args:\n        template_id: stacked_spectra(多谱线纵向堆叠偏移, XPS/UV-Vis/PL/FTIR 多样品\n                     对比) | xrd_pattern(XRD 三件套: Observed 散点+Calculated 线+\n                     Difference 下移线, 可加 phases 相刻线) | dual_y(双 Y 轴) |\n                     forest(森林图: 效应量+置信区间+零参考线) |\n                     multi_panel(多面板纵向堆叠, 共享 X)。\n        data: 按 template_id 提供，见各模板说明（如 stacked_spectra 需\n              {'x': [..], 'spectra': {'谱线名': [..], ...}}）。\n        offset: stacked_spectra 的相邻谱线间距，'auto' 或数值。\n        reverse_x: stacked_spectra 反转 X 轴（结合能从高到低惯例）。\n        graph_name / title / style_mode / family: 同 origin_plot。\n        fmt / file_path: 可选，成功后导出文件。\n    Returns:\n        {\"ok\": true, \"graph\": ..., \"template\": ..., \"style\": {...}, ...}",
+   "required": [
+    "template_id",
+    "data"
+   ],
+   "properties": [
+    "data",
+    "family",
+    "file_path",
+    "fmt",
+    "gradient",
+    "graph_name",
+    "offset",
+    "reverse_x",
+    "style_mode",
+    "template_id",
+    "title",
+    "width",
+    "x_title",
+    "y_title"
+   ]
+  },
+  {
+   "name": "origin_plot3d",
+   "description": "画 3D 图并导出文件。\n\n    Args:\n        data: surface 需要 {\"z\": [[...],...]}（2D 网格，可选 x/y 向量）；\n              scatter 需要 {\"x\": [...], \"y\": [...], \"z\": [...]}。\n        plot_type: surface(3D 表面) | scatter(3D 散点)。\n    Returns:\n        {\"ok\": true, \"graph\": ..., \"file\": \"绝对路径\", ...}",
+   "required": [
+    "data"
+   ],
+   "properties": [
+    "data",
+    "file_path",
+    "fmt",
+    "plot_type",
+    "title",
+    "width"
+   ]
+  },
+  {
+   "name": "origin_plot_contour",
+   "description": "等高线/3D 线框图并导出。\n\n    Args:\n        data: {\"z\": [[...],...]}（2D 网格，可选 x/y 向量）。\n        plot_type: contour | contour_fill | 3d_wire。\n    Returns:\n        {\"ok\": true, \"graph\": ..., \"file\": \"绝对路径\", ...}",
+   "required": [
+    "data"
+   ],
+   "properties": [
+    "data",
+    "file_path",
+    "fmt",
+    "plot_type",
+    "title",
+    "width"
+   ]
+  },
+  {
+   "name": "origin_histogram",
+   "description": "直方图统计；plot=True 时画柱状图并导出。color 可选 \"#RRGGBB\"（默认调色板首色）。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "bins",
+    "color",
+    "column",
+    "file_path",
+    "plot",
+    "width",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_view_graph",
+   "description": "把图渲染为内联图片（模型可直接看），不落盘。\n\n    Args:\n        graph: 图短名；留空用活动图。\n        max_width: 渲染宽度像素上限（控制图片 token 成本）。\n    Returns:\n        [文本摘要, 图片内容块]；文本含 {\"ok\"...}，图片可直接被视觉模型理解。",
+   "required": [],
+   "properties": [
+    "graph",
+    "max_width"
+   ]
+  },
+  {
+   "name": "origin_verify_graph",
+   "description": "确定性反读核验（程序把图页对象属性读回来逐项比对）。\n\n    与 origin_view_graph（模型看渲染图）互补，双保险。检查项：图层/曲线数、\n    轴标题文本（可与期望值比对）、轴标题字号（journal 要求 >= 8pt）、图层几何\n    （占页百分比越界告警）、图例状态、交付文件完整性。每项 status ∈\n    pass/fail/warn/unreadable（读不到不崩溃，标 unreadable）。\n\n    Args:\n        graph: 图短名；留空用活动图。\n        expected_x_title / expected_y_title: 期望的轴标题文本（可选）。\n        min_font_pt: 轴标题字号下限（可选，如 journal 用 8）。\n        expected_series: 期望曲线数（可选）。\n        legend_visible: 期望图例显示/隐藏（可选）。\n        files: 交付文件路径列表，核验存在且非空（可选）。\n    Returns:\n        {\"ok\": true, \"passed\": bool, \"checks\": [...], \"issues\": [...]}",
+   "required": [],
+   "properties": [
+    "allow_full_overlap",
+    "expected_series",
+    "expected_x_title",
+    "expected_y_title",
+    "files",
+    "graph",
+    "legend_visible",
+    "min_font_pt"
+   ]
+  },
+  {
+   "name": "origin_apply_style",
+   "description": "对已有图应用排版/调色板/多序列区分。\n\n    Args:\n        graph: 图短名。\n        columns: Y 列名（用于推断轴标题与序列数）；留空按图内序列处理。\n        style_mode: default | journal | presentation。\n        family: 调色板家族。\n        style_overrides: 可选显式样式（用户明确指定值优先于模板/参考建议），\n            支持 series_colors/line_width_pt/x_title/y_title；每项回报\n            applied/kept_default/rejected，未验证字段明确拒绝。\n    Returns:\n        {\"ok\": true, \"applied\": ..., \"style_plan\": {...}, \"style_decisions\": [...]}",
+   "required": [
+    "graph"
+   ],
+   "properties": [
+    "columns",
+    "family",
+    "graph",
+    "plot_type",
+    "style_mode",
+    "style_overrides"
+   ]
+  },
+  {
+   "name": "origin_export",
+   "description": "把图导出为 PNG/SVG/PDF/TIF/EMF 文件。\n\n    Args:\n        graph: origin_plot 返回的图引用（或 origin_list_graphs 的短名）。\n        fmt: png | svg | pdf | tif | emf。\n        file_path: 完整输出路径（含扩展名）；留空自动命名到 ~/dsch_origin_plugin/output。\n        width: PNG 宽度像素。\n    Returns:\n        {\"ok\": true, \"file\": \"绝对路径\", \"size\": 字节数, \"format\": \"png\"}",
+   "required": [
+    "graph"
+   ],
+   "properties": [
+    "file_path",
+    "fmt",
+    "graph",
+    "width"
+   ]
+  },
+  {
+   "name": "origin_save_project",
+   "description": "保存当前 Origin 项目为可编辑 OPJU（正式交付物，可在 Origin 中继续编辑）。\n\n    保存的是当前项目全部页面（工作簿+图页）；省略扩展名自动补 .opju。",
+   "required": [
+    "path"
+   ],
+   "properties": [
+    "path"
+   ]
+  },
+  {
+   "name": "origin_export_delivery",
+   "description": "一键交付：建规整目录收纳图片 + 可编辑 OPJU 并逐文件核验。\n\n    传 source_path 时在源数据文件同级新建 <数据名>_Origin_<时间戳>/ 目录\n    （不覆盖原始数据）；否则用 output_dir 或默认输出目录。原始数据只读。\n\n    Args:\n        graph: 图短名。\n        source_path: 源数据文件路径（决定交付目录位置，推荐）。\n        output_dir: 显式指定输出目录（与 source_path 二选一）。\n        fmts: 逗号分隔格式，如 \"png,pdf,tif\"。\n        save_opju: 是否同时保存 OPJU（默认 true）。\n    Returns:\n        {\"ok\": true, \"delivery_dir\": ..., \"files\": [{format,file,size,ok}],\n         \"opju\": ..., \"issues\": [...], \"all_ok\": bool}",
+   "required": [
+    "graph"
+   ],
+   "properties": [
+    "export_data_csv",
+    "fmts",
+    "graph",
+    "output_dir",
+    "report_text",
+    "save_opju",
+    "source_path",
+    "width"
+   ]
+  },
+  {
+   "name": "origin_list_pages",
+   "description": "列出项目内全部页面（图页/工作簿/矩阵），含短名、长名与当前活动窗口。\n\n    做任何微调前先调用它拿到准确短名——LabTalk 类操作只在活动窗口内解析，\n    用错名字会静默失靶（本插件已加激活复核，但仍建议先取准确短名）。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_inspect_graph",
+   "description": "巡检图页现状（只读）：图层几何/每条曲线颜色与符号/轴范围与字号/图例/页面尺寸。\n\n    改图前先调用它看清现状，再决定改哪一项。返回里所有通道都标明单位：\n    页面尺寸给 cm + dots + dpi，图层几何给 %页，图例坐标给图层单位。\n\n    Args:\n        graph: 图短名；留空用活动图。\n        max_plots: 每层最多返回多少条曲线明细。",
+   "required": [],
+   "properties": [
+    "graph",
+    "max_plots"
+   ]
+  },
+  {
+   "name": "origin_edit_plot",
+   "description": "逐条微调曲线（新手最常用：换颜色 / 加粗 / 改线型 / 换符号 / 半透明 / 隐藏）。\n\n    Args:\n        graph: 图短名。\n        edits: 编辑项列表，每项指定目标与要改的属性：\n            {\"plot\": 0 或 \"Book1_B\"（缺省=第 0 条）,\n             \"layer\": 0,\n             \"color\": \"#FF0000\" 或 [255,0,0],\n             \"line_width_pt\": 2.5,\n             \"line_style\": 0实线|1虚线|2点线|3点划线,\n             \"symbol_kind\": 2（3=上三角 5=菱形 17=六边形）,\n             \"symbol_size\": 8,\n             \"symbol_interior\": 0实心|1空心,\n             \"transparency\": 0~100,\n             \"visible\": true/false}\n    Returns:\n        {\"ok\": true, \"changes\": [{item, requested, status, readback}], ...}\n        status=applied 表示写入并读回一致；applied_unverified 表示通道写入成功但\n        该属性无读回（如线宽），需用 origin_view_graph 目视确认；rejected 附原因。",
+   "required": [
+    "graph",
+    "edits"
+   ],
+   "properties": [
+    "edits",
+    "graph"
+   ]
+  },
+  {
+   "name": "origin_edit_axis",
+   "description": "微调某条轴：标题 / 起止范围 / 刻度类型 / 网格 / 刻度长度 / 标签字体字号加粗。\n\n    Args:\n        graph: 图短名。\n        axis: x | y（也可 x2/y2 等次轴，视模板而定）。\n        layer: 图层索引（0 起始）。\n        title: 轴标题文本。\n        from_value / to_value: 起止值（手动设定范围，避免 rescale 波动）。\n        scale: 0/1=线性 2=log10 3=ln。\n        props: 其他属性 {\"show_grids\":0/1, \"show_axes\":0/1, \"opposite\":0/1,\n            \"tick_length\":6, \"reverse\":1, \"label_bold\":1, \"label_font_pt\":12,\n            \"label_decimals\":2, \"label_type\":1, \"grid_major_type\":1}\n    Returns:\n        {\"ok\": true, \"changes\": [...], \"n_applied\": N}",
+   "required": [
+    "graph"
+   ],
+   "properties": [
+    "axis",
+    "from_value",
+    "graph",
+    "layer",
+    "props",
+    "scale",
+    "title",
+    "to_value"
+   ]
+  },
+  {
+   "name": "origin_edit_legend",
+   "description": "微调图例：显示/隐藏、字号、边框、位置（四角锚点或显式坐标）、自定义文本。\n\n    Args:\n        graph: 图短名。\n        options: {\"visible\": true/false, \"font_size_pt\": 12, \"frame\": true/false,\n            \"background\": 0~5（0无框 1黑线框 4白色遮罩）,\n            \"position\": \"tr\"|\"tl\"|\"br\"|\"bl\"（四角锚点，最省心的用法）,\n            \"x\": 图层单位坐标, \"y\": 图层单位坐标,\n            \"left\": 物理坐标整数, \"top\": 物理坐标整数,\n            \"text\": \"自定义图例文本（会关闭自动更新）\",\n            \"rebuild\": true（恢复自动图例）}\n    Returns:\n        {\"ok\": true, \"changes\": [{item, requested, status, readback}]}",
+   "required": [
+    "graph",
+    "options"
+   ],
+   "properties": [
+    "graph",
+    "options"
+   ]
+  },
+  {
+   "name": "origin_edit_page",
+   "description": "微调页面与图层几何：纸张尺寸（cm）、页面背景、图层位置与大小（%页）。\n\n    Args:\n        graph: 图短名。\n        page_size_cm: {\"width\": 8.9, \"height\": 6.5}（cm；投稿单栏 8.9cm 常用）\n        background: 页面背景色索引（0=白）\n        layer: 图层索引（配合 layer_geometry_pct）\n        layer_geometry_pct: {\"left\":14,\"top\":8,\"width\":80,\"height\":60}（%页）\n    Returns:\n        {\"ok\": true, \"changes\": [...]}，page_size 会给出 cm↔dots↔dpi 的全部读数。",
+   "required": [
+    "graph"
+   ],
+   "properties": [
+    "background",
+    "graph",
+    "layer",
+    "layer_geometry_pct",
+    "page_size_cm"
+   ]
+  },
+  {
+   "name": "origin_manage_pages",
+   "description": "窗口管理：关闭 / 激活 / 重命名 / 隐藏 / 显示 / 复制页面（含工作簿与图页）。\n\n    典型用法：\"把多余的两个空工作簿关掉\" → action='close', pages=['Book3','Book4']。\n\n    Args:\n        action: close | closeAll | activate | rename | hide | show | duplicate\n            （closeAll 关闭项目内全部页面，会话产物一键清理，不需要 pages）\n        pages: 页面短名列表（用 origin_list_pages 获取；close 支持 'Book*' 通配）\n        new_name: action=rename 时的新名字\n    Returns:\n        {\"ok\": true, \"results\": [{page, status, note}], \"n_applied\": N}\n        每项都做复核（关闭后确认页面消失 / 激活后确认 page.name$ 匹配）。",
+   "required": [
+    "action"
+   ],
+   "properties": [
+    "action",
+    "new_name",
+    "pages"
+   ]
+  },
+  {
+   "name": "origin_add_text",
+   "description": "在图上添加文本标注（注释峰位、条件说明等）。\n\n    Args:\n        graph: 图短名。\n        text: 文本内容。\n        x / y: 图层数据坐标；留空则用默认位置。",
+   "required": [
+    "graph",
+    "text"
+   ],
+   "properties": [
+    "graph",
+    "text",
+    "x",
+    "y"
+   ]
+  },
+  {
+   "name": "origin_column_formula",
+   "description": "Origin 原生列公式（数据准确化：ln 等计算走 Origin 表格引擎而非 numpy）。\n\n    Args:\n        worksheet: 工作表引用（write_data/load_file 返回值）。\n        target: 目标列（0 起索引，超出自动 AddCol；或新列名）。\n        formula: 用 col(N)（1 起）引用本表列的 LabTalk 表达式，\n            如 \"ln(col(2))\"、\"1/col(1)\"、\"col(2)/col(3)*100\"。\n        lname: 目标列 long name。\n    返回含 first_values 与 sample_check（numpy 抽样复核 Origin 计算结果）。",
+   "required": [
+    "worksheet",
+    "target",
+    "formula"
+   ],
+   "properties": [
+    "formula",
+    "lname",
+    "target",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_peak_fit",
+   "description": "多峰拟合（核磁/XPS/拉曼/红外分峰解析，numpy LM 自包含实现）。\n\n    每峰返回 center/height/fwhm/area + 总 R²；centers_hint 可给峰位初值\n    （缺省用 peak_find 自动探测）；plot_curve=True 时原始散点+总拟合线+\n    各分峰一并上图。kind: gauss | lorentz。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "centers_hint",
+    "graph",
+    "kind",
+    "n_peaks",
+    "plot_curve",
+    "show_components",
+    "title",
+    "worksheet",
+    "x_column",
+    "y_column"
+   ]
+  },
+  {
+   "name": "origin_mask_points",
+   "description": "屏蔽指定数据点（置 NaN，图上自动隐藏；backup=True 先备份原列，可逆）。\n\n    rows 为行号列表（0 起），或用 x_min/x_max + x_column 按区间屏蔽。\n    典型：\"这几个明显是错误点，帮我隐藏\" / \"把 x<0 的预热段隐藏\"。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "backup",
+    "rows",
+    "worksheet",
+    "x_column",
+    "x_max",
+    "x_min",
+    "y_column"
+   ]
+  },
+  {
+   "name": "origin_add_line",
+   "description": "画辅助线：vertical/horizontal（给 at）或 slope（给 slope+intercept）。\n\n    Tafel 外推线、零参考线、阈值线、半圆直径辅助线等场景。\n    line_style: 0 实线 1 虚线 2 点线。label 可选（同时写为列名与标注）。",
+   "required": [
+    "graph"
+   ],
+   "properties": [
+    "at",
+    "color",
+    "graph",
+    "intercept",
+    "label",
+    "layer",
+    "line_style",
+    "orientation",
+    "slope"
+   ]
+  },
+  {
+   "name": "origin_labtalk",
+   "description": "执行任意 LabTalk 并可选读回（逃生舱：SKILL 未覆盖的功能由此直达）。\n\n    graph 非空时先激活该图页（否则裸表达式可能静默落到错误窗口）。\n    read_expr 如 \"layer.x.from\"、\"page.nlayers\"、\"layer.y.title$\"，\n    读回为 NaN 时明确标注 unreliable（不会假成功）。\n    破坏性命令（delete / doc -s / exit / win -c 等）默认拦截并返回\n    labtalk_blocked；确认确需执行时带 confirm=true 放行。\n    优先用专用工具（origin_edit_* 等已内置激活+读回），仅当专用工具\n    覆盖不到时才用本工具。",
+   "required": [
+    "script"
+   ],
+   "properties": [
+    "confirm",
+    "force_silent",
+    "graph",
+    "read_expr",
+    "read_kind",
+    "script"
+   ]
+  },
+  {
+   "name": "origin_release",
+   "description": "释放自动化连接但保持 Origin 打开（把 Origin 交给用户手动操作）。\n\n    适用：AI 完成绘图后用户要手动微调；释放后用户操作不会被自动化干扰。\n    下次任意 origin_* 工具调用会自动重连，无需先调 reconnect。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_reconnect",
+   "description": "显式重连 Origin COM 自动化服务器（release 后恢复；已连接时幂等）。",
+   "required": [],
+   "properties": []
+  },
+  {
+   "name": "origin_filter_data",
+   "description": "删除/裁剪数据点（写回原工作表）。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "drop_rows",
+    "worksheet",
+    "x_column",
+    "x_max",
+    "x_min"
+   ]
+  },
+  {
+   "name": "origin_manage_plots",
+   "description": "数据图管理：remove 删除指定曲线 / change_data 更换数据源。\n\n    Args:\n        graph: 图页短名（origin_list_graphs 获取）。\n        action: \"remove\" | \"change_data\"。\n        plot_index: 曲线索引从 0 起（第 N 条 -> N-1）。\n        data_worksheet: change_data 的新数据工作表名。\n        x_col / y_col: change_data 的新 X/Y 列（至少给一个；列名或索引）。",
+   "required": [
+    "graph",
+    "action"
+   ],
+   "properties": [
+    "action",
+    "data_worksheet",
+    "graph",
+    "plot_index",
+    "x_col",
+    "y_col"
+   ]
+  },
+  {
+   "name": "origin_manage_data",
+   "description": "工作表数据管理：sort 按某列排序整表 / transpose 行列转置（写新表，原表不动）。\n\n    Args:\n        worksheet: 工作表引用。\n        action: \"sort\" | \"transpose\"。\n        col: sort 的关键列（列名或索引；transpose 忽略）。\n        dec: sort 是否降序（默认升序）。",
+   "required": [
+    "worksheet",
+    "action"
+   ],
+   "properties": [
+    "action",
+    "col",
+    "dec",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_matrix_write",
+   "description": "把二维数值网格写入矩阵页（surface/contour 等大数据可持久化复用）。\n\n    data 形如 {\"z\": [[行1..], [行2..], ...]} 或直接 [[..],..]；\n    from_np 自动 resize；返回 writeback_consistent 供复核。",
+   "required": [
+    "data"
+   ],
+   "properties": [
+    "data",
+    "matrix_name"
+   ]
+  },
+  {
+   "name": "origin_matrix_read",
+   "description": "读取矩阵页数据（返回 2D 列表 + shape；矩阵引用如 [M001]M001）。",
+   "required": [
+    "matrix"
+   ],
+   "properties": [
+    "matrix"
+   ]
+  },
+  {
+   "name": "origin_matrix_plot",
+   "description": "用已有矩阵绘图：surface/scatter/contour/contour_fill/3d_wire。\n\n    heatmap 暂不支持（plotm 实测不可用，COMPATIBILITY #14）。",
+   "required": [
+    "matrix"
+   ],
+   "properties": [
+    "file_path",
+    "fmt",
+    "matrix",
+    "plot_type",
+    "title",
+    "width"
+   ]
+  },
+  {
+   "name": "origin_fit",
+   "description": "对工作表数据做曲线拟合，可选把拟合曲线加到图上。\n\n    kind 支持 linear 与 Origin 内置 NLFit 名（ExpDec1/Gauss/Lorentz/Boltzmann/\n    DoseResp/MichaelisMenten/Logistic/Poly2...，返回值带 supported_kinds 清单）。\n    drop_report_pages=True 自动关闭 NLFit 的 FitLine*/Residual* 报告副产品页。\n\n    收敛控制（P0-4）：\n    initial_params: NLFit 初值 dict，如 {\"A\": 1.5, \"xc\": 5.0}（改善收敛速度）。\n    fixed_params: 固定参数。NLFit 传 {\"A\": true} 固定该参数（或给数值=固定为该值）；\n      linear 传 {\"slope\": 0.0} / {\"intercept\": 0.0} 固定为指定值。\n    weight_col: NLFit 加权列（y 误差列，走 yerr 通道）；linear 不支持加权。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "drop_report_pages",
+    "fixed_params",
+    "graph",
+    "initial_params",
+    "kind",
+    "plot_curve",
+    "title",
+    "weight_col",
+    "worksheet",
+    "x_column",
+    "y_column"
+   ]
+  },
+  {
+   "name": "origin_stats",
+   "description": "描述性统计：count/mean/std/min/p25/median/p75/max/skew。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "columns",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_transform",
+   "description": "数据变换（结果写入新列或返回）。\n\n    op: smooth/normalize/derivative/interpolate 之外新增 ln/log10/reciprocal/\n    exp/sqrt/abs。return_values=True 且结果 ≤2000 点时直接回传 values 数组，\n    可直接喂给 origin_plot_template 等内存数据接口。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "column",
+    "method",
+    "new_x",
+    "op",
+    "return_values",
+    "window",
+    "worksheet",
+    "write_back"
+   ]
+  },
+  {
+   "name": "origin_integrate",
+   "description": "数值积分（梯形法），计算曲线下面积 AUC。\n\n    baseline: None 不扣；\"min\" 以 y 最小值为基线；\"first\" 以首点为基线；\n    或直接传数值。DSC 焓变等需要扣基线的场景用。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "baseline",
+    "worksheet",
+    "x_column",
+    "y_column"
+   ]
+  },
+  {
+   "name": "origin_fft",
+   "description": "FFT 频谱分析：返回主频列表，可选画频谱图并导出。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "file_path",
+    "plot_spectrum",
+    "top",
+    "width",
+    "worksheet",
+    "x_column",
+    "y_column"
+   ]
+  },
+  {
+   "name": "origin_correlate",
+   "description": "列间 Pearson 相关矩阵。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "columns",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_peak_find",
+   "description": "峰值检测：局部极大值 + 最小峰高 + 最小间距去重。",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "min_distance",
+    "min_height",
+    "worksheet",
+    "x_column",
+    "y_column"
+   ]
+  },
+  {
+   "name": "origin_ttest",
+   "description": "t 检验：单样本 / 双样本(Welch) / 配对。\n\n        Args:\n            worksheet: 工作表引用。\n            column_a / column_b: 参与检验的列名。\n            kind: one(单样本 vs mu) | two(双样本 Welch) | paired(配对)。\n            paired: 兼容参数：kind=two 且 paired=True 视同 kind=paired。\n            mu: kind=one 时的零假设均值（默认 0）。\n        Returns:\n            {\"ok\": true, \"statistic\": t, \"df\": ..., \"p_value\": ..., \"mean_a\": ...}",
+   "required": [
+    "worksheet",
+    "column_a"
+   ],
+   "properties": [
+    "column_a",
+    "column_b",
+    "kind",
+    "mu",
+    "paired",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_anova",
+   "description": "单因素方差分析（ANOVA）：每组一列，返回 F 与 p 值。",
+   "required": [
+    "worksheet",
+    "columns"
+   ],
+   "properties": [
+    "columns",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_pca",
+   "description": "主成分分析（把每列当作变量、每行为样本）。\n\n        Args:\n            columns: 变量列；留空全部列。\n            scale: 是否标准化到单位方差。\n            n_components: 返回前 N 个主成分（默认全部）。\n        Returns:\n            {\"ok\": true, \"explained_variance_ratio\": [...], \"loadings\": [...], ...}",
+   "required": [
+    "worksheet"
+   ],
+   "properties": [
+    "columns",
+    "n_components",
+    "scale",
+    "worksheet"
+   ]
+  },
+  {
+   "name": "origin_survival",
+   "description": "Kaplan-Meier 生存分析。\n\n        Args:\n            time_column: 生存时间列。\n            event_column: 事件列（1=事件发生，0=删失）。\n        Returns:\n            {\"ok\": true, \"events\": [...KM表...], \"median_survival_time\": ...}",
+   "required": [
+    "worksheet",
+    "time_column",
+    "event_column"
+   ],
+   "properties": [
+    "event_column",
+    "time_column",
+    "worksheet"
+   ]
+  }
+ ]
+}

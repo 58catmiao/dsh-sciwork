@@ -1,0 +1,74 @@
+{
+  "id": "elsevier-generic",
+  "name": "Elsevier journals (generic)",
+  "nameZh": "爱思唯尔期刊（通用）",
+  "publisher": "Elsevier",
+  "language": "en",
+  "homepage": "https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-overview",
+  "figure": {
+    "singleColumnMm": 90,
+    "doubleColumnMm": 190,
+    "maxHeightMm": null,
+    "minFontPt": 6,
+    "maxFontPt": null,
+    "fontFamily": null,
+    "lineWidthPt": 0.25,
+    "rasterDpi": {
+      "photo": 300,
+      "line": 1000,
+      "combination": 500
+    },
+    "vectorPreferred": ["eps", "pdf"],
+    "colorMode": "RGB",
+    "panelLabels": null,
+    "notes": [
+      "★ 本档的 figure 数值已于 2026-10-11 从 Elsevier 官方 artwork 页面取到原文（此前全部为 null，是因为找错了入口：官方规范不在 researcher/author/... 之下，而在 /about/policies-and-standards/author/artwork-and-media-instructions/*，这些页面是服务端渲染、可直接读）。",
+      "栏宽（官方 Sizing of artwork 原文）：minimal size 30 mm (85 pt)；single column 90 mm (255 pt)；1.5 column 140 mm (397 pt)；double column (full width) 190 mm (539 pt)。本档只填单栏 90 / 双栏 190；**maxHeightMm 官方未规定高度上限，故记 null**。",
+      "分辨率（官方原文）：300 DPI for halftone images; 500 DPI for combination art; 1000 DPI for line art. 72 points in one inch. —— 黑/白线条图（bitmap）另写 minimum 1000 dpi，线条极细时 1200 dpi；灰度图与 RGB 彩图各写 minimum 300 dpi（均见 Artwork types）。",
+      "字号（官方 Sizing of artwork 原文）：the lettering on the artwork should have a finished, printed size of 7 pt for normal text and no smaller than 6 pt for subscript and superscript characters；某些情况下（如网纹/阴影）可能要求约 10 pt。本档 minFontPt=6（官方明写的最低下限），**maxFontPt 记 null（官方未给上限，只说常规 7 pt、特例 10 pt）**。",
+      "线宽（官方 Artwork FAQ 原文）：Any line work should use a recommended line width of 0.25 pt (absolute minimum line width is 0.1 pt)；突出线条（如曲线图里的主线）约 1 pt。Artwork types 另写 Line weights range from 0.10 pt to 1.5 pt。本档 lineWidthPt=0.25（官方推荐值）。",
+      "矢量与格式（官方 Artwork formats checklist 原文）：Preferred/accepted = TIFF (TIF/TIFF, halftones/bitmaps)、JPEG (JPG/JPEG, halftones)、EPS (矢量)、PDF (文本/文档/矢量图)、Microsoft Office (DOC/DOCX、XLS/XLSX、PPT/PPTX)。故 vectorPreferred=[\"eps\",\"pdf\"]。**官方不接受 PNG**（Artwork FAQ: Why don't you accept PNG files?）。",
+      "色彩（官方原文）：彩色图请用 RGB（My color images are provided in the preferred RGB colorspace, unless the journal's guide for authors prescribes otherwise）；印刷时由 Elsevier 转 CMYK。故 colorMode=\"RGB\"。",
+      "仍为 null 的三项及原因：maxHeightMm（官方未规定）、fontFamily（artwork 四个页面均未规定图内字体族）、panelLabels（官方只说含 \"Fig. 1\" 这类标签要放在图像区域之外、图题随稿件单独交，未规定分图标签的字号/样式）。**不许凭其他刊或印象补**。",
+      "本档 figure 之外的 text / references / submission 三节仍为 null：Elsevier 各刊的摘要字数、参考文献样式（numbering 还是 name-date）、cover letter 是否必交，都写在**该刊自己的 guide for authors** 里，不存在统一的 Elsevier 数值。下一步要读的是 `https://www.elsevier.com/journals/<journal>/<issn>/guide-for-authors`（本机被 WAF 拦：连接被意外关闭；需真实浏览器打开后另存 PDF 交给我解析）。",
+      "取证路线（可复现）：robots.txt → Sitemap https://www.elsevier.com/sitemaps/index.xml → https://www.elsevier.com/sitemaps/global.xml 里筛 /about/policies-and-standards/ 下的 artwork 系列页面。反例记录：researcher/author/tools-and-resources/artwork-guidelines（176573 B，去标签正文 89341 字符，dpi 命中 0）、artwork-and-media-instructions（208917 B 空壳）、/__data/promis_misc/622936artwork.pdf（404）、web.archive.org 快照（0 字节）——这些入口一律是 JS 外壳或不存在，别再用它们判断「官网没有数值」。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": null,
+    "abstractStyle": null,
+    "titleMaxChars": null,
+    "sections": null,
+    "wordLimitNote": null
+  },
+  "references": {
+    "style": null,
+    "inTextExample": null,
+    "entryExample": null,
+    "maxAuthorsListed": null,
+    "doiRequired": null
+  },
+  "submission": {
+    "coverLetterRequired": null,
+    "checklist": [
+      "图件按官方 artwork 规范准备：单栏 90 mm / 双栏 190 mm（1.5 栏 140 mm），最小 30 mm；照片 300 dpi、组合图 500 dpi、线条图 1000 dpi（极细线 1200 dpi）。",
+      "图内文字：常规 7 pt、上下标不小于 6 pt；线宽推荐 0.25 pt（绝对最小 0.1 pt），突出线条约 1 pt。",
+      "格式：TIFF/JPEG（位图）、EPS/PDF（矢量）、Office 文件；彩色图用 RGB；**不要交 PNG**。",
+      "插图单独成文件、按正文出现顺序编号；图题写在稿末或单独文件（若投稿系统有 Figure Caption 项则放该项）。",
+      "本档未取得各刊自己的 guide for authors：投稿前必须打开目标刊 guide for authors，核对摘要字数、参考文献样式、cover letter、声明类文件与栏目字数上限（各刊不同，不存在统一值）。",
+      "使用 Elsevier 官方模板（Word 或 elsarticle LaTeX）排版，并从官网下载最新版。",
+      "投稿前逐刊确认 cover letter、利益冲突声明、作者贡献声明与数据可用性声明是否为必需项。"
+    ],
+    "commonRejectionReasons": []
+  },
+  "sources": [
+    "https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-overview",
+    "https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-sizing",
+    "https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-types",
+    "https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-faq",
+    "https://www.elsevier.com/about/policies-and-standards/author/artwork-and-media-instructions/artwork-formats-checklist",
+    "https://www.elsevier.com/sitemaps/global.xml"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "medium"
+}

@@ -1,0 +1,126 @@
+{
+  "id": "cell",
+  "name": "Cell",
+  "nameZh": "《细胞》",
+  "publisher": "Cell Press (Elsevier)",
+  "language": "en",
+  "homepage": "https://www.cell.com/cell/information-for-authors",
+  "figure": {
+    "singleColumnMm": 85,
+    "doubleColumnMm": 174,
+    "maxHeightMm": 200,
+    "minFontPt": 6,
+    "maxFontPt": 8,
+    "fontFamily": "Arial",
+    "lineWidthPt": 0.5,
+    "rasterDpi": {
+      "photo": 300,
+      "line": 1000,
+      "combination": 500
+    },
+    "vectorPreferred": [
+      "pdf",
+      "eps"
+    ],
+    "colorMode": "RGB",
+    "panelLabels": "分图用大写字母标注（官方原文：Different panels should be labeled with capital letters）；官方未给分图标签的专门字号，正文文字按 6–8 pt、ChemDraw 图注与原子标签 Arial 7 pt。",
+    "notes": [
+      "【已核实】数值全部取自 Cell Press 官方页面，2026-10-11 由本机无头 Edge + CDP 直读（该站对普通抓取返回 Cloudflare 挑战页，需真实浏览器指纹；复现命令保存在档案作者的本机取证记录中，未随仓库分发）。用户提供的打印稿 `Cell.pdf`（用户本机留存，未随仓库分发）只有导航与栏目清单，不含任何 dpi/mm 数值，故不能作为数值来源。",
+      "尺寸/栏宽（官方原文，https://www.cell.com/figure-guidelines ）：“Each figure must fit on a single page. We recommend that figures be a maximum of 6.5 x 8 in (16.5 x 20 cm) to allow for page margins and text.”“Maximum widths are as follows: … Two-column formats (such as research articles and reviews): 8.5 cm (1 column), 11.4 cm (1.5 columns), and 17.4 cm (full width of the page); Three-column formats (such as previews and commentaries): 5.5 cm (1 column), 11.4 cm (2 columns), and 17.4 cm (full width of the page); For the journal STAR Protocols: 13.4 cm (1 column) and 17.2 cm (full width of the page)”。本档 singleColumnMm=85、doubleColumnMm=174 取“两栏式研究论文”的 1 栏与整页宽；三栏式（previews/commentaries）1 栏为 55 mm、1.5 栏/2 栏为 114 mm；STAR Protocols 为 134/172 mm。maxHeightMm=200 即官方上限 20 cm（官方只给 16.5 x 20 cm 的整体上限，没有单独规定“最大高度”）。",
+      "分辨率（同一页官方原文）：“Figure resolutions should be as follows: for color or grayscale figures, at least 300 dpi; for black and white figures, at least 500 dpi; for line-art figures, at least 1,000 dpi at the desired print size”→ rasterDpi.photo=300（彩色或灰阶）、combination=500（黑白图/半色调）、line=1000（线条图）。另有下限句：“Use a vector graphics program (such as Adobe Illustrator or Inkscape) to assemble the figures and verify that at final print size, each displayed image is at least 300 pixels per inch. Note that programs such as Word or PowerPoint often reduce the resolution of primary data images.”",
+      "字体与字号：“Always embed fonts, and use only Arial fonts”（只允许 Arial，且必须嵌入）→ fontFamily=Arial；“Text should be about 6–8 pt at the desired print size”→ minFontPt=6、maxFontPt=8（这是官方给的区间，本档少见地把上下限都填上）；ChemDraw 部分另有“Captions and atom labels* = Arial, 7 pt”。",
+      "线宽：“Line weights or stroke widths should be in the 0.5–1.5 pt range”→ lineWidthPt=0.5 取区间下限（档案字段只存单值，区间见本条）。",
+      "色彩：“If used, color should be encoded as RGB”→ colorMode=RGB；同页还要求“red and green should not be used together”（考虑色觉障碍读者，官方推荐 Color Vision 工具自检）；灰阶填充规则：“Gray fills should be kept at least 20% different from other fills and no lighter than 10% or darker than 80%”。",
+      "文件格式（生产阶段，官方 preferred 顺序）：TIFF 与 PDF 是 final production 的首选（“For all other article types and journals, TIFF and PDF are the preferred formats for final production files”）；TIFF 适合线条图/灰阶/彩图（压缩用 LZW），PDF 适合任何类型（含矢量+位图，压缩用 Reduced Size PDF）；Editorial Manager 另接受 EPS、JPEG、PSD、PNG、CDX；EPS 用于矢量图（“EPS is recommended for vector images (charts, graphs, technical drawings, annotated images)”）→ vectorPreferred=[pdf, eps]；AI 只用于 Cell 的 Leading Edge 图；ChemDraw 是官方首选画结构软件（按 PC 保存，最终建议存 TIFF 或 PDF，CDX 会被转成 PDF）。",
+      "ChemDraw 官方参数（照抄，供绘图脚本核对）：Chain bond angle = 120°；Fixed bond angle = 15°；Bond length = 0.45 cm；Bond width = 0.015 cm；Bold bond width = 0.05 cm；Double bond space = 20% of bond length；Stereo bond width = 0.056 cm；Hash spacing = 0.065 cm；Captions and atom labels = Arial, 7 pt；原子标签需取消勾选 “Show labels on Terminal Carbons” 与 “Hide Implicit Hydrogens”。",
+      "上传与文件规则：主图必须单独上传、不得嵌在正文（“Main figures must be uploaded individually, as high-resolution image files. They should not be embedded in the main manuscript.”）；图的标题与图注不放进图像文件，而放在正文文件末尾；一个 figure 文件要包含该图的全部分图，不要按分图分别上传；文件名要能识别（如 “Figure 1.tif”）；单个图像文件 ≤20 MB（超限且无法无损压缩时联系编辑部的 editorial operations associate）；使用图层时要合并为单层（Leading Edge 除外）。",
+      "初始投稿与评审阶段官方明确从宽（“These requirements do not apply to figures at the initial submission and peer review steps.”／“For initial submission and peer review, we can accept figures in a wide variety of formats, sizes, and resolutions.”），可把图与图注插在正文相应位置；上述生产级要求适用于录用后的 final submission。",
+      "图像诚信与常见坑：凝胶/印迹裁剪图要把完整图放进补充材料；显微图若由多个视野拼接，必须在图注中说明；定量图除平均值±误差外还要画出个体数据点；录用后会对图做 image screening（图像筛查）；不要把带编号的文献引用写进图像内部（若正文重新编号，作者需在 proofs 阶段提供更新后的图）；图内各部分之间的竖直间距只保留必要的量。",
+      "仍为 null / 无法填的字段：无。figure 段全部字段都有官方依据（本次相较其他档，多填了 maxFontPt 与 panelLabels 两项）。"
+    ]
+  },
+  "text": {
+    "abstractMaxWords": 150,
+    "abstractStyle": "单段 Summary，≤150 词（官方原文：“The summary is a single paragraph of no more than 150 words”）；须包含研究背景/目的、主要结果与所用方法或模型系统、主要结论，以及工作的更广泛意义；因常被当作独立文本阅读，官方禁止在摘要中出现文献引用，并要求避免非标准缩写；官方不鼓励 “novel”“first” 一类新颖性宣称。",
+    "titleMaxChars": 145,
+    "sections": [
+      "Title",
+      "Author list",
+      "Author affiliations and footnotes",
+      "Contact information",
+      "Summary",
+      "Keywords（≤10 个，逗号分隔）",
+      "Introduction",
+      "Results",
+      "Limitations of the study",
+      "Discussion",
+      "Resource availability",
+      "Acknowledgments",
+      "Author contributions",
+      "Declaration of interests",
+      "Declaration of generative AI and AI-assisted technologies in the manuscript preparation process",
+      "Supplemental information titles and legends",
+      "Figure (and/or scheme) titles and legends",
+      "Tables",
+      "STAR Methods",
+      "Resource identification initiative",
+      "References"
+    ],
+    "wordLimitNote": "Research/Resource/Theory/Matters Arising（均为 full-length research 格式）：全文 <7,000 词（含主图图注，不含 STAR Methods 正文、补充材料图注与参考文献），图+表合计 ≤7 个，超出部分经编辑同意可作为补充材料在线发表。Short Article：正文 ≤4,000 词（含标题、作者与单位、Summary、空格、图注），展示项 ≤4 个，补充图 ≤4 张（补充项合计 ≤8）。Review：通常 5,000–8,000 词（含 ≤150 词的摘要），参考文献 ≤100，图 3–5 幅。Perspective：通常 4,000–5,500 词（含 ≤150 词摘要），参考文献 ≤100，图 ≤2 幅。Preview：1,000 词，参考文献 ≤10，图 1 幅。Commentary：1,000 词，参考文献 ≤10，图 ≤2 幅。另：部分文章类型可把 Discussion 与 Results 合并为 “results and discussion”，须参照 article types 页或与编辑确认。",
+    "notes": [
+      "【已核实】Title 与 Summary 的硬指标来自 https://www.cell.com/cell/information-for-authors/revise-manuscript ：“Titles should: Be concise, around 10–12 words (no more than 145 characters total, including spaces).”——即标题建议 10–12 词、含空格不超过 145 字符（本档 titleMaxChars=145）。",
+      "摘要规则（同页）：≤150 词单段；不得含文献引用；避免非标准缩写；官方还建议标题避免行话与不常见缩写，若标题必须用缩写，须在摘要中尽早定义。",
+      "摘要的“novelty claims”限制（同页原文）：“We discourage novelty claims (e.g., use of the word “novel” and “first”) because they are overused, tend not to add meaning, and are difficult to verify.”",
+      "关键词（同页）：“After the summary, you may include up to 10 keywords with your paper, separated by commas.”（≤10 个，逗号分隔）。",
+      "作者与通讯作者规则（同页）：全部作者须在正文与 Editorial Manager 中按同一顺序列出；姓名全文拼写（不得缩写为 “J.H. Watson”，中间名首字母可用）；中文名可写成 “Zhang San (张三)”；单位须给部门/机构/城市/州或地区/国家；机构用编号脚注，脚注可标注现单位、同等贡献、资深作者，最后一个编号脚注必须指明 lead contact（必需）；lead contact 只能有一位且必须是通讯作者；多位通讯作者依次用 *、**、*** 标注，邮箱写在作者脚注后（如 “*Correspondence: john_doe@cell.com”），每人只列一个邮箱；修订阶段若作者名单有变动（增删或改序）须提交 authorship change form。",
+      "字数上限来自 https://www.cell.com/cell/information-for-authors/article-types （Research <7,000 词且图表 ≤7；Short Article ≤4,000 词且展示项 ≤4；Review 5,000–8,000 词/≤100 refs/3–5 图；Perspective 4,000–5,500 词/≤100 refs/≤2 图；Preview 与 Commentary 各 1,000 词/≤10 refs）。",
+      "图注写法（revise 页）：每幅图先给一句描述整图、不引用具体分图的简短标题，随后给逐分图的 legend；建议图标题复用 Results 的小标题以体现对应关系；legend 要写明每个结果的生物学重复与技术重复数（官方示例 “(A) Western blot of liver tissue from WT and KO mice on a high-fat diet…”）；表格须有标题，编号为 Table 1、Table 2…，不得用 “Table 1A/1B” 这种分面板编号，表脚注用上标小写字母而非数字或符号。"
+    ]
+  },
+  "references": {
+    "style": "顺序编号制：按正文首次引用的顺序连续编号，正文引用写成上标数字（无括号、无 “ref.”），表格内写成 “Smith et al.1” 这种形式；每条文献只能对应一篇文章，不得写成 a、b、c 分册；仅出现在补充材料中的引用只列在补充材料、不进正文文献表；未发表数据（含已投/在审稿）、个人通讯、摘要、会议报告只能在正文提及，不进文献表（分别写作 data not shown / unpublished data / personal communication / abstract / presentation）；每条只收已发表或 in press 的材料；数据集、程序代码与方法必须在正文引用并在文献表中列出（原始论文或独立持久标识符 DOI 二者都鼓励）；官方另提供 CSL 与 EndNote 样式文件。",
+    "inTextExample": "Multiple reports support this observation1,2 ／ This observation is supported by Smith et al.1（数字为上标；官方原文：“In-text citations should be written in numbered superscript style”）",
+    "entryExample": "Sondheimer, N., and Lindquist, S. (2000). Rnq1: an epigenetic modifier of protein function in yeast. Mol. Cell 5, 163–172. 10.1016/S1097-2765(00)80412-8.",
+    "maxAuthorsListed": 10,
+    "doiRequired": false,
+    "notes": [
+      "【已核实】全部条目取自 https://www.cell.com/cell/information-for-authors/revise-manuscript 的 “References” 一节（2026-10-11 直读）。",
+      "作者截断规则（官方原文）：“Note that “et al.” should be used only after 10 author names.”→ maxAuthorsListed=10（10 位以内全列，超过 10 位才用 et al.）。",
+      "DOI 规则：官方“鼓励尽可能给出 DOI”：“Please include only material that is published or in press. We encourage the inclusion of digital object identifiers (DOIs) whenever possible.”；对 in press 文章是强制项——“For in press articles, please confirm with the cited journal that the article is in fact in press, and include a DOI and scheduled online publication date.”；预印本可引用，但需给识别信息与独立持久标识符（如 DOI）；若预印本后来正式发表，须改用正式发表信息。故 doiRequired=false（非普适强制，但对 in press 是必需）。",
+      "官方给出的 9 类示例（照抄，供文献管理软件核对）：期刊论文 = Sondheimer, N., and Lindquist, S. (2000). Rnq1: an epigenetic modifier of protein function in yeast. Mol. Cell 5, 163–172. 10.1016/S1097-2765(00)80412-8.；预印本/仓库 = De Virgilio, C., Hatakeyama, R., Péli-Gulli, M.-P., Hu, Z., Jaquenoud, M., Osuna, G.M.G., Sardu, A., and Dengjel, J. (2018). Spatially distinct pools of TORC1 balance protein homeostasis. Preprint at Mendeley Data, 10.17632/m9s42s94fc.1.；书中章节 = King, S.M. (2003). Dynein motors: Structure, mechanochemistry and regulation. In Molecular Motors, M. Schliwa, ed. (Wiley-VCH Verlag GmbH), pp. 45–78.；整本书 = Cowan, W.M., Jessell, T.M., and Zipursky, S.L. (1997). Molecular and Cellular Approaches to Neural Development (Oxford University Press).；网站 = United Nations. Goal 7: Ensure access to affordable, reliable, sustainable and modern energy for all. https://www.un.org/sustainabledevelopment/energy.；软件 = R Development Core Team (2008). R: A language and environment for statistical computing (R Foundation for Statistical Computing).；数据/代码仓库 = Gerczuk, M. (2023). HyperPersonalisation. Zenodo. https://doi.org/10.5281/zenodo.8328092.；会议论文集 = Matasayo, P., and Lotz, J. (1982). A study of item and factor analysis. In Proceedings of the 23rd British Psychological Conference, E. Kosakos, ed. (British Psychological Society), pp. 106-115.；专利 = Smith, J.C. (2016). Process for batch culturing. US patent US9340678 B2, filed June 14, 2011, and granted May 17, 2016.",
+      "文献风格要点（从示例归纳，供 CSV/BibTeX 字段核对）：作者 “姓, 名首字母.” 用逗号分隔、最后两位之间用 “and”；年份在作者后用括号；文章标题句首大写、其余小写（sentence case）且不加引号；期刊名用标准缩写（CASSI）并斜体、卷号后直接跟页码并用 en dash（如 5, 163–172）；DOI 直接跟在末尾、不加 “DOI:” 前缀（与 ACS 档案的写法不同，注意区分）。"
+    ]
+  },
+  "submission": {
+    "coverLetterRequired": true,
+    "checklist": [
+      "Cover letter（必交）：仅编辑可见、评审看不到。官方要求说明“What was previously known（背景）”“The conceptual advance provided by your work”“The significance of the work and its potential impact”，若属于 consortium 也要说明；还可用于建议/排除审稿人、说明相关工作与时间冲突、说明是否已与某位编辑沟通过。",
+      "Other files：需提交填好的 declaration of interests form（PDF）；其他材料以 Editorial Manager 提交页的清单为准。",
+      "初次投稿可只上传一个含正文与全部相关材料的 PDF，或上传 Word + 单独的相关材料文件；LaTeX 稿件必须额外上传 PDF 版本。录用后最终材料必须为可编辑格式（首选 Microsoft Word），并有官方 Word/LaTeX 模板可用。",
+      "初次投稿为便于编辑与审稿人处理，图与其他文件请控制在 1–2 MB，整套材料不超过 20 MB。",
+      "摘要（Summary）≤150 词单段、不得含文献引用；标题建议 10–12 词且含空格 ≤145 字符；关键词 ≤10 个。",
+      "全文词数与展示项按文章类型自查：Research <7,000 词、图表 ≤7；Short Article ≤4,000 词、展示项 ≤4；Review 5,000–8,000 词、≤100 refs、3–5 图；Perspective 4,000–5,500 词；Preview/Commentary 1,000 词、≤10 refs。",
+      "参考文献按首次引用顺序编号、正文上标数字；超过 10 位作者才用 et al.；只收已发表或 in press 的材料（in press 必须给 DOI 与预计在线发表日期）；未发表数据/个人通讯/摘要只写进正文。",
+      "录用后按生产级图件规范重做图：Arial 字体并嵌入、文字 6–8 pt、线宽 0.5–1.5 pt、彩/灰阶 ≥300 dpi、黑白 ≥500 dpi、线条图 ≥1000 dpi、RGB、单文件 ≤20 MB、单层化、图题与图注移到正文末尾。",
+      "投稿前逐图自查图像诚信：裁剪凝胶要在补充材料给完整图、拼接显微图要在图注说明、定量图要画个体数据点；录用后会做 image screening。",
+      "作者信息核对：lead contact 仅一位且必须是通讯作者，多个通讯作者按 *、**、*** 顺序标注，每人只给一个邮箱，单位须含部门/机构/城市/省州/国家。"
+    ],
+    "commonRejectionReasons": [],
+    "notes": [
+      "coverLetterRequired=true 依据 https://www.cell.com/cell/information-for-authors/submit-manuscript 的 “Cover letter” 一节（初始投稿即要求，并明确写出应包含的 4 项内容），以及 revise 页要求的“新 cover letter/point-by-point”。",
+      "commonRejectionReasons 保持为空：本次取到的官方页面没有给出“常见拒稿原因”清单（Cell 的编辑评审标准未在这几页列举），不做推测；若需要可再抓 /information-for-authors/journal-policies 或编辑部说明页补齐。",
+      "初始投稿阶段官方不要求满足排版与图件生产级要求（“Formatting requirements listed in other sections do not need to be met during the initial submission”），但摘要/标题/关键词这类内容性硬指标仍适用。"
+    ]
+  },
+  "sources": [
+    "https://www.cell.com/cell/information-for-authors",
+    "https://www.cell.com/cell/information-for-authors/revise-manuscript",
+    "https://www.cell.com/cell/information-for-authors/article-types",
+    "https://www.cell.com/cell/information-for-authors/submit-manuscript",
+    "https://www.cell.com/figure-guidelines",
+    "https://www.cell.com/cell/information-for-authors/journal-policies",
+    "Cell.pdf（用户 2026-10-11 提供的官网打印稿，本机留存、未随仓库分发；只有导航与栏目清单，无数值）"
+  ],
+  "verifiedAt": "2026-10-11",
+  "confidence": "medium"
+}
