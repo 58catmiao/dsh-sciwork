@@ -64,8 +64,8 @@ Loader.add_multi_constructor("!", _js_local)
 VALID_TOP_KEYS = {"insert", "disabled", "config", "name", "id", "isolate"}
 
 # 已核实的「必需配置字段」。键 = 插件 moduleName。
-# 来源：`E:\\DeepSeek\\resources\\app.asar` 内各插件 README 的「最小配置」段，以及随附
-# profile / preset（app.asar:366xxx / 1062xxx）的实际用法。加新行时若不确定，先查 asar。
+# 来源：DSH 安装目录下 `resources/app.asar` 内各插件 README 的「最小配置」段，以及随附
+# profile / preset 的实际用法。加新行时若不确定，先查 asar（`npx asar extract` 或直接搜字符串）。
 REQUIRED_CONFIG = {
     "@deepseek-ai/dsh-plan-mode": {
         "required": ("section",),

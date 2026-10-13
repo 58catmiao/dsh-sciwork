@@ -1,0 +1,51 @@
+#!/bin/sh
+# Sciwork Python launcher (macOS / Linux).
+#
+# Why this exists: `python` is often not on PATH (and on some systems is still
+# Python 2), so skill scripts are told to invoke Python through this launcher
+# and the same interpreter gets used everywhere.
+#
+# Override the search by setting SCIWORK_PYTHON (full path to the interpreter).
+# Library root: SCIWORK_LIBRARY, else $HOME/Research, else this file's repo root.
+
+PY=""
+
+if [ -n "$SCIWORK_PYTHON" ] && [ -x "$SCIWORK_PYTHON" ]; then
+  PY="$SCIWORK_PYTHON"
+fi
+
+ROOT="$SCIWORK_LIBRARY"
+if [ -z "$ROOT" ] && [ -d "$HOME/Research" ]; then
+  ROOT="$HOME/Research"
+fi
+if [ -z "$ROOT" ]; then
+  ROOT=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)
+fi
+
+try() {
+  if [ -z "$PY" ] && [ -x "$1" ]; then
+    PY="$1"
+  fi
+}
+
+try "$ROOT/.venv/bin/python"
+try "$ROOT/.research/.venv/bin/python"
+try "$HOME/Research/.venv/bin/python"
+
+# Last resort: whatever PATH provides.
+if [ -z "$PY" ]; then
+  PY=$(command -v python3 2>/dev/null || true)
+fi
+if [ -z "$PY" ]; then
+  PY=$(command -v python 2>/dev/null || true)
+fi
+
+if [ -z "$PY" ]; then
+  echo "[sciwork] no usable Python interpreter found." >&2
+  echo "  set SCIWORK_PYTHON, or create a venv, for example:" >&2
+  echo "    python3 -m venv \"\$HOME/Research/.venv\"" >&2
+  echo "    \"\$HOME/Research/.venv/bin/python\" -m pip install numpy openpyxl pyyaml mcp" >&2
+  exit 127
+fi
+
+exec "$PY" "$@"

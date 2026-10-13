@@ -57,15 +57,14 @@ description: 科研模式总控与路标。做科研绘图、论文写作、文�
 | `check-citations --draft <路径> [--require-doi]` | **引用核查闸门**，不过就非零退出 |
 | `export-bib` | 重建 refs.bib |
 
-> 上面这张表只包含最常用的；`research.py --help` 才是权威清单（现有 16 个子命令，
-> README/HANDOFF 里"只有 12 个"的说法已过时）。拿不准参数名就以 `--help` 为准。
+> 上面这张表只包含最常用的；`research.py --help` 才是权威清单（现有 16 个子命令）。拿不准参数名就以 `--help` 为准。
 
-### 0.3 解释器纪律（本机实测）
-`python` **不在 PATH**；`python3` 是 Microsoft Store 占位程序，裸调必失败。要跑 Python 一律用
-`<库根>\.research\bin\py.cmd`（它按 `<库根>\.venv` → Origin 插件 venv → `<库根>\.research\.venv`
-的顺序挑第一个存在的解释器；依赖 numpy / openpyxl / pyyaml / originpro / mcp / pywin32 的那份）。
-不要因为 `python3` 报错就宣布技能不可用——那是环境的错，不是技能的错，换启动器即可；
-启动器全找不到时它会直接打印该建哪个 venv、装哪些包，照做即可。
+### 0.3 解释器纪律
+**不要裸调 `python` / `python3`**：Windows 上 `python` 常常不在 PATH，`python3` 还可能是 Microsoft Store 的占位程序（裸调必失败）。要跑 Python 一律用库内启动器
+`<库根>/.research/bin/py.cmd`（Windows）或 `<库根>/.research/bin/py`（macOS / Linux）。它按
+`SCIWORK_PYTHON` → `<库根>/.venv` → `<库根>/.research/.venv` → `~/Research/.venv` → PATH 的顺序挑第一个存在的解释器（要的是装了 numpy / openpyxl / pyyaml / originpro / mcp / pywin32 的那一份）。
+不要因为裸调 `python3` 报错就宣布技能不可用——那是环境的错，不是技能的错，换启动器即可；
+启动器一个都找不到时它会直接打印该建哪个 venv、装哪些包，照做即可。
 
 
 ### 0.4 面板现在能自己做的事（**别再代劳**）

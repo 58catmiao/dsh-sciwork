@@ -10,7 +10,7 @@
 //   node scripts/install.mjs [--skills-root <dir>] [--library-root <dir>]
 //                            [--verify-only] [--skip-library] [--force-skills]
 //
-// 为什么是 .mjs 而不是 .ps1：本机 PowerShell 执行策略禁止未签名脚本。
+// 为什么是 .mjs 而不是 .ps1：跨平台，且不依赖 Windows 的 PowerShell 执行策略。
 // ---------------------------------------------------------------------------
 
 import fs from 'node:fs';
@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const pkgRoot = path.resolve(here, '..');
+const WIN = process.platform === 'win32';
 
 // ---- 参数 -----------------------------------------------------------------
 const argv = process.argv.slice(2);
@@ -41,7 +42,7 @@ if (flag('--help') || flag('-h')) {
   --verify-only          只检查，不写任何文件
   --skip-library         不铺科研库骨架
   --force-skills         允许覆盖"看起来不是技能目录"的目标目录
-  --force-scripts        强制覆盖库里的工具脚本（py.cmd / research.py / …），
+  --force-scripts        强制覆盖库里的工具脚本（库内启动器 / research.py / …），
                          默认只在 bundle 里的这份更新时才写
 `);
   process.exit(0);
@@ -216,7 +217,7 @@ if (skipLibrary) {
   // 只补"没有的"，绝不覆盖库里的数据与用户的文献
   const seeds = [
     { src: configTemplate, dest: path.join(research, 'config.json'), data: true },
-    { src: path.join(libraryTemplate, 'bin', 'py.cmd'), dest: path.join(research, 'bin', 'py.cmd'), data: false },
+    { src: path.join(libraryTemplate, 'bin', WIN ? 'py.cmd' : 'py'), dest: path.join(research, 'bin', WIN ? 'py.cmd' : 'py'), data: false, exec: !WIN },
     { src: path.join(libraryTemplate, 'scripts', 'research.py'), dest: path.join(research, 'scripts', 'research.py'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'journal-index.py'), dest: path.join(research, 'scripts', 'journal-index.py'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'pdf-text.mjs'), dest: path.join(research, 'scripts', 'pdf-text.mjs'), data: false },
@@ -255,6 +256,13 @@ if (skipLibrary) {
     }
     fs.mkdirSync(path.dirname(s.dest), { recursive: true });
     fs.copyFileSync(s.src, s.dest);
+    if (s.exec && !WIN) {
+      try {
+        fs.chmodSync(s.dest, 0o755);
+      } catch {
+        /* 文件系统不支持可执行位（如挂载的 exFAT），忽略 */
+      }
+    }
     libReport.push(`${exists ? '更新' : '写入'}  ${s.dest}`);
   }
 
@@ -326,11 +334,11 @@ if (skipLibrary) {
   }
 
   // 用库脚本自己建/修骨架，避免安装器和脚本两套逻辑漂移
-  const pyCmd = path.join(research, 'bin', 'py.cmd');
+  const pyCmd = path.join(research, 'bin', WIN ? 'py.cmd' : 'py');
   const researchPy = path.join(research, 'scripts', 'research.py');
   if (!verifyOnly && fs.existsSync(researchPy)) {
     // Windows 上直接 spawn 一个 .cmd 会失败（Node 不会替你走 cmd.exe），
-    // 所以优先用 config.json 里记的解释器绝对路径直接起，退路才是 shell:true 走 py.cmd。
+    // 所以优先用 config.json 里记的解释器绝对路径直接起，退路才是 shell:true 走库内启动器。
     let interpreter = null;
     try {
       const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));

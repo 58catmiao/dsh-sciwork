@@ -142,7 +142,7 @@ description: 用 Origin 从数据出图、改图、批量出图、套期刊样�
 5. LabTalk（`origin_labtalk`）是逃生舱：不传 `graph` 时裸表达式可能静默落到错误窗口。**先用 SKILL 覆盖到的工具**，不得不用时把命令写进回复里让用户知道。
 6. 误差棒必须来自真实重复测量或明确写出的统计量，**不许为了好看编误差棒**。
 7. `origin_simulate` 产出的是模拟数据（返回强制 `simulated=true`），图注与报告必须注明"模拟数据"。
-8. Python 侧：`python3` 是 Store 占位程序，用 `<库根>\.research\bin\py.cmd`。
+8. Python 侧：不要裸调 `python` / `python3`（Windows 上 `python3` 常是 Store 占位程序），用库内启动器 `<库根>/.research/bin/py.cmd`（Windows）或 `<库根>/.research/bin/py`（macOS / Linux）。
 
 9. **多实例是 high 风险**：`origin_status` 的 `known_risks` 明确写了"多个 Origin64 进程会让 COM 连错实例（LT_execute 报异常）"。所以**绝不要为了"干净"去启动第二个实例，也绝不要杀掉用户的实例**；实测与用户正开着的实例共存完全正常（`origin_running_before: true`、`connect_ms: 3 ms`、调图前后 Origin 进程 PID 不变）。
 10. `origin_status` 的 `user_files` 是用户自定义路径，不是科研库；别往那儿写交付物。
