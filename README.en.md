@@ -259,6 +259,17 @@ SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 151 pass
 - `validate-patch.py` — prints `✓ 补丁预检通过` (patch preflight passed), exit code 0. It reports the `preset-research` preset's top-level row count (19 rows, 29 leaf rows after recursion, 2 of them disabled by an `!!js` condition), its nested groups (planning / compaction / delegation), the persona length, and confirmation that the inserted `research-library` row belongs to the host plugin rather than to an agent preset.
 - `selftest-actions.mjs` — the write-action stage **requires the library root to point at the isolated copy the script creates**. If it finds the snapshot pointing somewhere else, it prints `FAIL 隔离闸门：snapshot 指向副本` and exits with code 2, having written **not a single byte**. That is by design, not a plugin defect: write actions always run inside the copy and never touch your real library.
 
+## Documentation map
+
+| File | Contents |
+| --- | --- |
+| [README.md](./README.md) / [README.en.md](./README.en.md) | What this is, what it installs, how to use it |
+| [docs/INSTALL.md](./docs/INSTALL.md) | Installation and first-time library setup (with troubleshooting) |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Internals and contracts: host actions, HTTP endpoint, panel boundary, path resolution, self-test scope |
+| [docs/RELEASE.md](./docs/RELEASE.md) | Maintainer manual: releases, publishing to the plugin marketplace, screenshots, clean-machine checks |
+| [CHANGELOG.md](./CHANGELOG.md) | Version history |
+| [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) | Third-party components and credits |
+
 ## License and credits
 
 **License: MIT**, copyright 58catmiao. The license text lives in [LICENSE](./LICENSE).

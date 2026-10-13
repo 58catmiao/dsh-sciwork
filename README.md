@@ -259,6 +259,17 @@ SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 151 通�
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
 - `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。
 
+## 文档地图
+
+| 文件 | 内容 |
+| --- | --- |
+| [README.md](./README.md) / [README.en.md](./README.en.md) | 这是什么、装什么、怎么用 |
+| [docs/INSTALL.md](./docs/INSTALL.md) | 安装与首次建库（含排错） |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 工程结构与契约：宿主动作、HTTP 端点、面板边界、路径解析、自检口径 |
+| [docs/RELEASE.md](./docs/RELEASE.md) | 维护者手册：发版、上架插件市场、截图、干净机器验证 |
+| [CHANGELOG.md](./CHANGELOG.md) | 版本变更 |
+| [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) | 第三方组件与致谢 |
+
 ## 许可证与致谢
 
 **License: MIT**，版权归 58catmiao。许可证原文见 [LICENSE](./LICENSE)。
