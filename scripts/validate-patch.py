@@ -33,8 +33,6 @@ import io
 import sys
 from pathlib import Path
 
-import yaml
-
 # Windows 控制台默认可能是 GBK，中文与 ✓ 会炸（实测：跑到最后一行 print 时
 # UnicodeEncodeError，把"预检通过"变成 exit 1）。先钉死 UTF-8。
 for _stream in (sys.stdout, sys.stderr):
@@ -42,6 +40,18 @@ for _stream in (sys.stdout, sys.stderr):
         _stream.reconfigure(encoding="utf-8", errors="replace")
     except Exception:  # pragma: no cover - 旧解释器没有 reconfigure
         pass
+
+try:
+    import yaml
+except ImportError:
+    # PyYAML 不是标准库。GitHub runner 与干净的 Python 都没有，缺了要给一句
+    # 能照做的提示，而不是一串 ModuleNotFoundError 追溯。
+    print(
+        "× 预检需要 PyYAML（不是 Python 标准库）。装一下再跑：\n"
+        "    python -m pip install pyyaml\n"
+        '  CI 里由 .github/workflows/ci.yml 的 "Install PyYAML" 步骤安装。'
+    )
+    sys.exit(1)
 
 
 class Loader(yaml.SafeLoader):

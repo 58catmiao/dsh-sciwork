@@ -225,12 +225,13 @@ Skills are discipline documents, not code: they constrain the agent's behaviour 
 
 ## Self-tests
 
-The repository ships three self-test scripts and one patch preflight. None of them writes to your real library (write actions run against an isolated copy behind a hard gate):
+The repository ships three self-test scripts and one patch preflight. None of them writes to your real library (write actions run against an isolated copy behind a hard gate). The first three need Node only; the patch preflight is written in Python and needs one non-stdlib dependency, PyYAML:
 
 ```bash
 node scripts/selftest-host.mjs      # host half: route registration, path guards, snapshot shape
 node scripts/selftest-actions.mjs   # the 22 actions: read/guard checks + writes against an isolated copy
 node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlays, buttons and request shapes
+python -m pip install pyyaml        # only for the next line (CI installs it in its own step)
 python scripts/validate-patch.py    # cordis.patch.yml preflight: preset rows, persona, inserted row
 ```
 

@@ -57,5 +57,11 @@ jobs:
       - name: Client self-test
         run: node scripts/selftest-client.mjs
 
+      # PyYAML 不是标准库，GitHub 的 runner 默认没有（不装这一步，预检会以
+      # ModuleNotFoundError 退出 1）。单独一步安装，是为了让「装不上」明确红在这一步，
+      # 而不是让预检被静默跳过。
+      - name: Install PyYAML
+        run: python -m pip install --quiet --disable-pip-version-check pyyaml
+
       - name: Patch preflight
         run: python scripts/validate-patch.py

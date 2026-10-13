@@ -225,12 +225,13 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 
 ## 自检
 
-仓库自带三个自检脚本与一个补丁预检，都不写你的正式库（写动作在隔离副本里跑，并有一道硬闸门）：
+仓库自带三个自检脚本与一个补丁预检，都不写你的正式库（写动作在隔离副本里跑，并有一道硬闸门）。前三个只要 Node；补丁预检是 Python 写的，需要一个非标准库的依赖 PyYAML：
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主半边：路由注册、路径守卫、快照形状
 node scripts/selftest-actions.mjs   # 22 个动作：读/守卫检查 + 隔离副本里的写动作
 node scripts/selftest-client.mjs    # 客户端：七个页签的渲染、弹层、按钮与请求形状
+python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 Install PyYAML 步骤）
 python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
 ```
 
