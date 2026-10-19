@@ -3,7 +3,7 @@
 面向想给这个插件**写代码**或**改它**的人。读完你应该能回答：它由哪几块组成、数据往哪儿落、
 哪些写动作被允许、为什么某些细节必须那样写。
 
-- 包名 `dsh-sciwork`，版本 0.1.0，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
+- 包名 `dsh-sciwork`，版本 0.2.2，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
 - 安装：`dsh plugin --profile <profile> add dsh-sciwork`
 - 安装与配置的动手步骤见 [INSTALL.md](./INSTALL.md)；本文件只讲结构、契约与取舍。
 

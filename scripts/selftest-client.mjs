@@ -594,7 +594,7 @@ const FAKE = {
   remove: { ok: true, value: { summary: '已删除 1 个文件（不进系统回收站）', removed: ['projects/demo-perovskite/figures/fig1.png'] } },
   restore: { ok: true, value: { summary: '已恢复 1 个文件（跑了 reindex）', restored: ['projects/demo-perovskite/figures/fig1.png'] } },
   archive: { ok: true, value: { summary: '已归档 1 个条目 → .research/archive/20261011-150000', id: '20261011-150000' } },
-  removeRef: { ok: true, value: { key: 'zhang2024very', totalRefs: 0, backup: 'E:\\Research\\refs\\refs.json.bak', citedIn: [], summary: '已删除文献 [zhang2024very]（剩 0 条）；删前的 refs.json 备份在 refs.json.bak。', reindex: { ok: true, summary: '索引重建完成' } } },
+  removeRef: { ok: true, value: { key: 'zhang2024very', totalRefs: 0, backup: 'X:\\Fake\\refs\\refs.json.bak', citedIn: [], summary: '已删除文献 [zhang2024very]（剩 0 条）；删前的 refs.json 备份在 refs.json.bak。', reindex: { ok: true, summary: '索引重建完成' } } },
   tableTransform: {
     ok: true,
     value: {

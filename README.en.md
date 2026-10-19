@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.1.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.2.2 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -238,6 +238,8 @@ node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlay
 python -m pip install pyyaml        # only for the next line (CI installs it in its own step)
 python scripts/validate-patch.py    # cordis.patch.yml preflight: preset rows, persona, inserted row
 ```
+
+Before pushing to a public repository there is one more gate: `node scripts/check-local-info.mjs` (also run by `cycle.mjs`). It takes this machine's home directory, user name, host name, temp directory and library root as markers, scans every tracked file and every commit message, and fails on any hit — replace those with placeholders such as `<repo-root>` / `<library-root>` / `<system-temp>` before committing.
 
 The self-tests run in two modes, and **a fresh clone with no library configured can still run them**:
 

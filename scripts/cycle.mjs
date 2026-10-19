@@ -6,6 +6,7 @@
  *   1) node --check  lib/*.js + scripts/*.mjs   （语法，零依赖）
  *   2) selftest-host / selftest-actions / selftest-client
  *   3) python scripts/validate-patch.py          （patch 预检，需 PyYAML）
+ *   4) scripts/check-local-info.mjs              （本机信息，推送前必须零命中）
  * 另外附一段只读的 git 状态，方便同步 GitHub 那一步心里有数。
  *
  * 用法：
@@ -182,6 +183,12 @@ if (!PY) {
 } else {
   const r = run('validate-patch.py', PY[0], [...PY[1], 'scripts/validate-patch.py']);
   record('validate-patch.py', r.ok, Date.now(), r.ok ? 'patch 是合成树的子集' : r.note, r.out);
+}
+
+console.log(`\n${C.bold}[4] 本机信息（推送前零命中）${C.off}`);
+{
+  const r = run('check-local-info', process.execPath, ['scripts/check-local-info.mjs']);
+  record('本机信息扫描', r.ok, Date.now(), r.ok ? '0 命中' : '有本机路径/用户名/主机名，见上', r.out);
 }
 
 /* ---------------------------------------------------------------- 3. 汇总 */

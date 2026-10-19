@@ -47,7 +47,7 @@ out/
 tmp/
 # 科研库运行期状态（实体库在仓库之外，这里是落进仓库的部分）
 .research/
-# 本机库根覆盖（模板见 library/config.example.json；这台机器指向 <库根>）
+# 本机库根覆盖（模板见 library/config.example.json；只写在自己机器上，别提交）
 library/config.json
 # 期刊档案取证时抓下来的原文（不入库分发）
 library/journals/_fetched/

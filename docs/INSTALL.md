@@ -3,7 +3,7 @@
 只写仓库里真实存在的东西：每一步的命令与选项都来自 `scripts/install.mjs`、
 `scripts/selftest-*.mjs`、`library/bin/py.cmd` 与各技能的 `SKILL.md`。
 
-- 包名 `dsh-sciwork`，版本 0.1.0，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
+- 包名 `dsh-sciwork`，版本 0.2.2，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
 - 架构、接口契约与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ## 1. 前置条件

@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.1.0 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.2.2 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -240,6 +240,8 @@ python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、p
 ```
 
 想一条命令跑完全部（14 天一轮的周期自检就是这么跑的），用 `node scripts/cycle.mjs`：它把上面五项按 CI 的顺序跑一遍，附一段只读的 git 状态，输出汇总表与退出码，并把完整报告落到 `out/cycle/<日期>/`（`out/` 已 gitignore）。
+
+推送到公开仓库前另有一条门禁：`node scripts/check-local-info.mjs`（`cycle.mjs` 也会跑它）。它拿这台机器的家目录、用户名、主机名、临时目录、库根等标记，去扫全部跟踪文件与全部提交信息，命中就说明仓库里带了本机信息——换成 `<仓库根>` / `<库根>` / `<系统临时目录>` 这类占位符再提交。
 
 自检分两种跑法，**新克隆的仓库不配库也能跑**：
 
