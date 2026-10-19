@@ -278,7 +278,12 @@ console.log('\n[6b] 投稿闸门（体检 / 打包）');
       cj.ok && Array.isArray(cj.value.checks) && cj.value.checks.length > 0,
       cj.ok ? `${cj.value.checks.length} 条 / ${cj.value.counts.fail} 不合格` : JSON.stringify(cj.error));
     check('checkJournal 带免责声明', cj.ok && /以刊方/.test(cj.value.disclaimer || ''));
-    check('checkJournal 指明稿件', cj.ok && !!cj.value.manuscript, cj.ok ? String(cj.value.manuscript) : '');
+    // 库里没有稿件时 manuscript 为 null 是正确行为（体检里会报 manuscript.exists=fail），
+    // 所以断言「字段存在 + 要么指明稿件、要么明确说缺」，而不是要求一定有稿件。
+    const cjMissing = cj.ok && (cj.value.checks || []).some((c) => c.id === 'manuscript.exists' && c.status === 'fail');
+    check('checkJournal 指明稿件（没稿件时明确报缺）',
+      cj.ok && Object.prototype.hasOwnProperty.call(cj.value, 'manuscript') && (!!cj.value.manuscript || cjMissing),
+      cj.ok ? String(cj.value.manuscript || '（库里没有稿件，体检已报 manuscript.exists=fail）') : '');
     check('checkJournal 有 fail 时退出码非 0',
       !cj.ok || !(cj.value.checks || []).some((c) => c.status === 'fail') || cj.value.exitCode !== 0,
       cj.ok ? `exit=${cj.value.exitCode} fail=${cj.value.counts.fail}` : '');
@@ -424,6 +429,20 @@ try {
   const tmpBase = pathMod.join(os.tmpdir(), 'research-selftest');
   await rm(tmpBase, { recursive: true, force: true }).catch(() => {});
   await (await import('node:fs/promises')).mkdir(tmpBase, { recursive: true });
+  // 回归（2026-10-19）：随包 library/config.json 一旦写了 libraryRoot，环境变量曾被它压住，
+  // 隔离闸门随之失效、写动作整节被跳过。这里先单独钉住「env 压过随包快照」这条规则。
+  {
+    const probeRoot = pathMod.join(tmpBase, 'env-override-probe');
+    const savedNew = process.env.SCIWORK_LIBRARY;
+    const savedOld = process.env.RESEARCH_LIBRARY;
+    process.env.SCIWORK_LIBRARY = probeRoot;
+    delete process.env.RESEARCH_LIBRARY;
+    const probed = await (await import('../lib/library.js')).loadSettings();
+    if (savedNew === undefined) delete process.env.SCIWORK_LIBRARY;
+    else process.env.SCIWORK_LIBRARY = savedNew;
+    if (savedOld !== undefined) process.env.RESEARCH_LIBRARY = savedOld;
+    check('库根：环境变量压过随包 library/config.json', pathMod.resolve(probed.root) === pathMod.resolve(probeRoot), '得到 ' + rel(probed.root));
+  }
   copiedRoot = await mkdtemp(pathMod.join(tmpBase, pathMod.sep));
   copiedRoot = pathMod.join(copiedRoot, 'lib');
   await cp(LIB_REAL, copiedRoot, { recursive: true });

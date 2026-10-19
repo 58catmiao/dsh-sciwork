@@ -1,6 +1,6 @@
 {
   "name": "dsh-sciwork",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DSH 科研模式：给 DeepSeek Harness 装一套科研工作台——「科研模式」agent 预设 + 本机实体科研库（Python 引擎与登记索引）+ 12 份期刊投稿档案 + 投稿闸门（期刊合规体检 / 投稿包导出 / 递归全文索引）+ 绘图/写作/文献/期刊技能 + 只读为主的「科研库」面板。出图由智能体经上游 dsh-origin-plugin（Origin MCP）完成。",
   "keywords": [
     "dsh",
@@ -49,6 +49,7 @@
   "scripts": {
     "test": "node scripts/selftest-host.mjs",
     "test:all": "node scripts/selftest-host.mjs && node scripts/selftest-actions.mjs && node scripts/selftest-client.mjs",
+    "cycle": "node scripts/cycle.mjs",
     "validate-patch": "python scripts/validate-patch.py",
     "install-skills": "node scripts/install.mjs"
   },

@@ -9,6 +9,26 @@
 
 （暂无）
 
+## [0.2.1] - 2026-10-19
+
+「周期自检」：一条命令跑完全部门禁，并且修掉一处让隔离闸门长期失效的库根优先级缺陷。
+
+### Added
+
+- **`node scripts/cycle.mjs`（`npm run cycle`）—— 一条命令跑完 CI 那套门禁**：自动发现 `lib/*.js` 与 `scripts/*.mjs` 做 `node --check`，依次跑三个自检与 `validate-patch.py`，附一段只读的 git 状态（分支 / HEAD / tag / 未提交 / 领先落后远端）；输出汇总表与退出码（`0` 全绿 / `1` 有红项 / `2` 门禁没跑起来），完整报告与逐子进程日志落 `out/cycle/<日期>/`（`out/` 已 gitignore）。开关：`--no-report` / `--skip-host` / `--quiet`；环境变量 `SCIWORK_LIBRARY` 指真库、`SCIWORK_PYTHON` 指定解释器。
+- **`docs/CYCLE-14D.md` —— 14 天周期运行手册**：周期七步（摸底 → 真库基线 → 修问题 → 上一个功能 → 文档版本 → 同步 GitHub → 复核）、七条护栏、候选功能池与技术债清单、本轮踩过的坑。
+- 自检回归用例「库根：环境变量压过随包 `library/config.json`」。
+
+### Fixed
+
+- **库根优先级次序反了，隔离闸门形同虚设** —— `loadSettings()` 把随包 `library/config.json` 当作 `resolveLibraryRoot()` 的配置值，而该函数是 `configured || env(...)`，于是本机那份指向真库的配置**压过了** `SCIWORK_LIBRARY`/`RESEARCH_LIBRARY`：自检想把库指到隔离副本永远指不过去，「隔离闸门」每次拿真库当副本，写动作整节（约 60 条）永久跳过——0.2.0 就是这样发出去的。现在次序是「库内 `.research/config.json` ＞ 环境变量 ＞ 随包 `library/config.json` ＞ DSH 目录约定 ＞ `<家目录>/Research`」，新增 `envLibraryRoot()` 供 `loadSettings()` 优先读取，并补了会红过的回归用例。
+- **`checkJournal 指明稿件` 断言过度** —— 库里没有稿件时 `manuscript` 返回 `null` 是正确行为（体检里同时报 `manuscript.exists=fail`），旧断言却要求一定非空，于是真库清空草稿后自检就红。改成「字段存在，且要么指明稿件、要么明确报缺」。
+
+### Changed
+
+- 隔离闸门真正跑起来之后，写动作那节覆盖到的检查从「跳过」变成「执行」：本机真库基线 `126 通过 · 0 失败 · 4 跳过`；`cycle.mjs` 全绿 8 项 / 约 24 s。
+- README 增补 `cycle.mjs` 用法、文档地图收录 `docs/CYCLE-14D.md`，并说明 `SCIWORK_LIBRARY` 优先于随包配置。
+
 ## [0.2.0] - 2026-10-19
 
 「投稿闸门」：查得到 → 合规格 → 打得包。

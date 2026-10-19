@@ -406,12 +406,19 @@ node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默�
 ## 附录 A · 库根与路径解析
 
 `lib/config.js` 是唯一的路径解析层，**任何模块都不许再写死本机路径**。
-解析优先级（越靠前越优先，全部可缺省）：
+库根解析优先级（越靠前越优先，全部可缺省）：
 
-1. 显式传入的配置（库内 `<库根>/.research/config.json` / 随包的 `library/config.json`）
-2. 环境变量：`SCIWORK_LIBRARY`（旧名 `RESEARCH_LIBRARY` 仍兼容）、`SCIWORK_PYTHON`、`SCIWORK_ORIGIN_PLUGIN`
-3. 按 DSH 既有约定推断（`DSH_HOME`、`DSH_PROFILE`、`DSH_PROFILE_DIR`、`node_modules` 布局）
-4. 兜底默认：`<用户目录>/Research`
+1. 库内配置：`<库根>/.research/config.json` 的 `libraryRoot`（已经在一个库里时，它说了算）
+2. 环境变量：`SCIWORK_LIBRARY`（旧名 `RESEARCH_LIBRARY` 仍兼容）
+3. 随包的安装期快照 `library/config.json`（本机运维覆盖，已 gitignore；只在没有环境变量时生效）
+4. 按 DSH 既有约定推断（`DSH_HOME`、`DSH_PROFILE`、`DSH_PROFILE_DIR`、`node_modules` 布局）
+5. 兜底默认：`<用户目录>/Research`
+
+> 0.2.1 之前第 2、3 步是反的：`loadSettings()` 把随包快照当成 `resolveLibraryRoot()` 的「显式配置」，
+> 而该函数是 `configured || env(...)`，于是本机一份指向真库的 `library/config.json` 会压过环境变量，
+> 「把库指到别处」（自检隔离副本、换库位置）静默失效。现在由 `envLibraryRoot()` 先看环境变量。
+
+其他路径类环境变量：`SCIWORK_PYTHON`、`SCIWORK_ORIGIN_PLUGIN`。
 
 所有 `resolve*` 函数**都不抛异常**，找不到返回 `null`，由调用方决定怎么退化
 （面板是辅助视图，路径缺失必须变成一句人话，而不是一次崩溃）。

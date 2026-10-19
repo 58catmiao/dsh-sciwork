@@ -18,6 +18,8 @@
 2. 跑自检（**不配科研库也能跑**，内容类检查记为 `SKIP`/未运行，退出码 0）：
 
    ```bash
+   node scripts/cycle.mjs        # 一条命令跑完下面四项 + 语法检查，并落报告到 out/cycle/<日期>/
+   # 或者逐个跑：
    node scripts/selftest-host.mjs
    node scripts/selftest-actions.mjs
    node scripts/selftest-client.mjs
@@ -25,6 +27,7 @@
    ```
 
    想看内容类检查的真实基线，先把 `SCIWORK_LIBRARY` 指向一个真库再跑 actions/client。
+   红项一律先修，别带着红的门禁打 tag（周期流程见 [CYCLE-14D.md](./CYCLE-14D.md)）。
 
 3. 提交并打标签：
 

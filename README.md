@@ -239,6 +239,8 @@ python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 In
 python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
 ```
 
+想一条命令跑完全部（14 天一轮的周期自检就是这么跑的），用 `node scripts/cycle.mjs`：它把上面五项按 CI 的顺序跑一遍，附一段只读的 git 状态，输出汇总表与退出码，并把完整报告落到 `out/cycle/<日期>/`（`out/` 已 gitignore）。
+
 自检分两种跑法，**新克隆的仓库不配库也能跑**：
 
 **A. 不指向任何科研库（CI / 刚克隆的机器）**
@@ -262,7 +264,7 @@ SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 172 通�
 - `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
 - `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `172 通过 · 0 失败`，退出码 0。
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
-- `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。
+- `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。⚠️ 0.2.1 起 `SCIWORK_LIBRARY` **优先于**随包的 `library/config.json`（此前次序反了，导致本机把库指向真库时这道闸门永远拿真库当副本、写动作整节被跳过）。
 
 ## 文档地图
 
@@ -272,6 +274,7 @@ SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 172 通�
 | [docs/INSTALL.md](./docs/INSTALL.md) | 安装与首次建库（含排错） |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 工程结构与契约：宿主动作、HTTP 端点、面板边界、路径解析、自检口径 |
 | [docs/RELEASE.md](./docs/RELEASE.md) | 维护者手册：发版、上架插件市场、截图、干净机器验证 |
+| [docs/CYCLE-14D.md](./docs/CYCLE-14D.md) | 维护者手册：14 天周期的 debug / 功能更新 / 同步 GitHub（`cycle.mjs`、护栏、候选功能池） |
 | [CHANGELOG.md](./CHANGELOG.md) | 版本变更 |
 | [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) | 第三方组件与致谢 |
 
