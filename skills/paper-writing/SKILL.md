@@ -95,6 +95,8 @@ Figure N. <一句话说清这张图是什么> <关键条件/方法> <panel 说�
 ## 7. 交稿前自检（缺一不可）
 
 - [ ] `check-citations --draft <路径>` 退出码 0（非 0 就修，不许绕过）
+- [ ] `check-journal --project <课题> --journal <档案>` 没有 `fail` 项（`warn` 逐条看过；`na` 是档案没写，不等于合规）
+- [ ] 交稿打包走 `export-package`，拿到 zip 与 manifest 再发
 - [ ] 每个数字能指回图/表；没有孤立的、无出处的数字
 - [ ] 图号、图注、正文引用三者一致
 - [ ] 术语表与缩写一致；单位格式统一

@@ -101,13 +101,15 @@ Sidebar → "Research Library". There are seven tabs (Figures / Drafts / Referen
 | **References** | Entries in `refs/refs.json` plus local PDF attachments under `refs/pdf/` | Import (a DOI or URL is mandatory to register; a PDF is optional), view PDFs, archive, delete |
 | **Data** | Data files under `data/` (`.txt/.csv/.dat` …) and project group headers | Preview rows and columns, run a **data transform** (6 operators), archive, delete |
 | **Journal profiles** | The 12 profiles with id, strictness (high / medium / low) and update date | Read clauses and numeric requirements, filter, archive |
-| **Submissions** | Submission records under `submissions/` (target journal, status, timeline) | Read records, filter, archive |
+| **Submissions** | Submission records under `submissions/` (target journal, status, timeline) | Read records, filter, archive; **submission gate**: pick a journal → run the compliance check → export a submission package |
 | **Archive** | Batch manifests under `.research/archive/<timestamp>/` plus hard-delete records | Restore a whole batch or a single file; hard-delete records keep the name only |
 | **Command console** (overlay, not a tab) | The `research.py` subcommand list and a parameter form per command | Pick a command → fill the arguments → run → read stdout / stderr / the JSON result |
 
 **The 6 data-transform operators**: `normalize`, `baseline` (baseline subtraction), `smooth`, `peaks` (peak finding), `integrate`, `linear`. Every transform leaves a provenance record next to the derived table (`.research/transforms/<project>/<table>.json`) and writes its output into the project's `tables/`.
 
-**The panel's boundary, in one sentence**: it can view, filter, import, archive, delete, and run data transforms on tables — it does **not** plot. Every write lands a file and registers it through the library scripts, and **the panel itself never touches the registration index**.
+**The submission gate (new in 0.2)**: in the Submissions tab, pick a project and a journal profile, then run the compliance check for per-item verdicts — figure width against the single/double-column spec, effective resolution, raster-vs-vector preference, caption presence, title and abstract length, reference and DOI coverage, and whether every citation key in the draft exists in the library. Each item is `pass` / `warn` / `fail` / `na` and carries its `source` and `confidence`; **anything the profile does not state is `na`, never a generic default posing as a journal requirement**. "Export submission package" zips the manuscript, figures, data and `refs.bib` (with a per-file sha256 manifest and a checklist) into `submissions/packages/`. As with the profiles themselves, the journal's current requirements win.
+
+**The panel's boundary, in one sentence**: it can view, filter, import, archive, delete, run data transforms on tables, and do the pre-submission check and packaging — it does **not** plot. Every write lands a file and registers it through the library scripts, and **the panel itself never touches the registration index**.
 
 ## Configuration
 
@@ -168,6 +170,7 @@ Every structured write to the library goes through it (the panel's "Command cons
 | `search <query>` | Cross-project search (projects / figures / drafts / data / references / journal profiles / submissions), with `--kind`, `--project`, `--limit`. |
 | `list-projects` / `list-figures` / `list-refs` / `list-submissions` | List projects, registered figures, references, submission records; each takes its own filters. |
 | `check-citations --draft <path>` | **The citation gate**: a non-zero exit means the manuscript has missing or unverified citations. Add `--require-doi` to require a DOI on every entry. |
+| `check-journal --project <slug> [--journal <id>]` | **Journal compliance check**: compares figures (size / effective DPI / format), captions, title and abstract length, references and DOI coverage, and citation keys against the profile; each item is `pass`/`warn`/`fail`/`na`, and any `fail` exits 1. |
 
 **Writes**:
 
@@ -178,7 +181,8 @@ Every structured write to the library goes through it (the panel's "Command cons
 | `add-ref` | Register a reference. **A DOI or URL is mandatory** (zero fabricated citations); `--verified-by` records how it was verified. |
 | `register-figure` | Register a figure's provenance sidecar: source data, Origin graph page, journal profile used, caption. |
 | `add-submission` / `update-submission` | Record a submission / advance its status and event timeline. |
-| `reindex` / `export-bib` | Rebuild the index / rebuild `refs.bib`. |
+| `export-package --project <slug> [--journal <id>]` | **Submission package**: manuscript + figures + data + `refs.bib` zipped into `submissions/packages/`, with a per-file sha256 `manifest.json` and a `checklist.md`. |
+| `reindex` / `export-bib` | Rebuild the index (recursive through subdirectories, full text included) / rebuild `refs.bib`. |
 
 **Irreversible**: `remove-ref` deletes one reference registration (it backs up `refs.json` first).
 
@@ -229,7 +233,7 @@ The repository ships three self-test scripts and one patch preflight. None of th
 
 ```bash
 node scripts/selftest-host.mjs      # host half: route registration, path guards, snapshot shape
-node scripts/selftest-actions.mjs   # the 22 actions: read/guard checks + writes against an isolated copy
+node scripts/selftest-actions.mjs   # the 24 actions: read/guard checks + writes against an isolated copy
 node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlays, buttons and request shapes
 python -m pip install pyyaml        # only for the next line (CI installs it in its own step)
 python scripts/validate-patch.py    # cordis.patch.yml preflight: preset rows, persona, inserted row
@@ -241,7 +245,7 @@ The self-tests run in two modes, and **a fresh clone with no library configured 
 
 ```bash
 node scripts/selftest-host.mjs      # all pass, exit 0
-node scripts/selftest-actions.mjs   # 63 passed · 0 failed · 2 skipped
+node scripts/selftest-actions.mjs   # 63 passed · 0 failed · 3 skipped
 node scripts/selftest-client.mjs    # 21 passed · 0 failed · content checks not run
 python scripts/validate-patch.py    # ✓ patch preflight passed
 ```
@@ -251,12 +255,12 @@ Every **content** check (the ones that need real drafts / figures / data tables 
 **B. Pointing at a real library (measured baseline)**
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 120 passed · 0 failed · 3 skipped
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 151 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 141 passed · 0 failed · 1 skipped (fixture library; counts vary with library content)
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 172 passed · 0 failed
 ```
 
 - `selftest-host.mjs` — tallies passes and failures only, exit code 0. The only check that can be recorded as "skipped" is one that depends on the real library actually containing a figure file (when there is none, it is not counted as a failure).
-- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `151 passed · 0 failed`, exit code 0.
+- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `172 passed · 0 failed`, exit code 0.
 - `validate-patch.py` — prints `✓ 补丁预检通过` (patch preflight passed), exit code 0. It reports the `preset-research` preset's top-level row count (19 rows, 29 leaf rows after recursion, 2 of them disabled by an `!!js` condition), its nested groups (planning / compaction / delegation), the persona length, and confirmation that the inserted `research-library` row belongs to the host plugin rather than to an agent preset.
 - `selftest-actions.mjs` — the write-action stage **requires the library root to point at the isolated copy the script creates**. If it finds the snapshot pointing somewhere else, it prints `FAIL 隔离闸门：snapshot 指向副本` and exits with code 2, having written **not a single byte**. That is by design, not a plugin defect: write actions always run inside the copy and never touch your real library.
 

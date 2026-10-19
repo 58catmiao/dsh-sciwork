@@ -49,15 +49,17 @@ description: 科研模式总控与路标。做科研绘图、论文写作、文�
 | `register-figure ...` | 登记一张图的溯源（数据/参数/期刊/OPJU/spec） |
 | `list-figures [--project P]` | 列已登记图 |
 | `search <关键词> [--kind K]` | 跨课题检索（课题/图/稿/数据/文献/期刊） |
-| `reindex` | 重建索引 |
+| `reindex` | 重建索引（递归子目录、收录正文） |
 | `remove-ref (--key K \| --doi D)` | 删一条文献（删前自动备份 refs.json，并提醒还在引用它的草稿） |
 | `add-submission --project P --journal J --title T --manuscript M [--type ...]` | 登记一次投稿（`--type` 只收固定枚举，`article` 不在其中，先 `--help` 看全表） |
 | `list-submissions [--project P]` | 列投稿记录 |
 | `update-submission ...` | 更新投稿状态/备注 |
 | `check-citations --draft <路径> [--require-doi]` | **引用核查闸门**，不过就非零退出 |
+| `check-journal --project P [--journal J]` | **期刊合规体检**：图件尺寸/分辨率/格式、图注、标题与摘要字数、参考文献与 DOI；每条 pass/warn/fail/na，有 fail 退出 1 |
+| `export-package --project P [--journal J]` | **投稿包**：稿件+图+数据+refs.bib 打进 `submissions/packages/`，附 sha256 manifest 与 checklist |
 | `export-bib` | 重建 refs.bib |
 
-> 上面这张表只包含最常用的；`research.py --help` 才是权威清单（现有 16 个子命令）。拿不准参数名就以 `--help` 为准。
+> 上面这张表只包含最常用的；`research.py --help` 才是权威清单（现有 18 个子命令）。拿不准参数名就以 `--help` 为准。
 
 ### 0.3 解释器纪律
 **不要裸调 `python` / `python3`**：Windows 上 `python` 常常不在 PATH，`python3` 还可能是 Microsoft Store 的占位程序（裸调必失败）。要跑 Python 一律用库内启动器
@@ -71,7 +73,8 @@ description: 科研模式总控与路标。做科研绘图、论文写作、文�
 
 科研库面板（DSH 里的「科研库」侧栏）已内置下列能力，用户自己点就行，**不要再用 CLI 或工具去重做**：
 
-- **命令台**（头部按钮）：16 个 `research.py` 子命令都能在面板里选命令、填参数、看结果；危险命令（`remove-ref`）需要显式确认。查询类操作请直接告诉用户「用命令台跑 xxx」，而不是自己代跑。
+- **命令台**（头部按钮）：18 个 `research.py` 子命令都能在面板里选命令、填参数、看结果；危险命令（`remove-ref`）需要显式确认。查询类操作请直接告诉用户「用命令台跑 xxx」，而不是自己代跑。
+- **投稿闸门**（投稿页的卡片）：选期刊 → 合规体检 → 导出投稿包。投稿前请让用户自己点这两下，不要代跑。
 - **数据变换**（数据页每个文件卡上的「变换」按钮）：归一化 / 扣基线 / 平滑 / 标峰 / 积分 / 线性换算，纯宿主计算不用开 Origin。**原始数据只读**，产物落在 `projects/<课题>/tables/`，参数记进 `.research/transforms/<课题>/<名字>.json`。
 - ~~**目标图对齐**（头部按钮）~~ **已于 2026-10-13 删除**：用户要求删掉面板的「直接出图 / 成组出图 / 目标图对齐」三个入口（追问后确认连每行的「出图」一起删）。现在**面板不再出图**：数据页只有 查看 / 筛选 / 导入 / 归档 / 删除 / 变换，跟图有关的写动作只剩卡片上的「重画」（`replotFigure`）。用户要出图一律走 `origin-plot` 技能（真 Origin，带 `verify` 与 `.json` 溯源）；要版式参考就直接读 `journals/<id>.json`。
   历史（已不存在的功能，仅供追溯）：原「目标图对齐」弹层给一张范例图（SVG/PNG），静态量出版布尺寸、字号（pt 估算）、线宽、配色，并给一段可复制的「版式说明」文字。它量到的只是「图上看起来的样子」，不是期刊要求。

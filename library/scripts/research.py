@@ -24,17 +24,22 @@
   search                      跨课题检索（基于索引）
   reindex                     重建索引
   check-citations             引用核查闸门（交稿前必跑）
+  check-journal               投稿合规体检（图 / 稿 / 引用对期刊档案）
+  export-package              导出投稿包 zip（稿件 + 图 + 数据 + refs.bib + manifest）
 """
 from __future__ import annotations
 
 import argparse
 import base64
 import datetime as _dt
+import hashlib
 import json
 import os
 import re
+import struct
 import sys
 import unicodedata
+import zipfile
 from pathlib import Path
 
 # Windows 控制台默认可能是 GBK，中文会炸；先钉死 UTF-8。
@@ -520,27 +525,41 @@ def reindex(quiet: bool = False) -> dict:
         entries.append({"kind": "project", "id": pdir.name, "project": pdir.name,
                         "title": meta.get("title", pdir.name), "path": rel(pdir),
                         "tags": [meta.get("journal") or ""], "text": meta.get("title", "")})
-        for path in sorted((pdir / "figures").glob("*.json")):
+        # 图 / 稿 / 数据 / 表 / 笔记都按**递归**扫：import 允许 figures/data/drafts
+        # 下面再分子目录，只扫顶层会让这些文件在检索里凭空消失（2026-10-19 修）。
+        for path in sorted((pdir / "figures").rglob("*.json")):
+            if path.name.startswith("_"):
+                continue
             r = read_json(path, {})
-            entries.append({"kind": "figure", "id": r.get("figureId", path.stem),
-                            "project": pdir.name, "title": r.get("caption") or r.get("figureId"),
+            figure_id = (r.get("figureId")
+                         or path.relative_to(pdir / "figures").with_suffix("").as_posix())
+            entries.append({"kind": "figure", "id": figure_id,
+                            "project": pdir.name, "title": r.get("caption") or figure_id,
                             "path": rel(path), "tags": [r.get("journal") or "", r.get("graph") or ""],
-                            "text": " ".join(filter(None, [r.get("figureId"), r.get("caption"),
+                            "text": " ".join(filter(None, [figure_id, r.get("caption"),
                                                            r.get("graph"), r.get("journal")]))})
-        for path in sorted((pdir / "drafts").glob("*.md")):
-            entries.append({"kind": "draft", "id": path.stem, "project": pdir.name,
-                            "title": path.stem, "path": rel(path), "tags": [],
-                            "text": path.stem, "bytes": path.stat().st_size})
-        for path in sorted((pdir / "data").iterdir()) if (pdir / "data").exists() else []:
-            if path.is_file():
-                entries.append({"kind": "dataset", "id": path.name, "project": pdir.name,
-                                "title": path.name, "path": rel(path), "tags": [],
-                                "text": path.name, "bytes": path.stat().st_size})
-        for path in sorted((pdir / "tables").glob("*")) if (pdir / "tables").exists() else []:
-            if path.is_file():
-                entries.append({"kind": "table", "id": path.name, "project": pdir.name,
-                                "title": path.name, "path": rel(path), "tags": [],
-                                "text": path.name, "bytes": path.stat().st_size})
+        for path in sorted((pdir / "drafts").rglob("*.md")):
+            text = _read_head(path)
+            heading = _first_heading(text)
+            draft_id = path.relative_to(pdir / "drafts").as_posix()
+            entries.append({"kind": "draft", "id": draft_id, "project": pdir.name,
+                            "title": heading or Path(draft_id).stem, "path": rel(path), "tags": [],
+                            "text": " ".join(filter(None, [draft_id, heading, text])),
+                            "bytes": path.stat().st_size})
+        for kind, sub in (("dataset", "data"), ("table", "tables"), ("note", "notes")):
+            base = pdir / sub
+            if not base.exists():
+                continue
+            for path in sorted(p for p in base.rglob("*") if p.is_file()):
+                entry_id = path.relative_to(base).as_posix()
+                suffix = path.suffix.lower()
+                text = _read_head(path) if suffix in (".md", ".txt") else entry_id
+                heading = _first_heading(text) if suffix == ".md" else ""
+                entries.append({"kind": kind, "id": entry_id, "project": pdir.name,
+                                "title": heading or entry_id, "path": rel(path),
+                                "tags": [suffix.lstrip(".")],
+                                "text": " ".join(filter(None, [entry_id, heading, text])),
+                                "bytes": path.stat().st_size})
     for path in sorted(JOURNALS.glob("*.json")):
         if path.name.startswith("_"):
             continue
@@ -864,6 +883,592 @@ def cmd_update_submission(args) -> None:
 
 # ─────────────────────────── CLI ───────────────────────────
 
+# ─────────────────────────── 投稿闸门：体检 / 打包 ───────────────────────────
+# 「查得到 → 合规格 → 打得包」。体检只读、可以反复跑；打包只写
+# submissions/packages/ 下的 zip，不动任何登记记录，也不替人下结论
+# （档案里的数值是默认值，最终以刊方现行要求为准）。
+
+CHECK_VERDICTS = ("fail", "warn", "na", "pass")
+MAX_INDEX_TEXT = 4000
+
+
+def load_journal(key: str) -> dict:
+    """期刊档案键（或刊名）→ 完整档案。找不到就报错，不猜。"""
+    path = JOURNALS / f"{key}.json"
+    if not path.exists():
+        profiles = journal_profiles()
+        match = [k for k, v in profiles.items()
+                 if (v.get("name") or "").strip().lower() == (key or "").strip().lower()
+                 or (v.get("nameZh") or "").strip() == (key or "").strip()]
+        if len(match) == 1:
+            path = JOURNALS / f"{match[0]}.json"
+        else:
+            fail(f"期刊档案不存在：{key}（journals/ 下现有 {len(profiles)} 份："
+                 f"{', '.join(sorted(profiles)) or '无'}）")
+    journal = read_json(path, {})
+    journal["key"] = path.stem
+    return journal
+
+
+def _read_head(path: Path, limit: int = MAX_INDEX_TEXT) -> str:
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as fh:
+            return fh.read(limit)
+    except OSError:
+        return ""
+
+
+def _head_bytes(path: Path, limit: int = 1 << 20) -> bytes:
+    try:
+        with path.open("rb") as fh:
+            return fh.read(limit)
+    except OSError:
+        return b""
+
+
+def _first_heading(text: str) -> str:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            return stripped[2:].strip()
+    return ""
+
+
+CJK_CHAR = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+LATIN_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’\-]*")
+
+
+def count_words(text: str) -> int:
+    """中英混排的「字数」：CJK 按字，拉丁按词。"""
+    return len(LATIN_WORD.findall(CJK_CHAR.sub(" ", text))) + len(CJK_CHAR.findall(text))
+
+
+def extract_abstract(text: str) -> str | None:
+    lines = text.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if re.match(r"^#{1,6}\s*(abstract|摘要)\s*$", line.strip(), re.I):
+            start = index + 1
+            break
+    if start is None:
+        return None
+    body = []
+    for line in lines[start:]:
+        if re.match(r"^#{1,6}\s+", line.strip()):
+            break
+        body.append(line)
+    return "\n".join(body).strip()
+
+
+# ── 图像元数据（不装 Pillow：PNG/JPEG/TIFF/SVG 的头几十字节够用了） ──
+
+def _png_info(data: bytes) -> dict | None:
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return None
+    width = height = None
+    dpi = None
+    pos = 8
+    while pos + 8 <= len(data):
+        length = int.from_bytes(data[pos:pos + 4], "big")
+        chunk_type = data[pos + 4:pos + 8]
+        body = data[pos + 8:pos + 8 + length]
+        if chunk_type == b"IHDR" and len(body) >= 8:
+            width = int.from_bytes(body[0:4], "big")
+            height = int.from_bytes(body[4:8], "big")
+        elif chunk_type == b"pHYs" and len(body) >= 9 and body[8] == 1:
+            pixels_per_meter = int.from_bytes(body[0:4], "big")
+            if pixels_per_meter:
+                dpi = round(pixels_per_meter * 0.0254)
+        elif chunk_type == b"IDAT":
+            break
+        pos += 12 + length
+    return {"widthPx": width, "heightPx": height, "dpi": dpi}
+
+
+def _jpeg_info(data: bytes) -> dict | None:
+    if not data.startswith(b"\xff\xd8"):
+        return None
+    width = height = None
+    dpi = None
+    pos = 2
+    while pos + 4 <= len(data):
+        if data[pos] != 0xFF:
+            pos += 1
+            continue
+        marker = data[pos + 1]
+        pos += 2
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            continue
+        if pos + 2 > len(data):
+            break
+        length = int.from_bytes(data[pos:pos + 2], "big")
+        if length < 2:
+            break
+        body = data[pos + 2:pos + length]
+        if marker == 0xE0 and body.startswith(b"JFIF\x00") and len(body) >= 14:
+            unit = body[7]
+            density = int.from_bytes(body[8:10], "big")
+            if unit == 1 and density:
+                dpi = density
+            elif unit == 2 and density:
+                dpi = round(density * 2.54)
+        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+                      0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+            if len(body) >= 5:
+                height = int.from_bytes(body[1:3], "big")
+                width = int.from_bytes(body[3:5], "big")
+            break
+        pos += length
+    return {"widthPx": width, "heightPx": height, "dpi": dpi}
+
+
+def _tiff_info(data: bytes) -> dict | None:
+    if data[:2] not in (b"II", b"MM"):
+        return None
+    endian = "<" if data[:2] == b"II" else ">"
+    if int.from_bytes(data[2:4], endian) != 42:
+        return None
+    ifd = int.from_bytes(data[4:8], endian)
+    if ifd + 2 > len(data):
+        return None
+    count = int.from_bytes(data[ifd:ifd + 2], endian)
+    width = height = None
+    x_resolution = None
+    unit = 2
+    for index in range(count):
+        offset = ifd + 2 + index * 12
+        if offset + 12 > len(data):
+            break
+        tag = int.from_bytes(data[offset:offset + 2], endian)
+        field_type = int.from_bytes(data[offset + 2:offset + 4], endian)
+        if field_type == 3:
+            value = int.from_bytes(data[offset + 8:offset + 10], endian)
+        elif field_type == 4:
+            value = int.from_bytes(data[offset + 8:offset + 12], endian)
+        elif field_type == 5:
+            pointer = int.from_bytes(data[offset + 8:offset + 12], endian)
+            if pointer + 8 > len(data):
+                continue
+            numerator = int.from_bytes(data[pointer:pointer + 4], endian)
+            denominator = int.from_bytes(data[pointer + 4:pointer + 8], endian)
+            value = (numerator / denominator) if denominator else None
+        else:
+            continue
+        if tag == 256:
+            width = value
+        elif tag == 257:
+            height = value
+        elif tag == 282:
+            x_resolution = value
+        elif tag == 296:
+            unit = value
+    dpi = None
+    if x_resolution:
+        dpi = round(x_resolution * (2.54 if unit == 3 else 1))
+    return {"widthPx": width, "heightPx": height, "dpi": dpi}
+
+
+def _svg_info(text: str) -> dict:
+    def size(attr: str):
+        match = re.search(r'\b' + attr + r'\s*=\s*["\']([^"\']+)["\']', text)
+        if not match:
+            return None
+        unit = re.match(r"^([\d.]+)\s*(mm|cm|in|pt|px)?$", match.group(1).strip())
+        if not unit:
+            return None
+        factor = {"mm": 1.0, "cm": 10.0, "in": 25.4,
+                  "pt": 25.4 / 72.0, "px": 25.4 / 96.0}[unit.group(2) or "px"]
+        return float(unit.group(1)) * factor
+    return {"widthMm": size("width"), "heightMm": size("height"),
+            "vector": True, "dpi": None}
+
+
+def image_meta(path: Path) -> dict | None:
+    ext = path.suffix.lower()
+    try:
+        if ext == ".png":
+            info = _png_info(_head_bytes(path))
+        elif ext in (".jpg", ".jpeg"):
+            info = _jpeg_info(_head_bytes(path))
+        elif ext in (".tif", ".tiff"):
+            info = _tiff_info(_head_bytes(path))
+        elif ext == ".svg":
+            info = _svg_info(_read_head(path, 262144))
+        elif ext in (".pdf", ".eps"):
+            return {"format": ext[1:], "vector": True, "dpi": None}
+        else:
+            return None
+    except Exception:  # 损坏的文件不该让整次体检崩掉
+        return None
+    if not info:
+        return None
+    info["format"] = ext[1:]
+    return info
+
+
+# ── 体检主体 ──
+
+def _check(checks: list[dict], check_id: str, label: str, status: str, detail: str) -> None:
+    checks.append({"id": check_id, "label": label, "status": status, "detail": detail})
+
+
+def _resolve_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else (LIBRARY / path)
+
+
+def resolve_manuscript(pdir: Path | None, draft: str | None = None,
+                       submission_id: str | None = None) -> Path | None:
+    if draft:
+        return _resolve_path(draft)
+    if submission_id:
+        record = load_submission(find_submission(submission_id))
+        if record.get("manuscript"):
+            return _resolve_path(record["manuscript"])
+    if pdir is not None:
+        for name in ("main.md", "manuscript.md"):
+            candidate = pdir / "drafts" / name
+            if candidate.exists():
+                return candidate
+        matches = sorted((pdir / "drafts").glob("*.md"))
+        if matches:
+            return matches[0]
+    return None
+
+
+def journal_check(project_slug: str, journal_key: str | None = None, draft: str | None = None,
+                  submission_id: str | None = None) -> dict:
+    ensure_skeleton(quiet=True)
+    pdir = project_dir(project_slug)
+    meta = read_json(pdir / "project.json", {})
+    key = journal_key or meta.get("journal")
+    if not key:
+        fail("没说投哪本刊：给 --journal <档案键>，或在 project.json 里设 journal")
+    journal = load_journal(key)
+    figure_cfg = journal.get("figure") or {}
+    text_cfg = journal.get("text") or {}
+    refs_cfg = journal.get("references") or {}
+    checks: list[dict] = []
+
+    _check(checks, "journal.profile", "期刊档案", "pass",
+           f"{journal.get('name')}（{journal.get('key')}）· confidence={journal.get('confidence')}")
+
+    # 图：每条侧车查存在性、格式、像素/DPI、栏宽、字号线宽。
+    sidecars = sorted(p for p in (pdir / "figures").rglob("*.json")) if (pdir / "figures").exists() else []
+    if not sidecars:
+        _check(checks, "figures.none", "已登记图", "warn", "这个课题还没有登记过图（register-figure）")
+    for sidecar_path in sidecars:
+        record = read_json(sidecar_path, {})
+        figure_id = record.get("figureId") or sidecar_path.stem
+        file_value = record.get("file")
+        if not file_value:
+            _check(checks, f"figure.{figure_id}.file", f"{figure_id} 图文件", "fail", "侧车没有 file 字段")
+            continue
+        image_path = _resolve_path(file_value)
+        if not image_path.exists():
+            _check(checks, f"figure.{figure_id}.exists", f"{figure_id} 图文件", "fail",
+                   f"文件不存在：{file_value}")
+            continue
+        info = image_meta(image_path)
+        if info is None:
+            _check(checks, f"figure.{figure_id}.format", f"{figure_id} 图格式", "na",
+                   f"读不出元数据（{image_path.suffix or '无扩展名'}）")
+            continue
+        vector = bool(info.get("vector"))
+        if figure_cfg.get("vectorPreferred") and not vector:
+            _check(checks, f"figure.{figure_id}.vector", f"{figure_id} 矢量图", "warn",
+                   "期刊偏好矢量图（SVG/PDF），这张是位图")
+        needed_dpi = (figure_cfg.get("rasterDpi") or {}).get("photo") or 300
+        if vector:
+            width_mm = info.get("widthMm")
+            height_mm = info.get("heightMm")
+            if width_mm is None:
+                _check(checks, f"figure.{figure_id}.size", f"{figure_id} 物理尺寸", "na",
+                       "SVG 没写 width/height（只有 viewBox），量不出毫米宽度")
+        else:
+            width_px = info.get("widthPx")
+            height_px = info.get("heightPx")
+            if not width_px or not height_px:
+                _check(checks, f"figure.{figure_id}.size", f"{figure_id} 像素尺寸", "na", "读不出宽高")
+                continue
+            dpi = info.get("dpi")
+            effective_dpi = needed_dpi
+            if dpi is None:
+                _check(checks, f"figure.{figure_id}.dpi", f"{figure_id} DPI", "warn",
+                       f"缺 DPI 元数据，按 {needed_dpi} dpi 折算打印尺寸")
+            else:
+                effective_dpi = dpi
+                _check(checks, f"figure.{figure_id}.dpi", f"{figure_id} DPI",
+                       "pass" if dpi >= needed_dpi else "fail",
+                       f"{dpi} dpi（档案要求 ≥ {needed_dpi}）")
+            width_mm = width_px / effective_dpi * 25.4
+            height_mm = height_px / effective_dpi * 25.4
+        single = figure_cfg.get("singleColumnMm")
+        double = figure_cfg.get("doubleColumnMm")
+        if width_mm is not None:
+            # 宽度不是「≤ 单栏」就通过：0.8 mm 的缩略图也满足不等式，却根本不能印。
+            # 判据：过窄（不到单栏一半）直接 fail；单栏内 / 贴近双栏 pass；跨在中间 warn。
+            near_double = bool(double) and abs(width_mm - double) <= double * 0.08
+            if single and width_mm < single * 0.5:
+                _check(checks, f"figure.{figure_id}.width", f"{figure_id} 栏宽", "fail",
+                       f"{width_mm:.1f} mm 过窄（单栏 {single} mm 的一半都不到），要按栏宽重新导出")
+            elif near_double:
+                _check(checks, f"figure.{figure_id}.width", f"{figure_id} 栏宽", "pass",
+                       f"{width_mm:.1f} mm ≈ 双栏 {double} mm")
+            elif single and width_mm <= single + 0.5:
+                _check(checks, f"figure.{figure_id}.width", f"{figure_id} 栏宽", "pass",
+                       f"{width_mm:.1f} mm ≤ 单栏 {single} mm")
+            elif double and width_mm <= double + 0.5:
+                _check(checks, f"figure.{figure_id}.width", f"{figure_id} 栏宽", "warn",
+                       f"{width_mm:.1f} mm 落在单栏 {single} / 双栏 {double} mm 之间，缩到单栏或扩到双栏")
+            elif double:
+                _check(checks, f"figure.{figure_id}.width", f"{figure_id} 栏宽", "fail",
+                       f"{width_mm:.1f} mm > 双栏上限 {double} mm")
+            else:
+                _check(checks, f"figure.{figure_id}.width", f"{figure_id} 栏宽", "na",
+                       f"{width_mm:.1f} mm（档案没写栏宽）")
+        max_height = figure_cfg.get("maxHeightMm")
+        if height_mm is not None and max_height:
+            _check(checks, f"figure.{figure_id}.height", f"{figure_id} 图高",
+                   "pass" if height_mm <= max_height else "fail",
+                   f"{height_mm:.1f} / {max_height} mm")
+        params = record.get("params") or {}
+        font_pt = params.get("fontPt") or params.get("fontSize")
+        line_pt = params.get("lineWidthPt") or params.get("lineWidth")
+        min_font = figure_cfg.get("minFontPt")
+        max_font = figure_cfg.get("maxFontPt")
+        if font_pt is None:
+            _check(checks, f"figure.{figure_id}.font", f"{figure_id} 字号", "na",
+                   "侧车没记字号（register-figure --params 里带 fontPt）")
+        elif min_font is not None and font_pt < min_font:
+            _check(checks, f"figure.{figure_id}.font", f"{figure_id} 字号", "fail",
+                   f"{font_pt} pt < 下限 {min_font} pt")
+        elif max_font is not None and font_pt > max_font:
+            _check(checks, f"figure.{figure_id}.font", f"{figure_id} 字号", "warn",
+                   f"{font_pt} pt > 档案常见上限 {max_font} pt")
+        else:
+            _check(checks, f"figure.{figure_id}.font", f"{figure_id} 字号", "pass", f"{font_pt} pt")
+        if line_pt is not None and figure_cfg.get("lineWidthPt") is not None:
+            _check(checks, f"figure.{figure_id}.line", f"{figure_id} 线宽", "na",
+                   f"侧车线宽 {line_pt} pt（档案建议 {figure_cfg.get('lineWidthPt')} pt，仅供参考）")
+
+    # 稿：标题长度、摘要字数、引用键、DOI、作者列表长度。
+    manuscript = resolve_manuscript(pdir, draft, submission_id)
+    if manuscript is None or not manuscript.exists():
+        _check(checks, "manuscript.exists", "稿件", "fail",
+               "找不到稿件：给 --draft，或把稿子放在 drafts/main.md")
+    else:
+        text = _read_head(manuscript, 1 << 20)
+        if not text.strip():
+            _check(checks, "manuscript.empty", "稿件", "fail", f"稿件是空的：{rel(manuscript)}")
+        else:
+            _check(checks, "manuscript.exists", "稿件", "pass",
+                   f"{rel(manuscript)} · 约 {count_words(text)} 字")
+            title = _first_heading(text)
+            title_max = text_cfg.get("titleMaxChars")
+            if not title:
+                _check(checks, "manuscript.title", "标题", "na", "稿件里没有一级标题（# …）")
+            elif title_max:
+                _check(checks, "manuscript.title", "标题长度",
+                       "pass" if len(title) <= title_max else "fail",
+                       f"{len(title)} / {title_max} 字符")
+            abstract = extract_abstract(text)
+            abstract_max = text_cfg.get("abstractMaxWords")
+            if abstract is None:
+                _check(checks, "manuscript.abstract", "摘要", "na", "没找到 Abstract / 摘要 段")
+            else:
+                words = count_words(abstract)
+                if abstract_max:
+                    _check(checks, "manuscript.abstract", "摘要字数",
+                           "pass" if words <= abstract_max else "fail",
+                           f"{words} / {abstract_max} 词")
+                else:
+                    _check(checks, "manuscript.abstract", "摘要", "pass",
+                           f"{words} 词（档案没写字数上限）")
+            keys = extract_keys(text)
+            refs = read_json(REFS_JSON, {"refs": {}}).get("refs", {})
+            if not keys:
+                _check(checks, "refs.cited", "引用", "na", "稿件里没有引用键（[@key] / \\cite）")
+            else:
+                unknown = sorted({k for k in keys if k not in refs})
+                if unknown:
+                    _check(checks, "refs.unknown", "引用键在库里存在", "fail",
+                           "库里没有：" + ", ".join(unknown[:20]))
+                else:
+                    _check(checks, "refs.unknown", "引用键在库里存在", "pass",
+                           f"{len(set(keys))} 个键都能对上")
+                if refs_cfg.get("doiRequired"):
+                    no_doi = sorted({k for k in keys if k in refs and not refs[k].get("doi")})
+                    _check(checks, "refs.doi", "每条引用有 DOI",
+                           "fail" if no_doi else "pass",
+                           ", ".join(no_doi[:20]) if no_doi else "全部有 DOI")
+                limit = refs_cfg.get("maxAuthorsListed")
+                if limit:
+                    over = [f"{key}（{len((refs.get(key) or {}).get('authors') or [])} 位）"
+                            for key in sorted(set(keys))
+                            if len((refs.get(key) or {}).get("authors") or []) > limit]
+                    _check(checks, "refs.authors", "作者超过档案上限就缩写",
+                           "warn" if over else "pass",
+                           "、".join(over[:10]) if over else f"没有超过 {limit} 位")
+
+    checklist = [{"text": item, "auto": False}
+                 for item in ((journal.get("submission") or {}).get("checklist") or [])]
+    counts = {verdict: sum(1 for c in checks if c["status"] == verdict) for verdict in CHECK_VERDICTS}
+    return {
+        "project": pdir.name,
+        "journal": {"key": journal.get("key"), "name": journal.get("name"),
+                    "nameZh": journal.get("nameZh"), "confidence": journal.get("confidence"),
+                    "sources": journal.get("sources") or []},
+        "manuscript": rel(manuscript) if manuscript and manuscript.exists() else None,
+        "checks": checks,
+        "checklist": checklist,
+        "counts": counts,
+        "disclaimer": "期刊档案里的数值是默认值；投稿前以刊方现行要求为准。",
+    }
+
+
+def cmd_check_journal(args) -> None:
+    result = journal_check(args.project, args.journal, draft=args.draft, submission_id=args.submission)
+    counts = result["counts"]
+    payload = {"ok": True, **result,
+               "summary": (f"{result['journal']['name']} 体检：{counts['pass']} 通过 / "
+                           f"{counts['warn']} 提醒 / {counts['fail']} 不合格 / {counts['na']} 未检。")}
+    # 有不合格项就非零退出（CI / 投稿前闸门都能直接用），但 JSON 照常给出。
+    emit(payload, 1 if counts["fail"] else 0)
+
+
+# ── 投稿包 ──
+
+def _zip_name(path: Path) -> str:
+    inside = rel(path)
+    if re.match(r"^[A-Za-z]:", inside) or inside.startswith("/"):
+        return "external/" + path.name
+    return inside
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def cmd_export_package(args) -> None:
+    ensure_skeleton(quiet=True)
+    pdir = project_dir(args.project)
+    meta = read_json(pdir / "project.json", {})
+    submission = None
+    submission_path = None
+    if args.submission:
+        submission_path = find_submission(args.submission)
+        submission = load_submission(submission_path)
+    journal_key = args.journal or (submission or {}).get("journal") or meta.get("journal")
+    journal = load_journal(journal_key) if journal_key else None
+    manuscript = resolve_manuscript(pdir, args.draft, args.submission)
+    if manuscript is None or not manuscript.exists():
+        fail("没有稿件可打包：给 --draft <库根相对路径>，或把稿子放在 drafts/main.md")
+
+    warnings: list[str] = []
+    if journal is None:
+        warnings.append("没有期刊档案：投稿包不含 checklist.md（先落 journals/<key>.json）")
+
+    candidates: list[Path] = [manuscript]
+    if submission_path is not None:
+        candidates.append(submission_path)
+    if (pdir / "figures").exists():
+        for sidecar_path in sorted((pdir / "figures").rglob("*.json")):
+            candidates.append(sidecar_path)
+            record = read_json(sidecar_path, {})
+            for field in ("file", "originProject", "spec"):
+                value = record.get(field)
+                if value:
+                    candidates.append(_resolve_path(value))
+            for value in (record.get("files") or []) + (record.get("sourceData") or []):
+                if value:
+                    candidates.append(_resolve_path(value))
+    for sub in ("data", "tables"):
+        base = pdir / sub
+        if base.exists():
+            candidates.extend(sorted(p for p in base.rglob("*") if p.is_file()))
+    if REFS_BIB.exists():
+        candidates.append(REFS_BIB)
+
+    entries: list[dict] = []
+    zip_entries: list[tuple[str, Path]] = []
+    seen: dict[str, Path] = {}
+    for candidate in candidates:
+        try:
+            path = candidate.resolve()
+        except OSError:
+            continue
+        if not path.is_file():
+            continue
+        name = _zip_name(path)
+        if name in seen:
+            continue
+        seen[name] = path
+        entries.append({"path": name, "bytes": path.stat().st_size, "sha256": _sha256(path)})
+        zip_entries.append((name, path))
+
+    check_counts = None
+    if journal is not None:
+        report = journal_check(pdir.name, journal_key, draft=args.draft, submission_id=args.submission)
+        check_counts = report["counts"]
+        if check_counts.get("fail"):
+            warnings.append(f"体检还有 {check_counts['fail']} 项不合格（跑 check-journal 看明细）")
+
+    checklist_items = ((journal or {}).get("submission") or {}).get("checklist") or []
+    checklist_lines = ["# 投稿清单", ""]
+    if journal is not None:
+        checklist_lines.append(f"- 目标期刊：{journal.get('name')}（{journal.get('nameZh') or '—'}）")
+    checklist_lines += ["", "> 下面这些来自期刊档案的默认值，勾选前逐条对照刊方的投稿系统。", ""]
+    checklist_lines += [f"- [ ] {item}" for item in checklist_items] or [
+        "- [ ] （档案里没有 checklist：去刊方 Guide for Authors 抄一遍，别凭印象勾）"]
+    checklist_md = "\n".join(checklist_lines) + "\n"
+
+    counts: dict[str, int] = {}
+    for entry in entries:
+        ext = Path(entry["path"]).suffix.lower().lstrip(".") or "other"
+        counts[ext] = counts.get(ext, 0) + 1
+    manifest = {
+        "schema": 1,
+        "generatedAt": now(),
+        "project": pdir.name,
+        "title": meta.get("title"),
+        "journal": journal_key,
+        "journalName": (journal or {}).get("name"),
+        "manuscript": _zip_name(manuscript.resolve()),
+        "files": entries,
+        "counts": counts,
+        "checks": check_counts,
+        "warnings": warnings,
+        "disclaimer": "期刊档案是默认值；投稿前以刊方现行要求为准。",
+    }
+
+    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    if args.out:
+        out = Path(args.out)
+        if not out.is_absolute():
+            out = LIBRARY / out
+        out.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        out = SUBMISSIONS / "packages" / f"{pdir.name}-{stamp}.zip"
+        out.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=1) + "\n")
+        archive.writestr("checklist.md", checklist_md)
+        for name, path in zip_entries:
+            archive.write(path, arcname=name)
+
+    emit({"ok": True, "package": rel(out), "bytes": out.stat().st_size,
+          "files": len(entries), "counts": counts, "checks": check_counts,
+          "warnings": warnings,
+          "summary": (f"已打包 {len(entries)} 个文件 → {rel(out)}"
+                      f"（{out.stat().st_size / 1048576:.1f} MB）"
+                      + (f"；警告 {len(warnings)} 条" if warnings else "") + "。")})
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="research.py", description="科研模式科研库工具")
     sub = p.add_subparsers(dest="command", required=True)
@@ -983,7 +1588,7 @@ def build_parser() -> argparse.ArgumentParser:
     se = sub.add_parser("search", help="跨课题检索")
     se.add_argument("query")
     se.add_argument("--kind", choices=["ref", "figure", "draft", "dataset", "table", "journal",
-                                       "project", "submission"])
+                                       "project", "submission", "note"])
     se.add_argument("--project")
     se.add_argument("--limit", type=int, default=20)
     se.set_defaults(func=cmd_search)
@@ -995,6 +1600,21 @@ def build_parser() -> argparse.ArgumentParser:
     cc.add_argument("--require-doi", action="store_true")
     cc.add_argument("--list-unused", action="store_true")
     cc.set_defaults(func=cmd_check_citations)
+
+    cj = sub.add_parser("check-journal", help="投稿合规体检（图/稿/引用对期刊档案）")
+    cj.add_argument("--project", required=True)
+    cj.add_argument("--journal", help="期刊档案键；缺省取 project.json 里的 journal")
+    cj.add_argument("--draft", help="稿件路径（库根相对或绝对）；缺省用投稿记录 / drafts/main.md")
+    cj.add_argument("--submission", help="投稿记录 id（从中取期刊与稿件）")
+    cj.set_defaults(func=cmd_check_journal)
+
+    ep = sub.add_parser("export-package", help="导出投稿包 zip（稿件 + 图 + 数据 + refs.bib + manifest）")
+    ep.add_argument("--project", required=True)
+    ep.add_argument("--journal", help="期刊档案键；缺省取投稿记录 / project.json")
+    ep.add_argument("--submission", help="投稿记录 id（一并打进包里，取期刊）")
+    ep.add_argument("--draft")
+    ep.add_argument("--out", help="zip 输出路径（缺省 submissions/packages/<课题>-<时间戳>.zip）")
+    ep.set_defaults(func=cmd_export_package)
 
     return p
 

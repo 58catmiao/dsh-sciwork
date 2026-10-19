@@ -6,14 +6,16 @@
  *   加 --replot 才会真的跑一次 Origin 重画（默认不跑：绝不为了自检去冷启动 Origin）。
  *
  * 它证明的是「面板那一半的宿主逻辑在**没有 Harness** 的情况下也是对的」：
- *   1. 7 个动作名与文档一致；
+ *   1. 24 个动作名与文档一致；
  *   2. 只读动作在真实库上返回真数据（自适应挑样本，库为空就 SKIP 而不是假装通过）；
  *   3. 错误码正确（bad-request / not-found / denied）；
  *   4. 路径护栏真的拦住 `..`、绝对路径、Unix 绝对路径；
- *   5. cliHint 五段模板都在；
+ *   5. cliHint 七段模板都在；
  *   6. 宿主半边 lib/index.js 的 bootstrap：apply(ctx) 会以正确参数注册 /api 精确路由，
  *      且「没有 connection 服务 / rpc 没有 fetch.register」时只告警不抛（否则整个 profile 起不来）。
  */
+
+import fs from 'node:fs';
 
 import { ACTIONS, CLI_COMMANDS, CLI_HINTS, buildCliArgs, handleResearchCall, parseRawArgs, probePathGuard } from '../lib/actions.js';
 
@@ -50,7 +52,7 @@ console.log('='.repeat(72));
 
 /* 1. 动作名与 CLI 模板 ------------------------------------------------- */
 console.log('\n[1] 契约面');
-const EXPECTED_ACTIONS = ['snapshot', 'readText', 'readBinary', 'tableColumns', 'checkCitations', 'replot', 'cliHint', 'import', 'importInfo', 'archive', 'remove', 'restore', 'archiveInfo', 'fetchRefMeta', 'writeText', 'newDraft', 'removeRef', 'cliCommands', 'runCli', 'transformOps', 'tablePreview', 'tableTransform'];
+const EXPECTED_ACTIONS = ['snapshot', 'readText', 'readBinary', 'tableColumns', 'checkCitations', 'replot', 'cliHint', 'import', 'importInfo', 'archive', 'remove', 'restore', 'archiveInfo', 'fetchRefMeta', 'writeText', 'newDraft', 'removeRef', 'cliCommands', 'runCli', 'transformOps', 'tablePreview', 'tableTransform', 'checkJournal', 'exportPackage'];
 check('ACTIONS 与面板一致', JSON.stringify(ACTIONS) === JSON.stringify(EXPECTED_ACTIONS), ACTIONS.join(', '));
 
 /* 1b. 命令台：spec → argv -------------------------------------------------- */
@@ -90,7 +92,7 @@ let rawErr2 = '';
 try { parseRawArgs('--a b\nc'); } catch (e) { rawErr2 = e.message; }
 check('parseRawArgs：换行被拒', /换行/.test(rawErr2), rawErr2);
 
-check('CLI_HINTS 五段齐全', Object.keys(CLI_HINTS).length === 5, Object.keys(CLI_HINTS).join(', '));
+check('CLI_HINTS 七段齐全', Object.keys(CLI_HINTS).length === 7, Object.keys(CLI_HINTS).join(', '));
 
 
 /* 2b. 数据变换内核：回归锁 -------------------------------------------------- */
@@ -255,11 +257,52 @@ check('args 类型错也不崩（按空对象处理）', weird.ok === true, weir
 /* 6. cliHint ----------------------------------------------------------- */
 console.log('\n[6] cliHint（写库只回命令行提示）');
 const hints = await handleResearchCall({ action: 'cliHint', args: {} });
-check('不带 key → 全部提示', hints.ok && hints.value.hints && Object.keys(hints.value.hints).length === 5);
+check('不带 key → 全部提示', hints.ok && hints.value.hints && Object.keys(hints.value.hints).length === 7);
 const one = await handleResearchCall({ action: 'cliHint', args: { key: 'addRef' } });
 check('带 key → 单段文本', one.ok && typeof one.value.text === 'string' && /add-ref/.test(one.value.text));
 const none = await handleResearchCall({ action: 'cliHint', args: { key: '__nope__' } });
 check('未知 key → 回退全部提示', none.ok && !!none.value.hints);
+
+/* 6b. 投稿闸门（体检 / 打包）------------------------------------------- */
+console.log('\n[6b] 投稿闸门（体检 / 打包）');
+{
+  // snap 只在 [2] 的 else 块里；这里用 snapRes.value，并只在**测试夹具库**里做写盘检查
+  // （真实科研库不该因为跑一次自检就多出一个投稿包）。
+  const snapValue = snapRes.ok ? snapRes.value : null;
+  const gateProject = snapValue && (snapValue.projects || [])[0];
+  if (!gateProject) {
+    skipped('checkJournal / exportPackage', '库里没有课题样本');
+  } else {
+    const cj = await handleResearchCall({ action: 'checkJournal', args: { project: gateProject.slug, journal: 'nature' } });
+    check('checkJournal 返回逐条结论',
+      cj.ok && Array.isArray(cj.value.checks) && cj.value.checks.length > 0,
+      cj.ok ? `${cj.value.checks.length} 条 / ${cj.value.counts.fail} 不合格` : JSON.stringify(cj.error));
+    check('checkJournal 带免责声明', cj.ok && /以刊方/.test(cj.value.disclaimer || ''));
+    check('checkJournal 指明稿件', cj.ok && !!cj.value.manuscript, cj.ok ? String(cj.value.manuscript) : '');
+    check('checkJournal 有 fail 时退出码非 0',
+      !cj.ok || !(cj.value.checks || []).some((c) => c.status === 'fail') || cj.value.exitCode !== 0,
+      cj.ok ? `exit=${cj.value.exitCode} fail=${cj.value.counts.fail}` : '');
+    const noProject = await handleResearchCall({ action: 'checkJournal', args: {} });
+    check('checkJournal 缺 project → bad-request',
+      !noProject.ok && noProject.error.code === 'bad-request', JSON.stringify(noProject.error));
+
+    if (!/sciwork-test/.test(String(snapValue.root))) {
+      skipped('exportPackage 写盘检查', '真实库不写测试包（把 SCIWORK_LIBRARY 指到 out/sciwork-test-lib 再跑）');
+    } else {
+      const ep = await handleResearchCall({ action: 'exportPackage', args: { project: gateProject.slug, journal: 'nature' } });
+      check('exportPackage 打出 zip', ep.ok && /\.zip$/.test(ep.value.package || ''),
+        ep.ok ? ep.value.package : JSON.stringify(ep.error));
+      check('exportPackage 记录文件数', ep.ok && ep.value.files > 0, ep.ok ? String(ep.value.files) : '');
+      if (ep.ok) {
+        const zipAbs = snapValue.root + '/' + String(ep.value.package);
+        check('exportPackage 的 zip 真的在盘上', fs.existsSync(zipAbs), zipAbs);
+      }
+      const noProjExport = await handleResearchCall({ action: 'exportPackage', args: {} });
+      check('exportPackage 缺 project → bad-request',
+        !noProjExport.ok && noProjExport.error.code === 'bad-request', JSON.stringify(noProjExport.error));
+    }
+  }
+}
 
 /* 7. 路径护栏 ---------------------------------------------------------- */
 console.log('\n[7] 路径护栏（probePathGuard）');

@@ -369,14 +369,18 @@ if (figuresTab) {
 }
 
 /* 6. 主题 token 闸门 */
-console.log('\n[6] 主题 token（只许用官方 14 个）');
 const OFFICIAL = new Set([
   '--dsw-alias-bg-base', '--dsw-alias-bg-layer-1', '--dsw-alias-bg-layer-2', '--dsw-alias-bg-overlay',
   '--dsw-alias-border-l1', '--dsw-alias-border-l2', '--dsw-alias-brand-primary',
   '--dsw-alias-label-primary', '--dsw-alias-label-secondary',
+  // 品牌色块上的前景色（2026-10-19 加）。本站主题把 bg-base 设成全透明，
+  // 旧写法 `color: var(--dsw-alias-bg-base)`（拿表面背景色当文字色）会让
+  // 导入按钮 / 选中 chips 只剩一块粉。该 token 在宿主 app.asar 中有定义。
+  '--dsw-alias-label-primary-foreground',
   '--dsw-alias-state-error-primary', '--dsw-alias-state-idle-primary', '--dsw-alias-state-success-primary', '--dsw-alias-state-warn-primary',
   '--dsw-specific-sidebar-fill',
 ]);
+console.log('\n[6] 主题 token（只许用官方白名单：' + OFFICIAL.size + ' 个）');
 const cssSource = readFileSync(CLIENT, 'utf8');
 const used = Array.from(new Set((injectedCss.match(/var\((--dsw-[a-z0-9-]+)\)/g) || []).map((s) => s.slice(4, -1))));
 check('CSS 已注入（data-rl）', injectedCss.length > 200, `${injectedCss.length} 字符`);
@@ -384,6 +388,9 @@ check('用到但不在官方表里的 token：无', used.every((t) => OFFICIAL.h
 ok('实际用到的 token', `${used.length} 个：${used.join(' ')}`);
 check('源码里没有传说中不存在的 bg-layer-3', !/--dsw-alias-bg-layer-3/.test(cssSource));
 check('源码里没有 label-tertiary', !/--dsw-alias-label-tertiary/.test(cssSource));
+check('没有拿 bg-base 当文字色（会随主题透明化）', !/color:var\(--dsw-alias-bg-base\)/.test(cssSource));
+check('品牌色块的前景用 label-primary-foreground',
+  /\.rl-btn-primary\{[^}]*color:var\(--dsw-alias-label-primary-foreground\)/.test(cssSource));
 
 /* 7. 新手引导（欢迎卡 / 分步导览 / 持久化）——「像 studyhub 一样」那部分 */
 console.log('\n[7] 新手引导（欢迎卡 / 分步导览 / 持久化）');

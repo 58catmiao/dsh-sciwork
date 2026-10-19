@@ -32,7 +32,7 @@ dsh-sciwork/
 ├─ cordis.patch.yml       # 插入 preset「科研模式 · Research」+ 面板宿主插件行 research-library
 ├─ lib/                   # 宿主半边（纯 Node ESM，零第三方依赖） + 客户端半边
 │  ├─ index.js            #   connection.fetch 精确路由：POST /api/research/call
-│  ├─ actions.js          #   22 个动作的分发 + 命令台命令表 + 错误码归一
+│  ├─ actions.js          #   24 个动作的分发 + 命令台命令表 + 错误码归一
 │  ├─ config.js           #   运行时路径解析（库根 / Python / Origin 插件目录），不写死本机路径
 │  ├─ library.js          #   读库底座：路径闸门、快照、引用核查、草稿保存/新建
 │  ├─ import.js           #   导入：落位（同名自动 -1）→ 需要时再跑 research.py 登记
@@ -189,7 +189,7 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 - `readBinary` 上限 12 MiB（base64 走 JSON-RPC，别把宿主撑爆）；表预览上限 64 MiB。
 - 数据 > 64 MiB 时明确报错，提示让智能体走 Origin 或分块，而不是静默截断。
 
-## 6. 22 个宿主动作
+## 6. 24 个宿主动作
 
 `lib/actions.js` 的 `ACTIONS` 是权威清单，客户端与服务端必须逐项一致（自检会比对）。
 
@@ -202,6 +202,7 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 | `readBinary` | 二进制读盘（图片/PDF → base64，12 MiB 上限） |
 | `tableColumns` | 一张数据表的列名 |
 | `checkCitations` | 引用核查：缺失键 + 库里已知文献数（带「不证明内容支持」的说明） |
+| `checkJournal` | 期刊合规体检：按档案逐条比对图件/字数/参考文献（见 §6.3） |
 | `cliHint` | 一条给智能体的 `research.py` 命令模板（面板只展示，不执行） |
 | `cliCommands` | 命令台的命令与参数元数据 |
 | `transformOps` | 可用的数据变换算子与参数 |
@@ -224,6 +225,7 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 | `tableTransform` | 数据变换（见 §6.1），产物落 `projects/<课题>/tables/` |
 | `replot` | 重画一张已登记的图（见 §7） |
 | `archiveInfo` | 归档批次与真删记录 |
+| `exportPackage` | 打投稿包到 `submissions/packages/`（稿件 + 图 + 数据 + refs.bib + manifest，见 §6.3） |
 
 ### 6.1 数据变换
 
@@ -242,6 +244,38 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 - `NaN` / `NA` / `null` / `-` 与空单元格读成缺失（`null`），**不填充**。
 
 面板的列下拉、`tablePreview`、`tableTransform` 与重画共用这一套规则。
+
+### 6.3 投稿闸门（0.2）
+
+`checkJournal` 与 `exportPackage` 都只是 `research.py` 对应子命令的薄包装；判定逻辑、媒体元数据解析、zip 组装全在 `library/scripts/research.py`（`check_journal()` / `cmd_export_package()`）。
+
+**`checkJournal` 回执**
+
+```json
+{ "ok": true, "project": "zt-ceremic", "journal": "nature", "journalName": "Nature",
+  "manuscript": "projects/zt-ceremic/drafts/main.md",
+  "checks": [{ "id": "figure.fig1.width", "group": "图件", "status": "pass",
+               "detail": "图宽 89.0 mm（单栏 89 mm）", "source": "https://...", "confidence": "high" }],
+  "counts": { "pass": 8, "warn": 4, "fail": 0, "na": 3 },
+  "summary": "15 项：8 通过 / 4 提醒 / 0 不合格 / 3 不适用",
+  "disclaimer": "期刊档案是默认值…以刊方现行要求为准" }
+```
+
+- 每个条目必带 `id` / `group` / `status` / `detail`；`status ∈ pass|warn|fail|na`。
+- **档案里没有的数值一律 `na`**（例如未给字号上下限时字号项记 `na`），绝不拿通用默认值冒充期刊要求；结论会带上 `source` / `confidence` 与一句「以刊方现行要求为准」。
+- 有 `fail` 时 `research.py` 退出码 1；面板仍显示完整表格，不中断。
+- 图件尺寸/像素密度直接读文件头（PNG `pHYs`、JPEG JFIF、TIFF 标签、SVG 宽高/单位），不靠扩展名猜；数据变换或 Origin 导出留下的图注、journal 字段取自侧车 JSON。
+
+**`exportPackage` 回执与产物**
+
+```json
+{ "ok": true, "package": "submissions/packages/zt-ceremic-20261019-140436.zip",
+  "files": 7, "bytes": 3513, "missing": [], "counts": { "pass": 8, "warn": 4, "fail": 0, "na": 3 } }
+```
+
+- zip 内固定四个目录：`manuscript/`、`figures/`、`data/`、`refs.bib`，另有根级 `manifest.json`（逐文件 `sha256` / `bytes`）与 `checklist.md`（期刊 checklist + 本次体检结论）。
+- 稿件按 `.md` → `.docx` → `.tex` 优先级挑一份；图件从图的侧车与磁盘收集；数据只收 `data/` 下文件；**缺什么写进 `missing`，不伪造空文件**。
+- 打包纯标准库（`zipfile`），输出目录固定在 `submissions/packages/`，同名追加时间戳，绝不覆盖已有包。
 
 ## 7. 锁文件与 Origin 串行化
 
@@ -296,7 +330,7 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主数据层：路径闸门、快照、读文件
-node scripts/selftest-actions.mjs   # 22 个动作 + 命令台 + 读表 + 写动作真跑（在临时库副本上）
+node scripts/selftest-actions.mjs   # 24 个动作 + 命令台 + 读表 + 写动作真跑（在临时库副本上）
 node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真渲染 + 真点击
 node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默认跳过）
 ```
@@ -306,8 +340,8 @@ node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默�
 | 脚本 | 基线 |
 |---|---|
 | `scripts/selftest-host.mjs` | `exit 0` |
-| `scripts/selftest-actions.mjs` | **120 通过 · 0 失败 · 3 跳过 · exit 0** |
-| `scripts/selftest-client.mjs` | **151 通过 · 0 失败 · exit 0** |
+| `scripts/selftest-actions.mjs` | **141 通过 · 0 失败 · 1 跳过（夹具库；通过数随库内容浮动） · exit 0** |
+| `scripts/selftest-client.mjs` | **172 通过 · 0 失败 · exit 0** |
 
 要点：
 

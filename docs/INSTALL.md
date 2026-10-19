@@ -124,8 +124,8 @@ node scripts/install.mjs
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主数据层：路径闸门、快照、读文件 → exit 0
-node scripts/selftest-actions.mjs   # 22 个动作 + 命令台 + 读表 + 写动作走临时库副本 → 120 通过 · 0 失败 · 3 跳过
-node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真渲染 + 真点击 → 151 通过 · 0 失败
+node scripts/selftest-actions.mjs   # 24 个动作 + 命令台 + 读表 + 写动作走临时库副本 → 141 通过 · 0 失败 · 1 跳过（夹具库；通过数随库内容浮动）
+node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真渲染 + 真点击 → 172 通过 · 0 失败
 ```
 
 说明：

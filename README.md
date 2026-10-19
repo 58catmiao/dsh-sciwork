@@ -101,13 +101,15 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 | **文献** | `refs/refs.json` 里的条目与 `refs/pdf/` 下的本地 PDF 附件 | 导入（必须带 DOI 或 URL 才登记，PDF 可选）、看 PDF、归档、删除 |
 | **数据** | `data/` 下的数据文件（`.txt/.csv/.dat` 等）与按课题分组的分组头 | 预览行列、**数据变换**（6 个算子）、归档、删除 |
 | **期刊档案** | 12 份档案的 id、严格度（high / medium / low）与更新日期 | 读条款与数值要求；筛选；归档 |
-| **投稿** | `submissions/` 下的投稿记录（目标刊、状态、时间线） | 读记录；筛选；归档 |
+| **投稿** | `submissions/` 下的投稿记录（目标刊、状态、时间线） | 读记录；筛选；归档；**投稿闸门**：选期刊 → 合规体检 → 导出投稿包 |
 | **归档** | `.research/archive/<时间戳>/` 里的批次清单 + 真删记录 | 整批 / 单文件「恢复」搬回原位；真删记录只留名字 |
 | **命令台**（弹层，不是页签） | `research.py` 的子命令清单与参数表单 | 选命令 → 填参 → 执行 → 看 stdout / stderr / JSON 结果 |
 
 **数据变换的 6 个算子**：`normalize`（归一化）、`baseline`（扣基线）、`smooth`（平滑）、`peaks`（找峰）、`integrate`（积分）、`linear`（线性变换）。每次变换都会在新表旁落一份溯源记录（`.research/transforms/<课题>/<表名>.json`），并把产物写进课题的 `tables/`。
 
-**面板的边界，一句话说清**：能看、能筛、能导入、能归档、能删、能对表格做数据变换；**不出图**。所有写入都经库脚本落文件并登记，**面板自身不碰登记索引**。
+**投稿闸门（0.2 新增）**：在「投稿」页签选一个课题与期刊档案，点「体检」得到逐条结论——图宽是否够单/双栏、分辨率够不够、格式该不该矢量、图注有没有、标题与摘要字数、参考文献与 DOI 覆盖、草稿里的引用键是否都在库里。每条标 `pass` / `warn` / `fail` / `na`，并写明依据（`source`）与置信度；**档案没写的项一律 `na`，不拿默认值冒充期刊要求**。点「导出投稿包」把稿件、图、数据、`refs.bib` 收进一个 zip（含逐文件 sha256 的 manifest 与 checklist），路径落在 `submissions/packages/`。体检结果与期刊档案一样，最终以刊方现行要求为准。
+
+**面板的边界，一句话说清**：能看、能筛、能导入、能归档、能删、能对表格做数据变换、能做投稿前体检和打包；**不出图**。所有写入都经库脚本落文件并登记，**面板自身不碰登记索引**。
 
 ## 配置
 
@@ -168,6 +170,7 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 | `search <关键词>` | 跨课题检索（课题 / 图 / 稿 / 数据 / 文献 / 期刊 / 投稿），可加 `--kind`、`--project`、`--limit`。 |
 | `list-projects` / `list-figures` / `list-refs` / `list-submissions` | 分别列课题、已登记图、文献、投稿记录，各自支持筛选参数。 |
 | `check-citations --draft <路径>` | **引用核查闸门**：非零退出即代表稿子里有缺失或未核实的引用。加 `--require-doi` 要求每条都必须有 DOI。 |
+| `check-journal --project <slug> [--journal <id>]` | **期刊合规体检**：按期刊档案逐条比对图件尺寸/分辨率/格式、图注、标题与摘要字数、参考文献与 DOI、引用键；每条 `pass`/`warn`/`fail`/`na`，有 `fail` 时退出码 1。 |
 
 **写**：
 
@@ -178,7 +181,8 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 | `add-ref` | 文献入库。**必须带 DOI 或 URL**（引用零编造）；`--verified-by` 记录核实方式。 |
 | `register-figure` | 登记一张图的溯源侧车：源数据、Origin 图页、所用期刊档案、图注。 |
 | `add-submission` / `update-submission` | 登记一次投稿 / 推进投稿状态与事件时间线。 |
-| `reindex` / `export-bib` | 重建库索引 / 重建 `refs.bib`。 |
+| `export-package --project <slug> [--journal <id>]` | **投稿包**：稿件 + 图 + 数据 + `refs.bib` 打 zip 到 `submissions/packages/`，附逐文件 sha256 的 `manifest.json` 与 `checklist.md`。 |
+| `reindex` / `export-bib` | 重建库索引（递归子目录、收录正文）/ 重建 `refs.bib`。 |
 
 **不可逆**：`remove-ref` 删掉一条文献登记（会先备份 `refs.json`）。
 
@@ -229,7 +233,7 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主半边：路由注册、路径守卫、快照形状
-node scripts/selftest-actions.mjs   # 22 个动作：读/守卫检查 + 隔离副本里的写动作
+node scripts/selftest-actions.mjs   # 24 个动作：读/守卫检查 + 隔离副本里的写动作
 node scripts/selftest-client.mjs    # 客户端：七个页签的渲染、弹层、按钮与请求形状
 python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 Install PyYAML 步骤）
 python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
@@ -241,22 +245,22 @@ python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、p
 
 ```bash
 node scripts/selftest-host.mjs      # 全部通过，退出码 0
-node scripts/selftest-actions.mjs   # 63 通过 · 0 失败 · 2 跳过
+node scripts/selftest-actions.mjs   # 63 通过 · 0 失败 · 3 跳过
 node scripts/selftest-client.mjs    # 21 通过 · 0 失败 · 其余内容类检查未运行
 python scripts/validate-patch.py    # ✓ 补丁预检通过
 ```
 
 此时所有**内容类**检查（依赖库里真有草稿 / 图 / 数据表的部分）自动记为 `SKIP` 或「未运行」，脚本会打印一行说明（`未运行：内容类检查需要一个可用的科研库（当前库根 …）`）并**以退出码 0 结束**——不配库不算失败。
 
-**B. 指向一个真库（本机实测基线）**
+**B. 指向一个真库（数字随库内容浮动，下面是夹具库实测）**
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 120 通过 · 0 失败 · 3 跳过
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 151 通过 · 0 失败
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 141 通过 · 0 失败 · 1 跳过
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 172 通过 · 0 失败
 ```
 
 - `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
-- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `151 通过 · 0 失败`，退出码 0。
+- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `172 通过 · 0 失败`，退出码 0。
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
 - `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。
 
