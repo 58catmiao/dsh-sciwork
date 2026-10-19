@@ -163,11 +163,16 @@ for (const [label, script, skip] of [
   const note = c
     ? `${c.pass} 通过 · ${c.fail} 失败${c.skip ? ` · ${c.skip} 跳过` : ''}`
     : r.ok ? '退出 0' : r.note;
-  record(label, r.ok, Date.now(), note);
+  record(label, r.ok, Date.now(), note, r.out);
   if (c && c.fail > 0) {
     // 失败用例点名：让下一次（或自动化）能直接看出是哪一条
     const lines = r.out.split('\n').filter((l) => /^\s*FAIL /.test(l));
     if (lines.length) console.log(lines.map((l) => `      ${C.red}${l.trim()}${C.off}`).join('\n'));
+  }
+  if (c && c.skip > 0) {
+    // 跳过项也点名：「跳过」比「失败」更危险，它安静地什么都不验
+    const lines = r.out.split('\n').filter((l) => /^\s*(?:SKIP|跳过)\b/.test(l)).slice(0, 12);
+    if (lines.length) console.log(lines.map((l) => `      ${C.yellow}${l.trim()}${C.off}`).join('\n'));
   }
 }
 
@@ -176,7 +181,7 @@ if (!PY) {
   record('validate-patch.py', false, Date.now(), '没有 python');
 } else {
   const r = run('validate-patch.py', PY[0], [...PY[1], 'scripts/validate-patch.py']);
-  record('validate-patch.py', r.ok, Date.now(), r.ok ? 'patch 是合成树的子集' : r.note, r.ok ? '' : r.out);
+  record('validate-patch.py', r.ok, Date.now(), r.ok ? 'patch 是合成树的子集' : r.note, r.out);
 }
 
 /* ---------------------------------------------------------------- 3. 汇总 */
