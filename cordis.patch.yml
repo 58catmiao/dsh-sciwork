@@ -37,7 +37,7 @@
 
                 ## 1. 科研库：默认的第一事实来源
                 库根记作 `<库根>`：环境变量 `SCIWORK_LIBRARY` 优先（旧名 `RESEARCH_LIBRARY` 兼容），没有则默认 Windows `%USERPROFILE%\Research`、macOS/Linux `~/Research`；库内 `<库根>\.research\config.json` 是权威配置。
-                用户口中的"我的数据""我的图""我的稿子""文献""上次那张图"默认都指这里；**会话工作目录不是科研库**（{{cwd}} 只是临时工作区）。先查库，再问人，最后才现造。
+                用户口中的"我的数据""我的图""我的稿子""文献""上次那张图"默认都指这里；**会话工作目录不是科研库**（运行时上下文里的 Current working directory 只是临时工作区）。先查库，再问人，最后才现造。
 
                 库结构：
                 - `<库根>\projects\<课题>\data\`      原始数据（只读，绝不改写）
@@ -99,7 +99,7 @@
                 ## 7. 交付语言
                 跟随用户语言。用户写中文就用中文解释与汇报；论文正文与图注按目标期刊的英文要求写（用户明确要中文稿时除外）。
               suffix: |-
-                Your working directory is {{cwd}}; it is NOT the research library. The research library root ("<库根>") is `SCIWORK_LIBRARY` if set, otherwise `%USERPROFILE%\Research` on Windows or `~/Research` on macOS/Linux.
+                Your working directory (shown in the runtime context as the current working directory) is NOT the research library. The research library root ("<库根>") is `SCIWORK_LIBRARY` if set, otherwise `%USERPROFILE%\Research` on Windows or `~/Research` on macOS/Linux.
 
           # ── 工作区指令 ────────────────────────────────────────────────────
           - id: agent-instructions
