@@ -34,7 +34,7 @@ Version 0.3.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <ht
   Reads never write receipts.
 - **Projects are first-class**: seven-stage state machine plus artifact hashes; legacy projects are migrated
   explicitly (backup first, idempotent, per-project rollback).
-- **Two screens**: the old panel is untouched; the new workbench sits behind `ui.version` (a segmented 面板/工作台 switch next to the tabs, defaulting to the classic panel) and can be switched back. The workbench opens on a dashboard (today, submission countdown, library health, recent changes, backup status); every todo carries a "让 AI 做" button that copies a ready-to-paste instruction.
+- **Two screens**: the workbench is now the default (`ui.version`, a segmented 面板/工作台 switch next to the tabs; the classic panel is one click away and the last tab is remembered). It is laid out as page header (title, stats, Chinese primary actions) → KPI strip (projects / figures / references / open submissions) → cross-project todo table → dashboard → two-column project detail; the dashboard carries today, submission countdown, library health, recent changes and backup status, and every todo carries a "让 AI 做" button that copies a ready-to-paste instruction. The header's 快速登记 builds a Chinese form from the CLI command table (references / figure provenance / submission) and still goes through plan → confirm → receipt.
 
 
 ## Install

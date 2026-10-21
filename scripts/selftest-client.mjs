@@ -970,8 +970,26 @@ console.log('\n[12] v2 工作台');
     if (action === 'system.receipts') {
       return Promise.resolve({ receipts: [{ startedAt: '2026-10-21T10:00:00Z', action: 'project.stage.set', ok: true, wrote: ['projects/zt/project.json'] }] });
     }
+    if (action === 'library.cli_commands') {
+      return Promise.resolve({
+        commands: [
+          {
+            id: 'add-ref', kind: 'write', title: '文献入库', desc: '文献入库',
+            args: [
+              { name: '--title', label: '标题', required: true },
+              { name: '--doi', label: 'DOI' },
+              { name: '--type', label: '类型', type: 'select', options: ['article', 'book'], optionsCn: { article: '期刊论文', book: '专著' } },
+              { name: '--project', label: '课题' },
+            ],
+          },
+          { id: 'register-figure', kind: 'write', title: '登记图溯源', args: [{ name: '--project', label: '课题', required: true }, { name: '--file', label: '图文件', type: 'path', required: true }] },
+          { id: 'add-submission', kind: 'write', title: '登记投稿', args: [{ name: '--journal', label: '期刊档案', required: true }] },
+        ],
+      });
+    }
     if (action === 'snapshot') {
       return Promise.resolve({
+        counts: { project: 1, figure: 1, draft: 0, dataset: 0, ref: 1, journal: 0, submission: 1 },
         projects: [{ slug: 'zt', title: 'ZT 陶瓷', figures: [{ figureId: 'fig1', caption: '' }], drafts: [], datasets: [] }],
         submissions: [{ submissionId: 'sub1', kind: 'submission', status: 'under-review', title: 'ZT 陶瓷投稿', journalName: 'Ceramics International', nextAction: '催稿', nextActionDue: '2026-10-23' }],
         refs: [{ key: 'r1', title: 'A paper', doi: '' }],
@@ -1054,19 +1072,23 @@ console.log('\n[13] 面板交互（0.3.3）');
   check('页脚不再有「试用 v2 工作台」大按钮', !src.includes('试用 v2 工作台'));
 
   lsStore.set('research-panel-setup:welcome:local', '1');
+  lsStore.delete('research-panel-setup:ui.version:local');
   let pt = await settle(Panel, {});
   const vbtn = (t, label) => findAll(t, (n) => n.tag === 'button' && allText(n).trim() === label)[0];
   check('页签区有「面板 / 工作台」切换', !!vbtn(pt, '面板') && !!vbtn(pt, '工作台'));
-  const wb = vbtn(pt, '工作台');
-  if (wb) wb.props.onClick();
-  pt = await settle(Panel, {});
-  check('点「工作台」切到 v2 并记住选择', lsStore.get('research-panel-setup:ui.version:local') === 'v2', String(lsStore.get('research-panel-setup:ui.version:local')));
-  check('v2 首屏是工作台', allText(pt).includes('新建课题') || allText(pt).includes('课题列表是空的'));
+  check('默认版本是 v2（源码口径）', /UI_VERSION_KEY\) === 'v1' \? 'v1' : 'v2'/.test(src));
   const v1b = vbtn(pt, '面板');
-  check('v2 下仍能切回「面板」', !!v1b);
   if (v1b) v1b.props.onClick();
   pt = await settle(Panel, {});
-  check('切回面板后 ui.version 回到 v1', lsStore.get('research-panel-setup:ui.version:local') === 'v1', String(lsStore.get('research-panel-setup:ui.version:local')));
+  check('点「面板」切到 v1 并记住选择', lsStore.get('research-panel-setup:ui.version:local') === 'v1', String(lsStore.get('research-panel-setup:ui.version:local')));
+  check('v1 首屏不是工作台', !allText(pt).includes('跨课题待办'));
+  const v2b = vbtn(pt, '工作台');
+  if (v2b) v2b.props.onClick();
+  pt = await settle(Panel, {});
+  check('点「工作台」切到 v2 并记住选择', lsStore.get('research-panel-setup:ui.version:local') === 'v2', String(lsStore.get('research-panel-setup:ui.version:local')));
+  const backV1 = vbtn(pt, '面板');
+  if (backV1) backV1.props.onClick();
+  pt = await settle(Panel, {});
 
   const figTab = vbtn(pt, '图表');
   if (figTab) figTab.props.onClick();
@@ -1079,6 +1101,73 @@ console.log('\n[13] 面板交互（0.3.3）');
   if (pbtn) pbtn.props.onClick();
   pt = await settle(Panel, {});
   check('点开后按钮变「收起参数」', !!findAll(pt, (n) => n.tag === 'button' && allText(n).trim() === '收起参数')[0]);
+}
+
+/* [14] 0.3.6 排版：页头 / 指标条 / 待办表格 + 快速登记弹层 */
+console.log('\n[14] 排版与快速登记（0.3.6）');
+{
+  const T = clientExports.__test;
+  const calls = [];
+  const cmd = (id, title, args) => ({ id, kind: 'write', title, desc: title, args });
+  const fake = (action, args) => {
+    calls.push({ action, args: args || {} });
+    if (action === 'project.list') {
+      return Promise.resolve({ projects: [{ slug: 'zt', title: 'ZT 陶瓷', stage: 'figure', next: { ready: false, todo: [{ action: 'journal.check', why: '还没有图页' }], blockers: [] } }] });
+    }
+    if (action === 'system.receipts') return Promise.resolve({ receipts: [] });
+    if (action === 'snapshot') {
+      return Promise.resolve({
+        counts: { project: 1, figure: 3, draft: 0, dataset: 0, ref: 7, journal: 2, submission: 1 },
+        projects: [{ slug: 'zt', title: 'ZT 陶瓷', figures: [], drafts: [], datasets: [] }],
+        submissions: [{ submissionId: 's1', kind: 'submission', status: 'under-review', title: 'x', journalName: 'J' }],
+        refs: [], journals: [{ id: 'ceram-int', name: 'Ceramics International' }],
+      });
+    }
+    if (action === 'library.cli_commands') {
+      return Promise.resolve({
+        commands: [
+          cmd('add-ref', '文献入库', [
+            { name: '--title', label: '标题', required: true },
+            { name: '--doi', label: 'DOI' },
+            { name: '--type', label: '类型', type: 'select', options: ['article', 'book'], optionsCn: { article: '期刊论文', book: '专著' } },
+            { name: '--project', label: '课题' },
+          ]),
+          cmd('register-figure', '登记图溯源', [
+            { name: '--project', label: '课题', required: true },
+            { name: '--file', label: '图文件', type: 'path', required: true },
+          ]),
+          cmd('add-submission', '登记投稿', [{ name: '--journal', label: '期刊档案', required: true }]),
+        ],
+      });
+    }
+    if (action === 'action.plan') return Promise.resolve({ planId: 'p', token: 't', actionId: 'system.cli_run', title: '命令台执行', writes: [], warnings: [] });
+    return Promise.resolve({});
+  };
+  let wt = await settle(T.Workbench, { call: fake, onImport() {} });
+  const txt = allText(wt);
+  check('页头有标题与统计', txt.includes('科研库') && txt.includes('1 个课题'), txt.slice(0, 80));
+  check('指标条四格（课题 / 图 / 文献 / 在投）', ['课题', '图', '文献', '在投'].every((s) => txt.includes(s)));
+  check('待办做成表格（有表头）', txt.includes('要做什么') && txt.includes('操作'));
+  check('页头按钮是中文主入口', ['快速登记', '新建课题', '导入数据', '刷新'].every((s) => txt.includes(s)));
+
+  const qbtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '快速登记')[0];
+  check('有「快速登记」按钮', !!qbtn);
+  if (qbtn) {
+    qbtn.props.onClick();
+    wt = await settle(T.Workbench, { call: fake, onImport() {} });
+    let qt = allText(wt);
+    check('弹层按命令清单生成中文表单', qt.includes('快速登记') && qt.includes('文献入库') && qt.includes('标题 *'), qt.slice(0, 160));
+    check('可选字段折进「更多选项」', qt.includes('更多选项'), qt.slice(0, 200));
+    const submit = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '生成计划')[0];
+    if (submit) { submit.props.onClick(); wt = await settle(T.Workbench, { call: fake, onImport() {} }); qt = allText(wt); }
+    check('缺必填项时不发请求，直接提示', qt.includes('还差必填项') && !calls.some((c) => c.action === 'action.plan'), qt.slice(0, 120));
+    const tab2 = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '登记图溯源')[0];
+    if (tab2) { tab2.props.onClick(); wt = await settle(T.Workbench, { call: fake, onImport() {} }); }
+    check('切到「登记图溯源」换成对应字段', allText(wt).includes('图文件 *'), allText(wt).slice(0, 120));
+    const cancel = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '取消')[0];
+    if (cancel) { cancel.props.onClick(); wt = await settle(T.Workbench, { call: fake, onImport() {} }); }
+    check('取消后弹层关闭', !allText(wt).includes('正在读命令清单') && !allText(wt).includes('图文件 *'));
+  }
 }
 
 /* 汇总 */
