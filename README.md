@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.3.10 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.3.11 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -106,6 +106,8 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 ## 面板：工作台与七个页签
 
 侧栏「科研库」。默认是**工作台**（v2），页头右上角可切到**列表面板**（v1）。列表面板有七个页签（图表 / 草稿 / 文献 / 数据 / 期刊档案 / 投稿 / 归档），另有顶部的**计数行**与「命令台」弹层（两者都不是页签）：
+
+**工作台（v2）**一屏看全库：页头（标题 + 统计 + 快速登记 / 新建课题 / 导入数据 / 刷新）、指标条（课题 / 图 / 文献 / 在投）、跨课题待办表、概览（今日该做 / 投稿倒计时 / 库体检 / 最近动态 / 备份）、课题两栏。页签行右侧的搜索框在 v2 里筛的是**课题与待办**：课题列表、跨课题待办、今日该做、库体检、最近动态一起过滤，顶部给命中数与「清空筛选」，空结果按种类给明确空状态（指标条始终按全库算，不随筛选变）。选中课题后，详情里还有一条**本课题产物速览**（图 / 草稿 / 数据 / 表 / 工程 / 文献 / 在投）：数字是该课题已登记的产物数与相关文献、在投记录；点数字跳到列表页签并自动带上这个课题当筛选词，只留它的条目（数量为 0 的按钮置灰）。
 
 | 页签 | 看什么 | 能做什么 |
 | --- | --- | --- |
@@ -274,11 +276,11 @@ python scripts/validate-patch.py    # ✓ 补丁预检通过
 
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 126 通过 · 0 失败 · 3 跳过
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 189 通过 · 0 失败
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 218 通过 · 0 失败
 ```
 
 - `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
-- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `189 通过 · 0 失败`，退出码 0。
+- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `218 通过 · 0 失败`，退出码 0。
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
 - `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。⚠️ 0.2.1 起 `SCIWORK_LIBRARY` **优先于**随包的 `library/config.json`（此前次序反了，导致本机把库指向真库时这道闸门永远拿真库当副本、写动作整节被跳过）。
 

@@ -544,7 +544,7 @@ const fakeSnap = {
   refs: [{ key: 'zhang2023', title: 'Perovskite stability', container: 'Nature', doi: '10.1038/abc', authors: ['Zhang'] }],
   pdfs: [{ name: 'zhang2023.pdf', path: 'refs/pdf/zhang2023.pdf' }],
   journals: [{ id: 'nature', name: 'Nature', nameZh: '自然', publisher: 'Springer' }],
-  submissions: [{ name: 'sub1', path: 'submissions/sub1', journal: 'nature' }],
+  submissions: [{ name: 'sub1', path: 'submissions/sub1', journal: 'nature', project: 'demo-perovskite' }],
 };
 check('筛选：空查询原样返回（同一个对象）', T2.filterSnap(fakeSnap, '') === fakeSnap);
 check('筛选：null 快照不炸', T2.filterSnap(null, 'x') === null);
@@ -557,6 +557,17 @@ check('筛选：期刊命中保留', T2.filterSnap(fakeSnap, '自然').journals.
 check('筛选：DOI 命中', T2.filterSnap(fakeSnap, '10.1038').refs.length === 1);
 check('筛选：pdf 附件命中', T2.filterSnap(fakeSnap, 'zhang2023.pdf').pdfs.length === 1);
 check('筛选：原始快照没被改动（浅拷贝，不是原地改）', fakeSnap.journals.length === 1 && T2.filterSnap(fakeSnap, 'nothing-here').projects.length === 0);
+/* 0.3.11：工作台的命中判定器 + 投稿按 x.project 命中 */
+check('命中器：空词一律命中（调用处不用再判空）', T2.makeHit('')('随便什么') === true && T2.makeHit('  ')(null) === true);
+check('命中器：大小写不敏感、两侧空格不算内容', T2.makeHit('  Zt ')('something ZT here') === true);
+check('命中器：多个字段命中任一就算', T2.makeHit('10.1038')('zhang2023', 'Perovskite') === false
+  && T2.makeHit('10.1038')('zhang2023', '10.1038/abc') === true);
+check('命中器：跳过 null/undefined 不炸', T2.makeHit('x')(null, undefined, 0) === false);
+check('筛选：按项目 slug 命中原样保留子条目', (() => {
+  const s = T2.filterSnap(fakeSnap, 'demo-perovskite');
+  return s.projects.length === 1 && s.projects[0].figures.length === 1 && s.projects[0].drafts.length === 1;
+})());
+check('筛选：投稿按 x.project 命中（目录名里没有课题 slug）', T2.filterSnap(fakeSnap, 'demo-perovskite').submissions.length === 1);
 
 check('拖拽猜目标：.csv/.txt → 数据（.txt 也算数据）', T2.guessTarget([{ name: 'a.csv' }, { name: 'b.txt' }]) === 'data');
 check('拖拽猜目标：图片 → 图表（大小写不敏感）', T2.guessTarget([{ name: 'a.PNG' }]) === 'figures');
@@ -978,6 +989,8 @@ console.log('\n[12] v2 工作台');
 
   const calls = [];
   const planParams = { project: 'zt', stage: 'draft' };
+  // 0.3.11：本课题产物按钮的去向（跳页签 + 带筛选词）
+  const opened = [];
   const fakeCall = (action, args) => {
     calls.push({ action, args: args || {} });
     if (action === 'project.list') {
@@ -1012,7 +1025,11 @@ console.log('\n[12] v2 工作台');
       });
     }
     if (action === 'project.get') {
-      return Promise.resolve({ project: { slug: 'zt', title: 'ZT 陶瓷', stage: 'figure' }, next: { ready: false, todo: [], blockers: [{ why: '图缺溯源', hint: '先登记侧车' }] }, needsMigration: false });
+      /*
+       * 真库的 project.json 里只有 id、没有 slug（project.get 原样吐出文件内容）。
+       * 夹具必须照着真形状来，否则「详情拿不到 slug → 阶段/产物带空 project」这类 bug 抓不住。
+       */
+      return Promise.resolve({ project: { id: 'zt', title: 'ZT 陶瓷', stage: 'figure' }, next: { ready: false, todo: [], blockers: [{ why: '图缺溯源', hint: '先登记侧车' }] }, needsMigration: false });
     }
     if (action === 'action.plan') {
       return Promise.resolve({ planId: 'p_test', token: 'tok_test', actionId: 'project.stage.set', title: '推进/退回阶段', writes: ['projects/zt/project.json'], warnings: [] });
@@ -1042,10 +1059,31 @@ console.log('\n[12] v2 工作台');
 
   const row = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('ZT 陶瓷'))[0];
   check('课题行可点', !!row);
-  if (row) { row.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+  if (row) {
+    row.props.onClick();
+    wt = await settle(T.Workbench, { call: fakeCall, onImport() {}, onOpenTab: (id, needle) => opened.push(id + ':' + needle) });
+  }
   check('详情有七阶段阶段条', findAll(wt, (n) => String((n.props && n.props.className) || '').includes('rl-stage') && !String((n.props && n.props.className) || '').includes('rl-stages')).length === 7,
     String(findAll(wt, (n) => String((n.props && n.props.className) || '').includes('rl-stage')).length));
   check('详情显示下一步检查项', allText(wt).includes('图缺溯源'));
+
+  /* 0.3.11：本课题产物速览（图/草稿/数据/表/工程/文献/在投）+ 点数字跳页签 */
+  const chipButtons = findAll(wt, (n) => n.tag === 'button' && String((n.props && n.props.className) || '').includes('rl-chip'));
+  check('详情有 7 个产物按钮', chipButtons.length === 7, String(chipButtons.length));
+  const figChip = chipButtons.filter((b) => allText(b).trim() === '图 1')[0];
+  check('产物按钮报出本课题的图数（图 1）', !!figChip, chipButtons.map((b) => allText(b).trim()).join('|'));
+  check('数量为 0 的产物按钮置灰', chipButtons.filter((b) => b.props && b.props.disabled === true).length === 6,
+    String(chipButtons.filter((b) => b.props && b.props.disabled === true).length));
+  if (figChip) figChip.props.onClick();
+  check('点「图」→ 图表页签 + 课题 slug 筛选词', opened.join(',') === 'figures:zt', opened.join(','));
+
+  /* 0.3.11：v2 工作台里的筛选框终于生效（以前只对 v1 页签生效，工作台里敲字没反应） */
+  const wq = await settle(T.Workbench, { call: fakeCall, onImport() {}, q: 'ZT' });
+  check('工作台顶部说明筛了什么', allText(wq).includes('筛选「ZT」'), allText(wq).slice(0, 100));
+  check('筛选条报出命中数', allText(wq).includes('命中 1 个课题'), allText(wq).slice(0, 140));
+  const wq0 = await settle(T.Workbench, { call: fakeCall, onImport() {}, q: 'zzz-nope' });
+  check('筛选没命中 → 课题列表给明确空状态', allText(wq0).includes('没有匹配「zzz-nope」的课题'), allText(wq0).slice(0, 160));
+  check('筛选没命中 → 待办表也给空状态', allText(wq0).includes('筛选下没有匹配的待办'), allText(wq0).slice(0, 240));
 
   const adv = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('推进到'))[0];
   check('图阶段后面是「推进到写作」', !!adv && allText(adv).includes('写作'), adv ? allText(adv) : '没有按钮');
@@ -1216,7 +1254,8 @@ console.log('\n[15] 阶段可选（0.3.10）');
     if (action === 'project.list') return Promise.resolve({ projects: [proj] });
     if (action === 'system.receipts') return Promise.resolve({ receipts: [] });
     if (action === 'snapshot') return Promise.resolve({ counts: {}, projects: [], submissions: [], refs: [], journals: [] });
-    if (action === 'project.get') return Promise.resolve({ project: proj, next: proj.next });
+    // 详情只给 id（真库形状），列表行才带 slug
+    if (action === 'project.get') return Promise.resolve({ project: { id: 'zt', title: 'ZT 陶瓷', stage: 'figure' }, next: proj.next });
     if (action === 'action.plan') return Promise.resolve({ planId: 'p', token: 't', actionId: 'project.stage.set', title: '推进/退回阶段', writes: [], warnings: [] });
     return Promise.resolve({});
   };
@@ -1231,6 +1270,10 @@ console.log('\n[15] 阶段可选（0.3.10）');
   check('点阶段发 action.plan（带 stage 与 force）',
     !!planned && planned.args.actionId === 'project.stage.set' && planned.args.params.stage === 'topic' && planned.args.params.force === true,
     JSON.stringify(planned && planned.args));
+  // 回归锁：详情只有 id 时，也要把 project 参数带上（否则宿主报「缺少必填参数：project」）
+  check('详情只有 id 时阶段动作仍带上 project',
+    !!planned && planned.args.params.project === 'zt',
+    JSON.stringify(planned && planned.args.params));
 }
 
 /* 汇总 */

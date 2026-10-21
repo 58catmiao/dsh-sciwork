@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.3.10 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.3.11 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -105,6 +105,8 @@ The agent plots on a real Origin install, verifies the result, exports it, and r
 ## The panel: the workbench and the seven tabs
 
 Sidebar → "Research Library". The **workbench** (v2) opens by default; the page header switches to the classic **list panel** (v1), which has seven tabs (Figures / Drafts / References / Data / Journal profiles / Submissions / Archive), plus a **counts header row** and a "Command console" overlay — neither of the latter two is a tab:
+
+**The workbench (v2)** shows the whole library on one screen: page header (title, counts, Quick entry / New project / Import data / Refresh), a KPI row (projects / figures / references / active submissions), a cross-project to-do table, an overview (Due today / Submission countdown / Library health / Recent activity / Backup), and a two-column project area. The search box on the right of the tab row filters **projects and to-dos** in v2: the project list, the cross-project to-do table, Due today, Library health and Recent activity are all filtered together, a strip reports the hit counts with a "Clear filter" button, and each empty section says why it is empty (the KPI row always counts the whole library). With a project selected, its detail pane also carries a **per-project artifact strip** (figures / drafts / datasets / tables / projects / references / active submissions): the numbers are that project's registered artifacts plus its references and active submissions; clicking a number jumps to the matching list tab with the project slug pre-filled as the filter, so only its entries remain (buttons showing 0 are disabled).
 
 | Tab | What you see | What you can do |
 | --- | --- | --- |
@@ -271,11 +273,11 @@ Every **content** check (the ones that need real drafts / figures / data tables 
 
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 126 passed · 0 failed · 3 skipped (fixture library; counts vary with library content)
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 189 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 218 passed · 0 failed
 ```
 
 - `selftest-host.mjs` — tallies passes and failures only, exit code 0. The only check that can be recorded as "skipped" is one that depends on the real library actually containing a figure file (when there is none, it is not counted as a failure).
-- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `189 passed · 0 failed`, exit code 0.
+- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `218 passed · 0 failed`, exit code 0.
 - `validate-patch.py` — prints `✓ 补丁预检通过` (patch preflight passed), exit code 0. It reports the `preset-research` preset's top-level row count (19 rows, 29 leaf rows after recursion, 2 of them disabled by an `!!js` condition), its nested groups (planning / compaction / delegation), the persona length, and confirmation that the inserted `research-library` row belongs to the host plugin rather than to an agent preset.
 - `selftest-actions.mjs` — the write-action stage **requires the library root to point at the isolated copy the script creates**. If it finds the snapshot pointing somewhere else, it prints `FAIL 隔离闸门：snapshot 指向副本` and exits with code 2, having written **not a single byte**. That is by design, not a plugin defect: write actions always run inside the copy and never touch your real library.
 
