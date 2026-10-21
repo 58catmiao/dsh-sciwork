@@ -1004,6 +1004,7 @@ console.log('\n[12] v2 工作台');
   check('今日条目旁有「让 AI 做」', !!aiBtn);
   if (aiBtn) { aiBtn.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
   check('点了给出可复制的指令', allText(wt).includes('发给昔涟的指令') && allText(wt).includes('Ceramics International'));
+  check('跨课题待办总表列出下一步', allText(wt).includes('跨课题待办') && allText(wt).includes('journal.check'));
 
   const row = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('ZT 陶瓷'))[0];
   check('课题行可点', !!row);
