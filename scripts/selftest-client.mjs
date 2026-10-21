@@ -1024,6 +1024,43 @@ console.log('\n[12] v2 工作台');
   check('新建课题同样先出计划', !!createPlan && createPlan.params.slug === 'new-proj', JSON.stringify(createPlan));
 }
 
+/* [13] 0.3.3 面板交互：v1/v2 页签、遮罩/Esc 关闭、图卡参数折叠 */
+console.log('\n[13] 面板交互（0.3.3）');
+{
+  const src = readFileSync(CLIENT, 'utf8');
+  check('弹层统一走 useEscape + 遮罩关闭', src.includes('function useEscape(') && src.includes('function onBackdrop('));
+  check('弹层根节点挂了遮罩关闭', (src.match(/onClick: onBackdrop\(/g) || []).length >= 6,
+    String((src.match(/onClick: onBackdrop\(/g) || []).length));
+  check('页脚不再有「试用 v2 工作台」大按钮', !src.includes('试用 v2 工作台'));
+
+  lsStore.set('research-panel-setup:welcome:local', '1');
+  let pt = await settle(Panel, {});
+  const vbtn = (t, label) => findAll(t, (n) => n.tag === 'button' && allText(n).trim() === label)[0];
+  check('页签区有「面板 / 工作台」切换', !!vbtn(pt, '面板') && !!vbtn(pt, '工作台'));
+  const wb = vbtn(pt, '工作台');
+  if (wb) wb.props.onClick();
+  pt = await settle(Panel, {});
+  check('点「工作台」切到 v2 并记住选择', lsStore.get('research-panel-setup:ui.version:local') === 'v2', String(lsStore.get('research-panel-setup:ui.version:local')));
+  check('v2 首屏是工作台', allText(pt).includes('新建课题') || allText(pt).includes('课题列表是空的'));
+  const v1b = vbtn(pt, '面板');
+  check('v2 下仍能切回「面板」', !!v1b);
+  if (v1b) v1b.props.onClick();
+  pt = await settle(Panel, {});
+  check('切回面板后 ui.version 回到 v1', lsStore.get('research-panel-setup:ui.version:local') === 'v1', String(lsStore.get('research-panel-setup:ui.version:local')));
+
+  const figTab = vbtn(pt, '图表');
+  if (figTab) figTab.props.onClick();
+  pt = await settle(Panel, {});
+  const expand = vbtn(pt, '展开');
+  if (expand) expand.props.onClick();
+  pt = await settle(Panel, {});
+  const pbtn = findAll(pt, (n) => n.tag === 'button' && /^参数（\d+ 项）$/.test(allText(n).trim()))[0];
+  check('图卡参数默认收成一行按钮', !!pbtn, pbtn ? allText(pbtn) : '没找到');
+  if (pbtn) pbtn.props.onClick();
+  pt = await settle(Panel, {});
+  check('点开后按钮变「收起参数」', !!findAll(pt, (n) => n.tag === 'button' && allText(n).trim() === '收起参数')[0]);
+}
+
 /* 汇总 */
 console.log('\n' + '='.repeat(72));
 console.log(`${pass} 通过 · ${fail} 失败`);
