@@ -191,7 +191,15 @@ for (const f of files) {
   scanLines(buf.toString('utf8').split('\n'), f);
 }
 
-const log = git(['log', '--all', '--format=%H%x00%B%x00']);
+/*
+ * 检查点 refs（refs/dsh-ckpt/*）是 dsh-ckpt 的**纯本地**快照：它的提交信息里带
+ * 快照元数据（label/files/root），本来就是写给本机看的路标，永远不会被 push。
+ * 门禁关心的是「会推出去的内容」，所以枚举时排除这些 ref；否则每次打检查点都会
+ * 让推送前扫描变红，红点一多就会被忽略，门禁也就失效了。
+ */
+// 注意：--exclude 必须排在 --all 之前，顺序反了 git 会静默忽略（实测）。
+const CKPT_EXCLUDE = '--exclude=refs/dsh-ckpt/*';
+const log = git(['log', CKPT_EXCLUDE, '--all', '--format=%H%x00%B%x00']);
 let commits = 0;
 if (log.ok) {
   const parts = log.out.split('\0');
@@ -205,7 +213,7 @@ if (log.ok) {
 }
 
 if (HISTORY) {
-  const patch = git(['log', '--all', '-p', '--format=@@%h']);
+  const patch = git(['log', CKPT_EXCLUDE, '--all', '-p', '--format=@@%h']);
   if (patch.ok) {
     scanLines(patch.out.split('\n'), 'history');
   }

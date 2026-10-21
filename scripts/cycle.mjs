@@ -156,6 +156,8 @@ for (const [label, script, skip] of [
   ['registry 自检（登记表形状/参数）', 'scripts/test-registry.mjs', false],
   ['dispatch 自检（令牌/回执/幂等）', 'scripts/test-dispatch.mjs', false],
   ['projects 自检（课题/迁移/备份）', 'scripts/test-projects.mjs', false],
+  ['tools 自检（工具暴露/schema 窄化）', 'scripts/test-tools.mjs', false],
+  ['契约自检（python 映射/超时）', 'scripts/test-contract.mjs', false],
   ['client 自检（面板渲染）', 'scripts/selftest-client.mjs', false],
 ]) {
   if (skip) {
