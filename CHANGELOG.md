@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-21
+
 ### Changed
 
 - **阶段不再单设预设**：删掉 `sci-topic` / `sci-design` / `sci-analysis` / `sci-figure` / `sci-writing` /
