@@ -33,7 +33,8 @@ jobs:
           node --check lib/client.js
           node --check lib/actions.js
           node --check lib/library.js
-          node --check lib/replot.js
+          node --check lib/projects.js
+          node --check lib/host/cli.js
           node --check lib/index.js
           node --check lib/config.js
           node --check lib/import.js
