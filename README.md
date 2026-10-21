@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.3.0 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.3.10 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -19,7 +19,7 @@
 1. **一个 agent 预设「科研模式」**——它把绘图、写作、文献、期刊规范四条线收进同一个工作流：先找证据，再动手；出图走 Origin 真机，稿子里引用的每一条文献都必须带 DOI 或 URL。
 2. **一个本机实体科研库**——一棵普通目录（课题 / 图表 / 数据 / 草稿 / 文献 / 期刊档案 / 投稿），配套一个 Python 引擎 `research.py` 和一个登记索引。
 3. **12 份期刊投稿档案**——Nature、Science、Cell、IEEE Trans、ACS、Elsevier 通用、MDPI、PLOS ONE、中文核心、CNKI 学位论文、GB/T 7714、通用学位论文，各自的数值要求、条款与出处摘要。
-4. **一个「科研库」可视面板 + 一组技能**——面板七个页签，只读为主、能筛能导入能归档；技能负责把"该怎么画、该怎么写、该怎么引"固化成纪律。
+4. **一个「科研库」可视面板 + 一组技能**——默认是工作台，旧面板七个页签一键可回，只读为主、能筛能导入能归档；技能负责把"该怎么画、该怎么写、该怎么引"固化成纪律。
 
 **权威来源永远是文件系统。** 索引只是缓存，面板的写入永远走库脚本，不直接改索引。所以科研库随时可以整目录打包带迁移，也可以直接用资源管理器、Git、别的编辑器去碰。
 
@@ -32,7 +32,10 @@
 - **一条能力清单**：动作登记表驱动面板、agent 工具与命令行三个入口，新能力只写一份。
 - **写动作要确认**：先计划（会写哪些文件、有什么 warning），再确认（一次性令牌），最后留回执；读动作不写库。
 - **课题是一等公民**：七阶段机 + 产物 sha256；旧库课题第一次写之前会提示迁移（先备份、幂等、可回滚）。
-- **两块屏幕**：默认进「工作台」（`ui.version` 开关，页签行右侧「面板 | 工作台」可随时切回旧面板，并记住上次停留的页签）。工作台按「页头（标题 + 统计 + 中文主入口）→ 指标条（课题 / 图 / 文献 / 在投）→ 跨课题待办表格 → 概览仪表 → 课题两栏」排布，不再是平铺卡片；首屏仪表有今日该做、投稿倒计时、库体检、最近动态、备份，每条待办旁可一键复制「生成指令」的文本；页头「快速登记」用命令清单生成中文表单（文献入库 / 登记图溯源 / 记一条投稿），提交仍走「计划 → 确认 → 回执」。
+- **工作台默认**：默认进「工作台」（v2），页头右上角一个按钮可切回旧「列表面板」（v1），选择会被记住，切换时不再丢页签。工作台按「页头（标题 + 统计 + 中文主入口）→ 指标条（课题 / 图 / 文献 / 在投）→ 跨课题待办表格 → 概览仪表 → 课题两栏」排布；仪表有今日该做、投稿倒计时、库体检、最近动态、备份，待办行可一键复制「生成指令」；页头「快速登记」按命令清单生成中文表单（文献入库 / 登记图溯源 / 记一条投稿），提交仍走「计划 → 确认 → 回执」。
+- **七阶段可点选**：课题详情里的阶段条改成按钮，点任一阶段即走 `project.stage.set`（跳阶段自动带 `force`，回退会把后续阶段重置为待办）。
+- **面板自带配色与字体**：「石墨蓝」色板 12 个 `--rl-*` 变量（明暗两套，`light-dark()`），不引用宿主颜色 token，正文/次级/主色对比度 ≥ 4.5:1；字体 Noto Sans SC（回退微软雅黑 / system-ui），数字等宽对齐；表格关键列着色加粗。
+- **图表页能看见真实出图目录**：`_` 前缀的出图文件夹（如 `figures/_ZT-1100-2h_v4/`）不再被当成内部目录过滤；只排除 `_history` / `_archive` / `_templates` / `_fetched` 这类明确的内部目录。
 
 
 ## 安装
@@ -82,7 +85,7 @@ node scripts/install.mjs
 
 ### 2. 打开面板
 
-在 DSH 侧栏点「科研库」。面板顶部一行写着当前库根路径与实时计数（课题 / 图 / 草稿 / 数据 / 文献 / 期刊档案 / 投稿 / 索引时间），下面是七个页签。
+在 DSH 侧栏点「科研库」。默认进工作台：页头右上角写着当前库根与实时计数（课题 / 图 / 草稿 / 数据 / 文献 / 期刊档案 / 投稿 / 索引时间），下面是待办与概览；点右上角按钮可切到列表面板的七个页签。
 
 ### 3. 让 agent 建课题
 
@@ -100,9 +103,9 @@ agent 会走 `research.py new-project` 落目录，之后它画的每一张图�
 
 agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登记回库。
 
-## 面板：七个页签各能做什么
+## 面板：工作台与七个页签
 
-侧栏「科研库」。页签七个（图表 / 草稿 / 文献 / 数据 / 期刊档案 / 投稿 / 归档），另有顶部的**计数行**与「命令台」弹层（两者都不是页签）：
+侧栏「科研库」。默认是**工作台**（v2），页头右上角可切到**列表面板**（v1）。列表面板有七个页签（图表 / 草稿 / 文献 / 数据 / 期刊档案 / 投稿 / 归档），另有顶部的**计数行**与「命令台」弹层（两者都不是页签）：
 
 | 页签 | 看什么 | 能做什么 |
 | --- | --- | --- |
@@ -244,7 +247,7 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主半边：路由注册、路径守卫、快照形状
-node scripts/selftest-actions.mjs   # 24 个动作：读/守卫检查 + 隔离副本里的写动作
+node scripts/selftest-actions.mjs   # 23 个动作：读/守卫检查 + 隔离副本里的写动作
 node scripts/selftest-client.mjs    # 客户端：七个页签的渲染、弹层、按钮与请求形状
 python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 Install PyYAML 步骤）
 python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
@@ -260,8 +263,8 @@ python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、p
 
 ```bash
 node scripts/selftest-host.mjs      # 全部通过，退出码 0
-node scripts/selftest-actions.mjs   # 63 通过 · 0 失败 · 3 跳过
-node scripts/selftest-client.mjs    # 21 通过 · 0 失败 · 其余内容类检查未运行
+node scripts/selftest-actions.mjs   # 全部通过 · 0 失败 · 内容类检查自动跳过
+node scripts/selftest-client.mjs    # 全部通过 · 0 失败 · 内容类检查自动跳过
 python scripts/validate-patch.py    # ✓ 补丁预检通过
 ```
 
@@ -270,12 +273,12 @@ python scripts/validate-patch.py    # ✓ 补丁预检通过
 **B. 指向一个真库（数字随库内容浮动，下面是夹具库实测）**
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 141 通过 · 0 失败 · 1 跳过
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 172 通过 · 0 失败
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 126 通过 · 0 失败 · 3 跳过
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 189 通过 · 0 失败
 ```
 
 - `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
-- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `172 通过 · 0 失败`，退出码 0。
+- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `189 通过 · 0 失败`，退出码 0。
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
 - `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。⚠️ 0.2.1 起 `SCIWORK_LIBRARY` **优先于**随包的 `library/config.json`（此前次序反了，导致本机把库指向真库时这道闸门永远拿真库当副本、写动作整节被跳过）。
 

@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.3.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.3.10 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -19,7 +19,7 @@ Version 0.3.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <ht
 1. **An agent preset, "Research Mode"** — it folds plotting, writing, references and journal rules into one workflow: find the evidence first, then act. Figures are made on a real Origin install, and every reference cited in a manuscript must carry a DOI or a URL.
 2. **A real, on-disk research library** — an ordinary directory tree (projects / figures / data / drafts / references / journal profiles / submissions), a Python engine `research.py`, and a registration index.
 3. **12 journal submission profiles** — Nature, Science, Cell, IEEE Trans, ACS, a generic Elsevier profile, MDPI, PLOS ONE, Chinese core journals, CNKI theses, GB/T 7714, and a generic thesis profile, each with its numeric requirements, clauses and citations to their sources.
-4. **A visual "Research Library" panel plus a set of skills** — seven tabs, mostly read-only, with filtering, import and archive; the skills pin down *how* to plot, write and cite.
+4. **A visual "Research Library" panel plus a set of skills** — a workbench by default (v2), a seven-tab classic panel one click away, read-only by and large, with filtering, import and archive; the skills pin down *how* to plot, write and cite.
 
 **The filesystem is always the authority.** The index is only a cache, and the panel never writes to it — every panel write goes through the library scripts. That means you can zip up the whole library and move it, or touch it directly with a file manager, Git, or any other editor.
 
@@ -34,7 +34,10 @@ Version 0.3.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <ht
   Reads never write receipts.
 - **Projects are first-class**: seven-stage state machine plus artifact hashes; legacy projects are migrated
   explicitly (backup first, idempotent, per-project rollback).
-- **Two screens**: the workbench is now the default (`ui.version`, a segmented 面板/工作台 switch next to the tabs; the classic panel is one click away and the last tab is remembered). It is laid out as page header (title, stats, Chinese primary actions) → KPI strip (projects / figures / references / open submissions) → cross-project todo table → dashboard → two-column project detail; the dashboard carries today, submission countdown, library health, recent changes and backup status, and every todo carries a "生成指令" button that copies a ready-to-paste instruction. The header's 快速登记 builds a Chinese form from the CLI command table (references / figure provenance / submission) and still goes through plan → confirm → receipt.
+- **Workbench by default**: the workbench (v2) opens first; one button in the page header switches back to the classic list panel (v1), the choice is remembered, and switching keeps the last tab. Layout: page header (title, stats, Chinese primary actions) → KPI strip (projects / figures / references / open submissions) → cross-project todo table → dashboard → two-column project detail. The dashboard carries today, submission countdown, library health, recent changes and backup status; every todo row copies a ready-to-paste "生成指令" instruction. The header's 快速登记 builds a Chinese form from the CLI command table (references / figure provenance / submission) and still goes through plan → confirm → receipt.
+- **Clickable seven-stage bar**: every stage in a project is a button that runs `project.stage.set` (jumping forward passes `force`, stepping back resets later stages to todo).
+- **The panel ships its own palette and type**: twelve `--rl-*` variables in a "graphite blue" palette (light and dark via `light-dark()`), no host colour tokens, body/secondary/primary contrast ≥ 4.5:1; Noto Sans SC with Microsoft YaHei / system-ui fallbacks and tabular numerals.
+- **Real figure folders are visible again**: `_`-prefixed figure folders such as `figures/_ZT-1100-2h_v4/` are no longer filtered out as internal; only `_history` / `_archive` / `_templates` / `_fetched` and the like are excluded.
 
 
 ## Install
@@ -50,7 +53,7 @@ What you get after installing:
 - an agent preset "Research Mode" with id `research` (selectable in a session);
 - a new sidebar panel entry, "Research Library" (科研库);
 - one precisely registered read-only route, `/api/research/call`, which the panel uses for snapshots and actions;
-- five skills added to the skill catalog.
+- six skills added to the skill catalog.
 
 > Prerequisites: Node on the machine (the host half and the self-test scripts use it) and a working Python 3 interpreter (the library engine `research.py` uses it). **`python` is not required to be on `PATH`** — the launcher probes candidates in order: explicit configuration → `SCIWORK_PYTHON` → the library's own venv → the Origin plugin directory's venv → `PATH`. Plotting additionally needs Origin — see below.
 
@@ -99,9 +102,9 @@ The agent runs `research.py new-project` to lay down the directories, and every 
 
 The agent plots on a real Origin install, verifies the result, exports it, and registers the figure's provenance back into the library.
 
-## The panel: what each of the seven tabs does
+## The panel: the workbench and the seven tabs
 
-Sidebar → "Research Library". There are seven tabs (Figures / Drafts / References / Data / Journal profiles / Submissions / Archive), plus a **counts header row** and a "Command console" overlay — neither of the latter two is a tab:
+Sidebar → "Research Library". The **workbench** (v2) opens by default; the page header switches to the classic **list panel** (v1), which has seven tabs (Figures / Drafts / References / Data / Journal profiles / Submissions / Archive), plus a **counts header row** and a "Command console" overlay — neither of the latter two is a tab:
 
 | Tab | What you see | What you can do |
 | --- | --- | --- |
@@ -243,7 +246,7 @@ The repository ships three self-test scripts and one patch preflight. None of th
 
 ```bash
 node scripts/selftest-host.mjs      # host half: route registration, path guards, snapshot shape
-node scripts/selftest-actions.mjs   # the 24 actions: read/guard checks + writes against an isolated copy
+node scripts/selftest-actions.mjs   # the 23 actions: read/guard checks + writes against an isolated copy
 node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlays, buttons and request shapes
 python -m pip install pyyaml        # only for the next line (CI installs it in its own step)
 python scripts/validate-patch.py    # cordis.patch.yml preflight: preset rows, persona, inserted row
@@ -257,8 +260,8 @@ The self-tests run in two modes, and **a fresh clone with no library configured 
 
 ```bash
 node scripts/selftest-host.mjs      # all pass, exit 0
-node scripts/selftest-actions.mjs   # 63 passed · 0 failed · 3 skipped
-node scripts/selftest-client.mjs    # 21 passed · 0 failed · content checks not run
+node scripts/selftest-actions.mjs   # all pass · 0 failed · content checks skipped
+node scripts/selftest-client.mjs    # all pass · 0 failed · content checks skipped
 python scripts/validate-patch.py    # ✓ patch preflight passed
 ```
 
@@ -267,12 +270,12 @@ Every **content** check (the ones that need real drafts / figures / data tables 
 **B. Pointing at a real library (measured baseline)**
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 141 passed · 0 failed · 1 skipped (fixture library; counts vary with library content)
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 172 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 126 passed · 0 failed · 3 skipped (fixture library; counts vary with library content)
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 189 passed · 0 failed
 ```
 
 - `selftest-host.mjs` — tallies passes and failures only, exit code 0. The only check that can be recorded as "skipped" is one that depends on the real library actually containing a figure file (when there is none, it is not counted as a failure).
-- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `172 passed · 0 failed`, exit code 0.
+- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `189 passed · 0 failed`, exit code 0.
 - `validate-patch.py` — prints `✓ 补丁预检通过` (patch preflight passed), exit code 0. It reports the `preset-research` preset's top-level row count (19 rows, 29 leaf rows after recursion, 2 of them disabled by an `!!js` condition), its nested groups (planning / compaction / delegation), the persona length, and confirmation that the inserted `research-library` row belongs to the host plugin rather than to an agent preset.
 - `selftest-actions.mjs` — the write-action stage **requires the library root to point at the isolated copy the script creates**. If it finds the snapshot pointing somewhere else, it prints `FAIL 隔离闸门：snapshot 指向副本` and exits with code 2, having written **not a single byte**. That is by design, not a plugin defect: write actions always run inside the copy and never touch your real library.
 
