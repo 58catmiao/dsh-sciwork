@@ -153,6 +153,8 @@ console.log(`\n${C.bold}[2] 自检${C.off}`);
 for (const [label, script, skip] of [
   ['host 自检（库快照/配置）', 'scripts/selftest-host.mjs', SKIP_HOST],
   ['action 自检（动作契约）', 'scripts/selftest-actions.mjs', false],
+  ['registry 自检（登记表形状/参数）', 'scripts/test-registry.mjs', false],
+  ['dispatch 自检（令牌/回执/幂等）', 'scripts/test-dispatch.mjs', false],
   ['client 自检（面板渲染）', 'scripts/selftest-client.mjs', false],
 ]) {
   if (skip) {
