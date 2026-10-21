@@ -970,6 +970,13 @@ console.log('\n[12] v2 工作台');
     if (action === 'system.receipts') {
       return Promise.resolve({ receipts: [{ startedAt: '2026-10-21T10:00:00Z', action: 'project.stage.set', ok: true, wrote: ['projects/zt/project.json'] }] });
     }
+    if (action === 'snapshot') {
+      return Promise.resolve({
+        projects: [{ slug: 'zt', title: 'ZT 陶瓷', figures: [{ figureId: 'fig1', caption: '' }], drafts: [], datasets: [] }],
+        submissions: [{ submissionId: 'sub1', kind: 'submission', status: 'under-review', title: 'ZT 陶瓷投稿', journalName: 'Ceramics International', nextAction: '催稿', nextActionDue: '2026-10-23' }],
+        refs: [{ key: 'r1', title: 'A paper', doi: '' }],
+      });
+    }
     if (action === 'project.get') {
       return Promise.resolve({ project: { slug: 'zt', title: 'ZT 陶瓷', stage: 'figure' }, next: { ready: false, todo: [], blockers: [{ why: '图缺溯源', hint: '先登记侧车' }] }, needsMigration: false });
     }
@@ -985,6 +992,18 @@ console.log('\n[12] v2 工作台');
   let wt = await settle(T.Workbench, { call: fakeCall, onImport() {} });
   check('工作台列出课题（标题 + 阶段）', allText(wt).includes('ZT 陶瓷') && allText(wt).includes('图表'));
   check('工作台显示最近回执', allText(wt).includes('project.stage.set'));
+
+  // 仪表：打开就说一件你还不知道的事（0.3.4）
+  check('工作台首屏有「今日该做」', allText(wt).includes('今日该做'));
+  check('仪表含投稿倒计时 / 库体检 / 最近动态 / 备份',
+    ['投稿倒计时', '库体检', '最近动态', '备份'].every((s) => allText(wt).includes(s)));
+  check('倒计时按投稿列出期刊', allText(wt).includes('Ceramics International'));
+  check('体检指出缺图注与缺 DOI', allText(wt).includes('张图没有图注') && allText(wt).includes('条文献没有 DOI'));
+
+  const aiBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '让 AI 做')[0];
+  check('今日条目旁有「让 AI 做」', !!aiBtn);
+  if (aiBtn) { aiBtn.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+  check('点了给出可复制的指令', allText(wt).includes('发给昔涟的指令') && allText(wt).includes('Ceramics International'));
 
   const row = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('ZT 陶瓷'))[0];
   check('课题行可点', !!row);

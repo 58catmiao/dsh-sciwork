@@ -34,7 +34,7 @@ Version 0.3.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <ht
   Reads never write receipts.
 - **Projects are first-class**: seven-stage state machine plus artifact hashes; legacy projects are migrated
   explicitly (backup first, idempotent, per-project rollback).
-- **Two screens**: the old panel is untouched; the new workbench sits behind `ui.version` (a segmented 面板/工作台 switch next to the tabs, defaulting to the classic panel) and can be switched back.
+- **Two screens**: the old panel is untouched; the new workbench sits behind `ui.version` (a segmented 面板/工作台 switch next to the tabs, defaulting to the classic panel) and can be switched back. The workbench opens on a dashboard (today, submission countdown, library health, recent changes, backup status); every todo carries a "让 AI 做" button that copies a ready-to-paste instruction.
 
 
 ## Install
