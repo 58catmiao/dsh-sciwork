@@ -147,6 +147,37 @@ def walk_rows(rows, at, problems, leaves, js_rows):
         problems.append(f"{at or '顶层 plugins'} 内有重复插件 id：{dup}")
 
 
+def find_duplicate_keys(raw, loader=Loader):
+    """扫描 YAML 里的重复映射键（同一个 map 内同名键出现两次）。
+
+    PyYAML 的 `safe_load`/`Loader` 对重复键**静默取后者**，`dsh` 用的 js-yaml 却直接抛
+    `duplicated mapping key` → 整个 bundle 补丁解析失败 → 预设与面板行一条都不挂载，
+    而 `--dump-config` 与结构校验看上去都"没事"。2026-10-21 就是这么漏掉的两处
+    （tool-fs-search / tool-todo 各多出一份 config 块）。
+
+    用 `compose` 只搭节点树、不构造对象，所以 `!!js` 标签不会被实例化。
+    """
+    found = []
+
+    def walk(node, trail):
+        if isinstance(node, yaml.MappingNode):
+            seen = {}
+            for key_node, value_node in node.value:
+                key = getattr(key_node, "value", None)
+                line = key_node.start_mark.line + 1
+                if key in seen:
+                    found.append((line, key, "/".join(trail + [str(key)])))
+                else:
+                    seen[key] = line
+                walk(value_node, trail + [str(key)])
+        elif isinstance(node, yaml.SequenceNode):
+            for i, item in enumerate(node.value):
+                walk(item, trail + [f"[{i}]"])
+
+    walk(yaml.compose(raw, Loader=loader), [])
+    return found
+
+
 def main(argv):
     default = Path(__file__).resolve().parent.parent / "cordis.patch.yml"
     path = Path(argv[1]).resolve() if len(argv) > 1 else default
@@ -168,6 +199,11 @@ def main(argv):
         print("× 顶层不是列表（Cordis 补丁必须是一个条目列表）")
         return 1
     notes.append(f"顶层条目 {len(doc)} 个，文件 {path.name}（{len(raw.encode('utf-8'))} B）")
+
+    # 重复键必须在结构检查之前报——它是「整份补丁解析失败」级别的问题，
+    # PyYAML 自己不会报（静默取后值），dsh 的 js-yaml 会抛错。
+    for line, key, trail in find_duplicate_keys(raw):
+        problems.append(f"重复的映射键 {key!r}（第 {line} 行，路径 /{trail}）——js-yaml 会整份解析失败")
 
     seen_preset_ids = []
     for i, item in enumerate(doc):

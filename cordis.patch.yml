@@ -125,8 +125,6 @@
             name: '@deepseek-ai/dsh-tool-fs-search'
             config:
               sampleOverCapGlobResults: false
-            config:
-              sampleOverCapGlobResults: false
           - id: tool-jobs
             name: '@deepseek-ai/dsh-tool-jobs'
 
@@ -252,8 +250,6 @@
             name: '@deepseek-ai/dsh-tool-ask-user'
           - id: tool-todo
             name: '@deepseek-ai/dsh-tool-todo'
-            config:
-              allowParallelInProgress: true
             config:
               allowParallelInProgress: true
           # web：文献检索与刊方要求核对走这里。fetch 打开，read_page 才能拿整页正文。
