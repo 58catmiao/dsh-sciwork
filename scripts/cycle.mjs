@@ -155,6 +155,7 @@ for (const [label, script, skip] of [
   ['action 自检（动作契约）', 'scripts/selftest-actions.mjs', false],
   ['registry 自检（登记表形状/参数）', 'scripts/test-registry.mjs', false],
   ['dispatch 自检（令牌/回执/幂等）', 'scripts/test-dispatch.mjs', false],
+  ['projects 自检（课题/迁移/备份）', 'scripts/test-projects.mjs', false],
   ['client 自检（面板渲染）', 'scripts/selftest-client.mjs', false],
 ]) {
   if (skip) {
