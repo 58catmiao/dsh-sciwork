@@ -5,6 +5,13 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.9] - 2026-10-22
+
+### Changed
+
+- **字体与字号再调**：面板改用 Noto Sans SC（回退微软雅黑 / system-ui），数字启用 `tabular-nums` 等宽对齐；字号整体上调一档（正文 14px、次级 13px、微标 12px、小节标题 15px、页标题 18px、指标数字 20px）。
+- **表格关键字着色**：待办表的阶段标签按「可推进 / 待处理」分绿、琥珀两色，动作名（如 `project.stage.set`）改用等宽代码片段；阶段标签新增 `ok` / `ac` 色调。
+
 ## [Unreleased]
 
 ## [0.3.8] - 2026-10-22
