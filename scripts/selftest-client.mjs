@@ -949,6 +949,88 @@ intercept = null;
 
 check('整个 [9] 段没有真的发出写请求（全部被假信封挡住）', sent.every((s) => WRITE_ACTIONS.has(s.action)), JSON.stringify(sent.map((s) => s.action)));
 
+/* 12. v2 工作台（特性开关 + 登记表驱动 + 两步确认） */
+console.log('\n[12] v2 工作台');
+{
+  const T = clientExports.__test;
+  const v1 = T.tabsFor('v1').map((x) => x.id);
+  const v2 = T.tabsFor('v2').map((x) => x.id);
+  check('v1 页签与旧面板一致', JSON.stringify(v1) === JSON.stringify(['figures', 'drafts', 'refs', 'assets', 'journals', 'submissions', 'archive']), v1.join(','));
+  check('v2 在最前面插「工作台」', v2[0] === 'workbench' && v2.length === v1.length + 1, v2.join(','));
+
+  const cat = await handleResearchCall({ action: 'action.catalog', args: {} });
+  const actions = (cat && cat.value && cat.value.actions) || [];
+  check('登记表有动作可自述', actions.length >= 30, String(actions.length));
+  const badViews = actions.filter((a) => a.ui && T.WORKBENCH_VIEWS.indexOf(a.ui.view) < 0).map((a) => a.id + ':' + (a.ui && a.ui.view));
+  check('带 ui 的动作视图都在工作台视图表里', badViews.length === 0, badViews.slice(0, 5).join(', '));
+  const unfindable = actions.filter((a) => T.paletteSearch(actions, a.title).every((x) => x.id !== a.id)).map((a) => a.id);
+  check('命令面板按标题都能搜到每个动作', unfindable.length === 0, unfindable.slice(0, 5).join(', '));
+  check('空查询返回全部（不筛）', T.paletteSearch(actions, '').length === actions.length);
+
+  const calls = [];
+  const planParams = { project: 'zt', stage: 'draft' };
+  const fakeCall = (action, args) => {
+    calls.push({ action, args: args || {} });
+    if (action === 'project.list') {
+      return Promise.resolve({ projects: [{ slug: 'zt', title: 'ZT 陶瓷', stage: 'figure', next: { ready: false, todo: [{ action: 'figure.replot', why: '还没有图页' }], blockers: [{ why: '图缺溯源', hint: '先登记侧车' }] } }] });
+    }
+    if (action === 'system.receipts') {
+      return Promise.resolve({ receipts: [{ startedAt: '2026-10-21T10:00:00Z', action: 'project.stage.set', ok: true, wrote: ['projects/zt/project.json'] }] });
+    }
+    if (action === 'project.get') {
+      return Promise.resolve({ project: { slug: 'zt', title: 'ZT 陶瓷', stage: 'figure' }, next: { ready: false, todo: [], blockers: [{ why: '图缺溯源', hint: '先登记侧车' }] }, needsMigration: false });
+    }
+    if (action === 'action.plan') {
+      return Promise.resolve({ planId: 'p_test', token: 'tok_test', actionId: 'project.stage.set', title: '推进/退回阶段', writes: ['projects/zt/project.json'], warnings: [] });
+    }
+    if (action === 'action.confirm') {
+      return Promise.resolve({ value: { to: 'draft' }, receipt: { receiptId: 'r_test' } });
+    }
+    return Promise.resolve({});
+  };
+
+  let wt = await settle(T.Workbench, { call: fakeCall, onImport() {} });
+  check('工作台列出课题（标题 + 阶段）', allText(wt).includes('ZT 陶瓷') && allText(wt).includes('图表'));
+  check('工作台显示最近回执', allText(wt).includes('project.stage.set'));
+
+  const row = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('ZT 陶瓷'))[0];
+  check('课题行可点', !!row);
+  if (row) { row.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+  check('详情有七阶段阶段条', findAll(wt, (n) => String((n.props && n.props.className) || '') === 'rl-stage').length === 7,
+    String(findAll(wt, (n) => String((n.props && n.props.className) || '') === 'rl-stage').length));
+  check('详情显示下一步检查项', allText(wt).includes('图缺溯源'));
+
+  const adv = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('推进到'))[0];
+  check('图阶段后面是「推进到写作」', !!adv && allText(adv).includes('写作'), adv ? allText(adv) : '没有按钮');
+  if (adv) { adv.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+  const planned = calls.find((c) => c.action === 'action.plan');
+  check('点推进只生成计划（不发写请求）', !!planned && planned.args.actionId === 'project.stage.set'
+    && JSON.stringify(planned.args.params) === JSON.stringify(planParams), JSON.stringify(planned && planned.args));
+  check('计划弹窗显示会写的文件', allText(wt).includes('确认写动作') && allText(wt).includes('projects/zt/project.json'));
+
+  const go = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '确认执行')[0];
+  check('弹窗有「确认执行」', !!go);
+  if (go) { go.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+  const confirmed = calls.find((c) => c.action === 'action.confirm');
+  check('确认时带 planId/token/原参数', !!confirmed && confirmed.args.planId === 'p_test'
+    && confirmed.args.token === 'tok_test' && JSON.stringify(confirmed.args.params) === JSON.stringify(planParams),
+  JSON.stringify(confirmed && confirmed.args));
+  check('执行后回显回执号', allText(wt).includes('r_test'));
+
+  const newBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '新建课题')[0];
+  check('工作台有「新建课题」入口', !!newBtn);
+  if (newBtn) { newBtn.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+  const inputs = findAll(wt, (n) => n.tag === 'input');
+  check('新建弹窗有 slug 与标题两个输入', inputs.length >= 2, String(inputs.length));
+  inputs[0].props.onChange({ target: { value: 'new-proj' } });
+  wt = await settle(T.Workbench, { call: fakeCall, onImport() {} });
+  const goCreate = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('下一步'))[0];
+  check('slug 合法后可以进入确认', !!goCreate && goCreate.props.disabled !== true);
+  if (goCreate) { goCreate.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+  const createPlan = calls.filter((c) => c.action === 'action.plan').map((c) => c.args).filter((a) => a.actionId === 'project.create').pop();
+  check('新建课题同样先出计划', !!createPlan && createPlan.params.slug === 'new-proj', JSON.stringify(createPlan));
+}
+
 /* 汇总 */
 console.log('\n' + '='.repeat(72));
 console.log(`${pass} 通过 · ${fail} 失败`);

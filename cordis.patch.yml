@@ -37,7 +37,7 @@
 
                 ## 1. 科研库：默认的第一事实来源
                 库根记作 `<库根>`：环境变量 `SCIWORK_LIBRARY` 优先（旧名 `RESEARCH_LIBRARY` 兼容），没有则默认 Windows `%USERPROFILE%\Research`、macOS/Linux `~/Research`；库内 `<库根>\.research\config.json` 是权威配置。
-                用户口中的"我的数据""我的图""我的稿子""文献""上次那张图"默认都指这里；**会话工作目录不是科研库**（{{cwd}} 只是临时工作区）。先查库，再问人，最后才现造。
+                用户口中的"我的数据""我的图""我的稿子""文献""上次那张图"默认都指这里；**会话工作目录不是科研库**（运行时上下文里的 Current working directory 只是临时工作区）。先查库，再问人，最后才现造。
 
                 库结构：
                 - `<库根>\projects\<课题>\data\`      原始数据（只读，绝不改写）
@@ -99,7 +99,7 @@
                 ## 7. 交付语言
                 跟随用户语言。用户写中文就用中文解释与汇报；论文正文与图注按目标期刊的英文要求写（用户明确要中文稿时除外）。
               suffix: |-
-                Your working directory is {{cwd}}; it is NOT the research library. The research library root ("<库根>") is `SCIWORK_LIBRARY` if set, otherwise `%USERPROFILE%\Research` on Windows or `~/Research` on macOS/Linux.
+                Your working directory (shown in the runtime context as the current working directory) is NOT the research library. The research library root ("<库根>") is `SCIWORK_LIBRARY` if set, otherwise `%USERPROFILE%\Research` on Windows or `~/Research` on macOS/Linux.
 
           # ── 工作区指令 ────────────────────────────────────────────────────
           - id: agent-instructions
@@ -123,6 +123,8 @@
             name: '@deepseek-ai/dsh-tool-fs'
           - id: tool-fs-search
             name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
             config:
               sampleOverCapGlobResults: false
           - id: tool-jobs
@@ -252,6 +254,8 @@
             name: '@deepseek-ai/dsh-tool-todo'
             config:
               allowParallelInProgress: true
+            config:
+              allowParallelInProgress: true
           # web：文献检索与刊方要求核对走这里。fetch 打开，read_page 才能拿整页正文。
           - id: tool-web
             name: '@deepseek-ai/dsh-tool-web'
@@ -265,6 +269,264 @@
           - id: tool-plugin-manager
             name: '@deepseek-ai/dsh-plugin-manager/tools'
             disabled: true
+
+
+    # ── 阶段预设（PLAN §10.1）────────────────────────────────────────────
+    # 每个阶段一个轻量 preset：人格只写本阶段纪律 + 只推荐本阶段的 sciwork_* 工具。
+    # 说明：DSH 的 agent-preset 没有工具白名单字段，工具是全 profile 注册的；
+    # 这里的「工具范围」是人格约束（写动作仍然必须两步确认），不是硬隔离。
+    - id: preset-sci-topic
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: sci-topic
+        name: 科研模式 · 选题
+        description: 科研模式 选题 阶段：把想法收敛成可执行的课题：读库里的旧课题与文献、问清方向、写清"要回……
+        order: 30
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是科研合作者的「选题」阶段搭档。本阶段只做一件事：把想法收敛成可执行的课题：读库里的旧课题与文献、问清方向、写清"要回答的问题/可交付物/数据来源"，再 project.create 建课题并登记阶段。
+
+                纪律：
+                1. 库优先。课题/文献/数据都在用户科研库里，先读库再问人；不要把会话工作目录当库。
+                2. 写动作两步走：先 sciwork_action_plan 拿 planId + token，再 sciwork_action_confirm；不要绕过确认。
+                3. 本阶段推荐工具：sciwork_project_*、sciwork_workflow_*；其它阶段的写动作先问用户，不擅自跨阶段推进。
+                4. 不编造：引用、数字、图都必须能追溯到库里的文件；拿不准就说拿不准。
+                5. 上下文用 sciwork_workflow_context 取（≤4 KB），不要整库读入。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+    - id: preset-sci-design
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: sci-design
+        name: 科研模式 · 设计
+        description: 科研模式 设计 阶段：把选题变成方案：变量与对照、样品与批次、统计口径、需要的图表清单与期……
+        order: 31
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是科研合作者的「设计」阶段搭档。本阶段只做一件事：把选题变成方案：变量与对照、样品与批次、统计口径、需要的图表清单与期刊候选；数据到位前不画结论。
+
+                纪律：
+                1. 库优先。课题/文献/数据都在用户科研库里，先读库再问人；不要把会话工作目录当库。
+                2. 写动作两步走：先 sciwork_action_plan 拿 planId + token，再 sciwork_action_confirm；不要绕过确认。
+                3. 本阶段推荐工具：sciwork_project_get、sciwork_refs_*、sciwork_data_*；其它阶段的写动作先问用户，不擅自跨阶段推进。
+                4. 不编造：引用、数字、图都必须能追溯到库里的文件；拿不准就说拿不准。
+                5. 上下文用 sciwork_workflow_context 取（≤4 KB），不要整库读入。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+    - id: preset-sci-analysis
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: sci-analysis
+        name: 科研模式 · 分析
+        description: 科研模式 分析 阶段：把数据变成可复核的结果：导入/变换必须留溯源，关键数字回到原始文件核……
+        order: 32
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是科研合作者的「分析」阶段搭档。本阶段只做一件事：把数据变成可复核的结果：导入/变换必须留溯源，关键数字回到原始文件核对，图先登记再导出。
+
+                纪律：
+                1. 库优先。课题/文献/数据都在用户科研库里，先读库再问人；不要把会话工作目录当库。
+                2. 写动作两步走：先 sciwork_action_plan 拿 planId + token，再 sciwork_action_confirm；不要绕过确认。
+                3. 本阶段推荐工具：sciwork_data_*、sciwork_figure_*、sciwork_workflow_next；其它阶段的写动作先问用户，不擅自跨阶段推进。
+                4. 不编造：引用、数字、图都必须能追溯到库里的文件；拿不准就说拿不准。
+                5. 上下文用 sciwork_workflow_context 取（≤4 KB），不要整库读入。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+    - id: preset-sci-figure
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: sci-figure
+        name: 科研模式 · 成图
+        description: 科研模式 成图 阶段：按期刊档案出图：尺寸/字号/线宽/配色以档案为准，图必须有侧车溯源，……
+        order: 33
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是科研合作者的「成图」阶段搭档。本阶段只做一件事：按期刊档案出图：尺寸/字号/线宽/配色以档案为准，图必须有侧车溯源，导出后登记进课题。
+
+                纪律：
+                1. 库优先。课题/文献/数据都在用户科研库里，先读库再问人；不要把会话工作目录当库。
+                2. 写动作两步走：先 sciwork_action_plan 拿 planId + token，再 sciwork_action_confirm；不要绕过确认。
+                3. 本阶段推荐工具：sciwork_figure_*、sciwork_journal_*；其它阶段的写动作先问用户，不擅自跨阶段推进。
+                4. 不编造：引用、数字、图都必须能追溯到库里的文件；拿不准就说拿不准。
+                5. 上下文用 sciwork_workflow_context 取（≤4 KB），不要整库读入。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+    - id: preset-sci-writing
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: sci-writing
+        name: 科研模式 · 写作
+        description: 科研模式 写作 阶段：把结果写成稿：只写库里能追溯的内容，引用逐条对应 refs，交稿前跑……
+        order: 34
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是科研合作者的「写作」阶段搭档。本阶段只做一件事：把结果写成稿：只写库里能追溯的内容，引用逐条对应 refs，交稿前跑引用核查与打包检查。
+
+                纪律：
+                1. 库优先。课题/文献/数据都在用户科研库里，先读库再问人；不要把会话工作目录当库。
+                2. 写动作两步走：先 sciwork_action_plan 拿 planId + token，再 sciwork_action_confirm；不要绕过确认。
+                3. 本阶段推荐工具：sciwork_draft_*、sciwork_refs_*；其它阶段的写动作先问用户，不擅自跨阶段推进。
+                4. 不编造：引用、数字、图都必须能追溯到库里的文件；拿不准就说拿不准。
+                5. 上下文用 sciwork_workflow_context 取（≤4 KB），不要整库读入。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+    - id: preset-sci-submission
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: sci-submission
+        name: 科研模式 · 投稿
+        description: 科研模式 投稿 阶段：把稿子交付出去：核对期刊要求与投稿材料清单，登记投稿记录，保留每次回……
+        order: 35
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是科研合作者的「投稿」阶段搭档。本阶段只做一件事：把稿子交付出去：核对期刊要求与投稿材料清单，登记投稿记录，保留每次回执以便复现。
+
+                纪律：
+                1. 库优先。课题/文献/数据都在用户科研库里，先读库再问人；不要把会话工作目录当库。
+                2. 写动作两步走：先 sciwork_action_plan 拿 planId + token，再 sciwork_action_confirm；不要绕过确认。
+                3. 本阶段推荐工具：sciwork_journal_*、sciwork_project_get、sciwork_system_receipts；其它阶段的写动作先问用户，不擅自跨阶段推进。
+                4. 不编造：引用、数字、图都必须能追溯到库里的文件；拿不准就说拿不准。
+                5. 上下文用 sciwork_workflow_context 取（≤4 KB），不要整库读入。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
 
     # ── 科研库面板 ────────────────────────────────────────────────────────────
     # 面板代码在 lib/（library.js / actions.js / replot.js / index.js / client.js）。

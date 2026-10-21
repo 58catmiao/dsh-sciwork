@@ -3,7 +3,7 @@
 只写仓库里真实存在的东西：每一步的命令与选项都来自 `scripts/install.mjs`、
 `scripts/selftest-*.mjs`、`library/bin/py.cmd` 与各技能的 `SKILL.md`。
 
-- 包名 `dsh-sciwork`，版本 0.2.2，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
+- 包名 `dsh-sciwork`，版本 0.3.0，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
 - 架构、接口契约与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ## 1. 前置条件
@@ -193,3 +193,26 @@ preset 里某一行缺了必填字段，导致该行 schema 校验失败、整�
 **`check-citations` 非零退出**
 正文里有未登记的引用键（会列出 `unknown`）。它的 `caveat` 必须照实转述：
 **它只证明引用键存在且带 DOI/URL，不证明被引文献的内容支持那句话。**
+
+
+## 从 0.2.x 升级到 0.3（迁移步骤）
+
+0.3 不改变库里的数据文件格式，但会给每个课题补一份 `project.json`（阶段/产物/历史）。
+**先备份，再迁移，最后核对**；迁移只读计划先看一遍。
+
+1. **打备份**：面板「工作台 → 备份」或 `system.backup`（无需参数）。产物是
+   `<库根>/.research/backups/` 下的 zip + 同名 `.manifest.json`（逐文件 sha256）。
+2. **验备份**：`system.backup` 的返回值里 `verified: true` 且 `manifestFiles` 与 `files` 相等；
+   不相等就别往下走。
+3. **看计划**：`system.migrate` 带 `plan: true`（或面板「生成迁移计划」）。它只读，返回
+   `{projects, upgrade, writes}`——确认 `writes` 里有你预期的课题，没有意料之外的文件。
+4. **执行**：再走一次两步确认（`action.plan` → `action.confirm`）。执行时如果备份还没做，
+   会**先建备份再迁移**；单课题失败只回滚该课题，其它课题继续，结果写进 `.research/migration.json`。
+5. **核对**：`project.list` 里所有课题 `needsSchemaUpgrade: false`；抽一个课题 `project.get`
+   看 `stage` 与 `artifacts`；再跑一次 `system.migrate`（plan）应显示 `upgrade: 0`（幂等）。
+6. **回滚**：真出问题用 `system.restore` 指向第 1 步的 zip，**只能恢复到空目录**——先确认目标目录
+   为空，核对完再切回去。这是故意的：恢复不允许覆盖现有库。
+
+> 复制/搬移库的注意：库内 `.research/config.json` 的 `libraryRoot` 优先级最高，**副本要改这一项**，
+> 否则副本上的操作会写回原库。迁移演练建议在副本上做，核对通过再动真库。
+

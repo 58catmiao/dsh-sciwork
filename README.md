@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.2.2 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.3.0 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -26,6 +26,14 @@
 - 宿主半边是纯 Node ESM，**零 npm 依赖**。
 - 客户端是手写的单文件 Web 客户端，**没有构建步骤**。
 - 出图能力依赖上游开源插件 [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin)（MIT，作者 Fantasality）。**本仓库不包含它**，只带适配技能。详见〈与 dsh-origin-plugin 的关系〉。
+
+## 0.3 有什么不同
+
+- **一条能力清单**：动作登记表驱动面板、agent 工具与命令行三个入口，新能力只写一份。
+- **写动作要确认**：先计划（会写哪些文件、有什么 warning），再确认（一次性令牌），最后留回执；读动作不写库。
+- **课题是一等公民**：七阶段机 + 产物 sha256；旧库课题第一次写之前会提示迁移（先备份、幂等、可回滚）。
+- **两块屏幕**：旧面板原样保留；新的「工作台」用 `ui.version` 开关试用，随时切回。
+
 
 ## 安装
 

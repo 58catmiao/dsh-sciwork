@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.2.2 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.3.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -26,6 +26,16 @@ Version 0.2.2 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <ht
 - The host half is plain Node ESM with **zero npm dependencies**.
 - The client is a hand-written single-file web client with **no build step**.
 - Plotting depends on the upstream open-source plugin [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin) (MIT, by Fantasality). **This repository does not include it** — it ships only an adaptor skill. See "Relationship to dsh-origin-plugin" below.
+
+## What is new in 0.3
+
+- **One action registry** drives the panel, the agent tools, and the CLI — new capabilities are written once.
+- **Writes need confirmation**: plan first (which files, which warnings), then a single-use token, then a receipt.
+  Reads never write receipts.
+- **Projects are first-class**: seven-stage state machine plus artifact hashes; legacy projects are migrated
+  explicitly (backup first, idempotent, per-project rollback).
+- **Two screens**: the old panel is untouched; the new workbench sits behind `ui.version` and can be switched back.
+
 
 ## Install
 
