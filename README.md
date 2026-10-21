@@ -45,10 +45,13 @@ dsh plugin --profile <profile> add dsh-sciwork
 
 装完后你会多出：
 
-- 一个 ID 为 `research` 的 agent 预设「科研模式」（可直接在会话里选）；
+- 一个 ID 为 `research` 的 agent 预设「科研模式」（可直接在会话里选）——**科研只有一个模式**：课题的七阶段
+  （选题 → 设计 → 数据 → 分析 → 成图 → 写作 → 投稿）都在这个模式里推进，阶段只是课题 `project.json` 里的一个字段，
+  不再单设阶段预设；
 - 侧栏多一个面板入口「科研库」；
 - 一条精确注册的只读路由 `/api/research/call`（面板靠它取快照与执行动作）；
-- 五个技能进入技能目录。
+- 六个技能进入技能目录（`research-studio` 总控、`research-stages` 七阶段路线、`origin-plot`、`paper-writing`、
+  `literature-refs`、`journal-profile`）。
 
 > 前置：本机有 Node（宿主半边与自检脚本用它）与一个可用的 Python 3 解释器（科研库引擎 `research.py` 用它）。**不要求 `python` 出现在 PATH 上**——启动器会按「显式配置 → `SCIWORK_PYTHON` → 库自己的 venv → Origin 插件目录的 venv → PATH」逐个探测。出图另需 Origin，见下文。
 

@@ -330,6 +330,16 @@ topic → design → data → analysis → figure → draft → submission
 
 ### 10.1 预设
 
+> **2026-10-21 定案调整（已实施，取代下面的原方案）**：不再拆阶段预设。只保留 `research` 一个模式；七阶段的纪律、
+> 推荐工具与退出检查项收进技能 `skills/research-stages/SKILL.md`，开工或换阶段时按需加载。阶段由课题
+> `project.json` 的 `stage` 字段 + `project.stage.set` 推进。
+>
+> 理由：① 换预设等于换执行环境，会话上下文与会话内技能加载都会重置，阶段切换成本高于收益；② 阶段本就是课题状态，
+> 不是另一种执行环境；③ `agent-preset` 没有工具白名单字段，下表里的「工具权限」只能靠人格约束，拆预设换不来硬隔离。
+
+<details>
+<summary>原方案（已被上面的定案取代，保留作历史）</summary>
+
 保留总控预设 `research`，新增 6 个阶段预设（同一个 `cordis.patch.yml`，id 前缀 `sci-`）：
 
 | id | 用途 | 工具权限 |
@@ -342,6 +352,8 @@ topic → design → data → analysis → figure → draft → submission
 | `sci-submission` | 投稿检查与打包 | 只读 + `journal.check`、`draft.package` |
 
 每个预设 = 系统提示（技能正文）+ 工具白名单 + 默认阶段；总控预设按 `project.stage` 路由到对应技能。
+
+</details>
 
 ### 10.2 工具暴露
 

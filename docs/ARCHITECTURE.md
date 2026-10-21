@@ -492,12 +492,18 @@ schema 会被窄化成 DSH 支持的子集（联合类型取第一个非 null、
 开关是客户端 `localStorage['ui.version']`，默认 `v1`，验收后才翻默认值；切换按钮在面板页脚，
 随时可切回。v2 的每一个写按钮都走「计划 → 弹框（列出会写的文件与 warning）→ 确认 → 回执 id」。
 
-### 13.8 阶段预设
+### 13.8 阶段与阶段技能
 
-除 `research` 外新增 6 个轻量预设：`sci-topic` / `sci-design` / `sci-analysis` / `sci-figure` /
-`sci-writing` / `sci-submission`。每个预设的 persona 只写本阶段纪律与推荐工具。
-**说明**：DSH 的 `agent-preset` 没有工具白名单字段，工具是按 profile 注册的；这里的「阶段工具范围」
-是人格约束（写动作仍必须两步确认），不是硬隔离。
+科研模式只有 `research` 一个预设。阶段是课题 `project.json` 的 `stage` 字段
+（`topic → design → data → analysis → figure → draft → submission`），换阶段走 `project.stage.set`
+（写动作，仍然是 plan → confirm）；人格与工具集在所有阶段保持一致。
+
+阶段的纪律、推荐工具与退出检查项收在技能 `skills/research-stages/SKILL.md`，由 `scripts/install.mjs`
+装到用户级技能根，agent 在开工或换阶段时按需加载，不占常态上下文。
+
+> 历史：0.3.0 初版曾按阶段拆成 6 个轻量预设（`sci-topic` 等），2026-10-21 按用户要求合并回单一模式。
+> 理由：换预设等于换执行环境，会话上下文与会话内技能加载都会重置，而阶段本来就是课题的一项状态；
+> 另外 `agent-preset` 没有工具白名单字段，原方案里所谓「阶段工具范围」只是人格约束，拆预设换不来硬隔离。
 
 ## 附录 A · 库根与路径解析
 

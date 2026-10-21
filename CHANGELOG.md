@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **阶段不再单设预设**：删掉 `sci-topic` / `sci-design` / `sci-analysis` / `sci-figure` / `sci-writing` /
+  `sci-submission` 六个预设，只保留 `research` 一个模式。七阶段的纪律、推荐工具与退出检查项收进新技能
+  `research-stages`（`skills/research-stages/SKILL.md`，由 `scripts/install.mjs` 一起装到 `~/.dsh/skills`）。
+  阶段仍是课题 `project.json` 的 `stage` 字段，推进走 `project.stage.set`（计划 → 确认）。
+
 ## [0.3.0] - 2026-10-21
 
 「一条能力清单 + 两块屏幕」：动作从 `switch` 长表变成登记表，写动作过确认令牌，每次执行留回执，
