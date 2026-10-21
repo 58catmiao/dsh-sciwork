@@ -31,6 +31,7 @@ Version 0.3.0 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <ht
 
 - **One action registry** drives the panel, the agent tools, and the CLI — new capabilities are written once.
 - **Writes need confirmation**: plan first (which files, which warnings), then a single-use token, then a receipt.
+  Reads never write receipts.
 - **Projects are first-class**: seven-stage state machine plus artifact hashes; legacy projects are migrated
   explicitly (backup first, idempotent, per-project rollback).
 - **Two screens**: the old panel is untouched; the new workbench sits behind `ui.version` and can be switched back.

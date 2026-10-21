@@ -15,7 +15,7 @@
 ### Added
 
 - **能力层**：动作登记表（`lib/host/registry.js`）、执行器（`dispatch.js`）、确认令牌（`guards.js`）、
-  回执（`receipts.js`）；错误码新增 `needs-confirmation` / `schema` / `unsupported` / `needs-migration` / `conflict`。
+  回执（`receipts.js`，只记写/外部动作，读动作不落盘）；错误码新增 `needs-confirmation` / `schema` / `unsupported` / `needs-migration` / `conflict`。
 - **两步确认**：写动作先 `action.plan` 拿一次性令牌（5 分钟），再 `action.confirm`；令牌绑定动作、参数哈希与库根。
   旧动作名同请求内代签，回执记 `legacy-implicit` 并给出 warning。
 - **课题模型**：`project.json`（schemaVersion 1）+ 七阶段机 + 产物 sha256 登记 + 双读（旧形状合成只读视图，

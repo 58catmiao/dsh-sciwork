@@ -451,9 +451,9 @@ node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默�
 
 ### 13.3 回执（`lib/host/receipts.js`）
 
-每次执行（成功或失败）都追加一行到 `<库根>/.research/receipts/<YYYY-MM>.jsonl`：
+每次**写 / 外部**动作（成功或失败）都追加一行到 `<库根>/.research/receipts/<YYYY-MM>.jsonl`；读动作不留（面板每次刷新都会读，留了日志会被读操作淹掉，也让一次纯浏览改写库里的文件）：
 `receiptId`（`r_<日期>_<hex>`）、动作、旧名、来源（panel / agent / cli）、参数哈希、确认方式、
-耗时、写了哪些文件、warning、摘要、错误码。回执是「这次到底做了什么」的唯一权威记录；
+耗时、写了哪些文件、warning、摘要、错误码。回执是「这次到底对库做了什么」的唯一权威记录；
 `system.receipts` 读最近 N 条，`workflow.context` 只取最近 5 条。
 
 ### 13.4 课题是一等公民（`lib/projects.js`）

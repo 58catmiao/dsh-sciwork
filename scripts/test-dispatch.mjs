@@ -75,12 +75,10 @@ registerAction({
   },
 });
 
-console.log('[1] 读动作 + 回执');
+console.log('[1] 读动作不落回执');
 const read = await dispatch('action.catalog', {}, ctx);
 check('读动作直接执行', read.ok === true, read.ok ? `${read.value.actions.length} 个动作` : JSON.stringify(read.error));
-check('读动作回执 confirmation=none', read.ok && read.receipt.confirmation === 'none', read.ok ? read.receipt.confirmation : '');
-check('回执带 engine/action/paramsHash',
-  read.ok && read.receipt.engine === 'node' && read.receipt.action === 'action.catalog' && /^sha256:/.test(read.receipt.paramsHash));
+check('读动作不生成回执（不写库）', read.ok && read.receipt === null, read.ok ? String(read.receipt) : '');
 
 console.log('\n[2] 写动作的令牌闸门');
 const noToken = await dispatch('test.write', { name: 'a.txt' }, ctx);
@@ -137,7 +135,7 @@ check('未知动作 → bad-request', unknown.ok === false && unknown.error.code
 const badParam = await dispatch('test.write', { nope: 1 }, ctx);
 check('未知参数 → schema', badParam.ok === false && badParam.error.code === 'schema', JSON.stringify(badParam.error || {}));
 const recents = recentReceipts(root, 10);
-check('最近回执可读', recents.ok === true && recents.value.length >= 4, recents.ok ? `${recents.value.length} 条` : '');
+check('最近回执可读', recents.ok === true && recents.value.length >= 2, recents.ok ? `${recents.value.length} 条` : '');
 check('回执摘要有 action/ok/durationMs',
   recents.ok && recents.value.every((r) => r.action && 'ok' in r && typeof r.durationMs === 'number'));
 check('回执落在 .research/receipts 下', fs.existsSync(path.join(root, '.research', 'receipts')));
