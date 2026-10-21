@@ -12,6 +12,20 @@
 | 仓库打了 GitHub topic `dsh-plugin` | 收录检索用 |
 | 描述与代码一致 | 维护者会逐句核对，不得夸大 |
 
+## 0.3.0 发布要点
+
+- 版本号：`package.json` → `0.3.0`；`CHANGELOG.md` 顶部加 `[0.3.0]`。
+- 门禁：`node scripts/cycle.mjs` 必须 14/14 全绿（语法、六段自检、patch 预检、本机信息零命中）。
+- 兼容：24 个旧动作名与旧面板**不回归**；`selftest-client` 的 v1 用例全部保留。
+- 迁移：旧库课题在第一次写动作前会提示迁移；迁移只走 `system.migrate` 的两步确认。
+- 发布前自查：
+  1. `git status` 干净，`node scripts/cycle.mjs` 全绿；
+  2. `node scripts/check-local-info.mjs` 0 命中；
+  3. `python scripts/validate-patch.py` 通过（含 6 个阶段预设）；
+  4. 在库副本上跑一遍「建课题 → 导数据 → 看产物 → 跑检查」（Phase 5 验收脚本的口径）；
+  5. 打 tag：`git tag -a v0.3.0 -m "0.3.0"`；不要带任何本机路径。
+- 已知偏离：阶段预设的「工具范围」是人格约束，不是硬白名单（`agent-preset` 无此字段）。
+
 ## 1. 发布一个新版本
 
 1. 改 `package.json` 的 `version`，在 `CHANGELOG.md` 顶部加一节。

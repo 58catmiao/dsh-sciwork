@@ -3,7 +3,7 @@
 面向想给这个插件**写代码**或**改它**的人。读完你应该能回答：它由哪几块组成、数据往哪儿落、
 哪些写动作被允许、为什么某些细节必须那样写。
 
-- 包名 `dsh-sciwork`，版本 0.2.2，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
+- 包名 `dsh-sciwork`，版本 0.3.0，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
 - 安装：`dsh plugin --profile <profile> add dsh-sciwork`
 - 安装与配置的动手步骤见 [INSTALL.md](./INSTALL.md)；本文件只讲结构、契约与取舍。
 
@@ -31,8 +31,17 @@ dsh-sciwork/
 ├─ package.json           # dsh.bundle.patch → cordis.patch.yml；dsh.client.platform = "web"
 ├─ cordis.patch.yml       # 插入 preset「科研模式 · Research」+ 面板宿主插件行 research-library
 ├─ lib/                   # 宿主半边（纯 Node ESM，零第三方依赖） + 客户端半边
-│  ├─ index.js            #   connection.fetch 精确路由：POST /api/research/call
-│  ├─ actions.js          #   24 个动作的分发 + 命令台命令表 + 错误码归一
+│  ├─ index.js            #   connection.fetch 精确路由：POST /api/research/call + 挂宿主工具
+│  ├─ actions.js          #   薄适配层：24 个旧动作名 → 执行器；命令台命令表
+│  ├─ host/               #   0.3 能力层：errors / registry / guards / dispatch / receipts /
+│  │                      #   engine / cli（与具体科研库无关的通用机制）
+│  ├─ actions/            #   0.3 动作实现，按域分文件：library / draft / data / figure / refs /
+│  │                      #   journal / project / system / action
+│  ├─ adapters/python.js  #   research.py 契约 v1（子命令映射、参数拼装、超时覆盖）
+│  ├─ projects.js         #   课题模型：七阶段机、产物 sha256、检查项、nextStep、原子写
+│  ├─ migrate.js          #   旧库 → 0.3 形状：plan（只读）/ apply（备份 + 幂等 + 单课题回滚）
+│  ├─ backup.js           #   库备份 zip + manifest 逐文件 sha256 + 恢复核对
+│  ├─ tools.js            #   tool.expose 的动作 → sciwork_* 宿主工具（schema 窄化）
 │  ├─ config.js           #   运行时路径解析（库根 / Python / Origin 插件目录），不写死本机路径
 │  ├─ library.js          #   读库底座：路径闸门、快照、引用核查、草稿保存/新建
 │  ├─ import.js           #   导入：落位（同名自动 -1）→ 需要时再跑 research.py 登记
@@ -44,7 +53,7 @@ dsh-sciwork/
 │  └─ client.js           #   浏览器半边：侧栏图标 + 中央页面（含新手引导），手写、无构建
 ├─ skills/                # 5 个技能，install.mjs 装到技能根
 ├─ library/               # 科研库骨架模板 + config.json + py.cmd + research.py + 12 份期刊档案
-├─ scripts/               # 安装器、补丁预检、桌面体检、三个自检
+├─ scripts/               # 安装器、补丁预检、桌面体检、自检与门禁（cycle.mjs）
 ├─ docs/                  # 本文件与安装文档
 └─ README.md
 ```
@@ -402,6 +411,93 @@ node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默�
 - 期刊档案与库数据**只追加与修正，不静默覆盖**；改动要写清「旧值 → 新值 + 依据」。
 - 改 `lib/*.js`（宿主半边）**必须重启 Harness**；`lib/library.js`（递归扫描 / `folders` / `sub`）与
   `lib/import.js`（`args.subdir`）同样。改读库路径的代码时**先想清楚它在哪半边**。
+
+## 13. 0.3 · 能力层与课题模型
+
+0.2 的面板是一张 `switch(action)` 长表；0.3 把它拆成**一条能力清单 + 两块屏幕**。旧面板与旧动作名
+原样保留，新能力从同一条执行器进出，所以「面板能做的」与「agent 能做的」不再各写一份。
+
+### 13.1 动作登记表（`lib/host/registry.js`）
+
+每个动作是一个普通对象：`id`（`domain.verb`）、`title`、`domain`、`params`（JSON Schema 子集）、
+`effects`（`read` / `write` / `external`）、`engine`（`node` / `python` / `origin` / `system`）、
+`confirm`（`never` / `write` / `always` / `legacy`）、`run(ctx, params)`，可选 `preview`、
+`idempotent`、`ui`、`tool.expose`。
+
+登记时全量校验，**先校验完再一起注册**：重复 `id` / 工具名 / 别名、读动作声明 `confirm` 非 `never`、
+写动作 `confirm: never` 却没有 `idempotent: true`，都会在启动期就报错，而不是等用户点到才炸。
+参数校验支持 `type` / `required` / `enum` / `default` / `minimum` / `maximum` / `minLength` /
+`maxLength` / `pattern` / `items` / `additionalProperties`；字符串数字会窄化成数字。
+**未声明键在 `additionalProperties !== false` 时原样透传**——`data.import` 的 `target` / `subdir` / `meta`
+靠这条活。
+
+### 13.2 执行器与确认令牌（`dispatch.js` / `guards.js`）
+
+一次写动作是三步，而不是一次调用：
+
+1. `action.plan` → 校验参数、跑可选 `preview`（会给 diff / writes / warnings），签发
+   `{planId, token, paramsHash, expiresAt}`，**5 分钟有效**；
+2. 用户确认（面板弹框 / agent 说明）；
+3. `action.confirm`（或带 `planId + confirmToken` 直接调）→ 执行器核对
+   **令牌哈希、动作 id、参数哈希、库根**，然后**先删计划再执行**（一次性，失败也不可复用）。
+
+只带动作不带令牌 → `needs-confirmation`（这是正常的第一步，不是拒绝）；令牌错 / 过期 / 参数被改 /
+跨库根 → `denied`。旧动作名（`remove` / `import` / `runCli` …）声明 `confirm: 'legacy'`：**同请求内
+代签并立即消费令牌**，回执记 `confirmation: 'legacy-implicit'` 并附一条 warning。这就是「旧面板零改动」
+与「写动作必须过令牌闸门」同时成立的办法。
+
+写动作默认带幂等键（动作 + 参数 + 库根，10 分钟窗口）：网络重试撞上同一次调用时回放上次回执，
+回执上标 `replayed: true`，不会把同一份文件写两遍。
+
+### 13.3 回执（`lib/host/receipts.js`）
+
+每次执行（成功或失败）都追加一行到 `<库根>/.research/receipts/<YYYY-MM>.jsonl`：
+`receiptId`（`r_<日期>_<hex>`）、动作、旧名、来源（panel / agent / cli）、参数哈希、确认方式、
+耗时、写了哪些文件、warning、摘要、错误码。回执是「这次到底做了什么」的唯一权威记录；
+`system.receipts` 读最近 N 条，`workflow.context` 只取最近 5 条。
+
+### 13.4 课题是一等公民（`lib/projects.js`）
+
+`projects/<slug>/project.json`（`schemaVersion: 1`）记阶段、产物与历史。七个阶段：
+`topic → design → data → analysis → figure → draft → submission`，状态
+`pending / active / done / skipped`，**同一时刻只有一个 active**。`project.stage.set` 只允许
+前进/后退一步；跳阶段必须 `force` 并留下 warning。产物登记 `{kind, path, bytes, sha256, producedBy}`；
+`project.get` 会把磁盘上有、登记表里没有的文件补进来（导入后忘登记也能看见）。
+
+**双读**：有 `project.json` 就按 0.3 形状读；没有（或还是旧形状）就从目录合成只读视图，
+并标 `legacyShape: true`。写动作遇到这种课题直接 `needs-migration`，**不会偷偷补写** project.json。
+
+### 13.5 迁移与备份（`migrate.js` / `backup.js`）
+
+`system.migrate` 分两步：`--plan` 只读列出「哪些课题要升级、会写哪些文件」；`--apply`
+先建库备份（zip + manifest），再逐课题迁移，每个课题独立 try/catch，失败就把该课题回滚到迁移前，
+并把这一轮写进 `.research/migration.json`。迁移**幂等**：已经 0.3 形状的课题跳过并计数。
+
+`backup.js` 打的是「文件 + 逐文件 sha256」的 zip（不受 git 影响），恢复时先恢复空目录再按 manifest
+逐文件核对，并明确报告 `byteIdentical`。演练规则：**迁移先跑副本，副本核对通过才动真库**。
+
+### 13.6 宿主工具（`lib/tools.js`）
+
+`tool.expose: true` 的动作注册成 `sciwork_<domain>_<verb>`（名字在动作里显式写死，不靠拼接猜）。
+schema 会被窄化成 DSH 支持的子集（联合类型取第一个非 null、去掉 `minLength` / `maximum` / `format` 等
+宿主不认的键）。读动作直接执行；写动作的工具说明里固定写「先 `sciwork_action_plan`，再
+`sciwork_action_confirm``。返回 `{ok, value, receipt}`，失败抛 `Error` 并把 `code` / `details` 挂上去。
+
+另有三个 meta 工具：`sciwork_action_catalog`（动作清单）、`sciwork_action_plan`、`sciwork_action_confirm`，
+以及 `sciwork_workflow_context`（当前课题 + 阶段 + 待办 + 最近 5 条回执，**硬上限 4 KB**）。
+
+### 13.7 两块屏幕（`ui.version`）
+
+面板保留 v1（七个 tab 的旧界面），新增 v2「工作台」：今日 / 课题 / 库 / 数据 / 文献 / 设置。
+开关是客户端 `localStorage['ui.version']`，默认 `v1`，验收后才翻默认值；切换按钮在面板页脚，
+随时可切回。v2 的每一个写按钮都走「计划 → 弹框（列出会写的文件与 warning）→ 确认 → 回执 id」。
+
+### 13.8 阶段预设
+
+除 `research` 外新增 6 个轻量预设：`sci-topic` / `sci-design` / `sci-analysis` / `sci-figure` /
+`sci-writing` / `sci-submission`。每个预设的 persona 只写本阶段纪律与推荐工具。
+**说明**：DSH 的 `agent-preset` 没有工具白名单字段，工具是按 profile 注册的；这里的「阶段工具范围」
+是人格约束（写动作仍必须两步确认），不是硬隔离。
 
 ## 附录 A · 库根与路径解析
 

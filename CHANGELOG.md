@@ -7,6 +7,40 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-21
+
+「一条能力清单 + 两块屏幕」：动作从 `switch` 长表变成登记表，写动作过确认令牌，每次执行留回执，
+课题成为一等公民。旧面板与 24 个旧动作名继续可用。
+
+### Added
+
+- **能力层**：动作登记表（`lib/host/registry.js`）、执行器（`dispatch.js`）、确认令牌（`guards.js`）、
+  回执（`receipts.js`）；错误码新增 `needs-confirmation` / `schema` / `unsupported` / `needs-migration` / `conflict`。
+- **两步确认**：写动作先 `action.plan` 拿一次性令牌（5 分钟），再 `action.confirm`；令牌绑定动作、参数哈希与库根。
+  旧动作名同请求内代签，回执记 `legacy-implicit` 并给出 warning。
+- **课题模型**：`project.json`（schemaVersion 1）+ 七阶段机 + 产物 sha256 登记 + 双读（旧形状合成只读视图，
+  写动作回 `needs-migration`）。
+- **迁移与备份**：`system.migrate`（plan / apply，幂等、单课题回滚）、`system.backup` / `system.restore`
+  （zip + manifest 逐文件 sha256，恢复只落空目录）。
+- **宿主工具**：`sciwork_*`（37 个）+ `sciwork_action_plan/confirm/catalog` + `sciwork_workflow_context`（≤4 KB）。
+- **阶段预设**：`sci-topic` / `sci-design` / `sci-analysis` / `sci-figure` / `sci-writing` / `sci-submission`。
+- **v2 工作台**：今日 / 课题 / 库 / 数据 / 文献 / 设置；写按钮走「计划 → 弹框 → 确认 → 回执 id」；
+  `ui.version` 开关，默认仍是 v1。
+- **Python 契约 v1**：`lib/adapters/python.js` 统一子命令映射、参数拼装与超时覆盖。
+- **测试**：`test-registry` / `test-dispatch` / `test-projects` / `test-tools` / `test-contract`，
+  `cycle.mjs` 门禁扩到 14 项。
+
+### Changed
+
+- `lib/actions.js` 变成薄适配层：只保留旧导出（`ACTIONS` / `handleResearchCall` / `probePathGuard` /
+  命令台元数据），实现搬到 `lib/actions/*`。
+- `check-local-info` 枚举提交时排除 `refs/dsh-ckpt/*`（本地检查点，永不 push）。
+
+### Fixed
+
+- `project.get` 会合并磁盘上未登记的产物（导入后忘登记也能看见）。
+- 面板/脚本两条路都接受 `confirmToken` 与 `token` 两个字段名，指向同一把一次性令牌。
+
 ## [0.2.2] - 2026-10-19
 
 「推送前脱敏」：把「不把本机信息带进公开仓库」做成门禁，并清掉文档与测试夹具里已有的本机路径。
