@@ -38,6 +38,11 @@ function makeFixture() {
   write(path.join(root, 'projects', 'beta', 'figures', 'fig1.png'), 'png');
   write(path.join(root, 'projects', 'beta', 'figures', 'fig1.json'), '{"data":["data/raw.csv"]}');
   write(path.join(root, 'projects', 'beta', 'tables', 't1.csv'), 'a,b\n');
+  // gamma：成图放在 `_` 前缀文件夹里（真实库的写法），另有 `_history` 里的历史件
+  write(path.join(root, 'projects', 'gamma', 'project.json'), JSON.stringify({ schema: 1, slug: 'gamma', title: '丙课题' }));
+  write(path.join(root, 'projects', 'gamma', 'figures', '_ZT-v4', 'fig9.png'), 'png');
+  write(path.join(root, 'projects', 'gamma', 'figures', '_ZT-v4', 'fig9.json'), '{"figureId":"fig9","file":"projects/gamma/figures/_ZT-v4/fig9.png"}');
+  write(path.join(root, 'projects', 'gamma', 'figures', '_history', 'fig8.json'), '{"figureId":"fig8"}');
   return root;
 }
 
@@ -57,8 +62,16 @@ console.log('\n[1] 双读');
   check('阶段按目录估算：有图 = figure', beta.project.stage === 'figure');
   check('有图有表 → 都算产物', deriveArtifacts(root, 'beta').length === 3);
 
+  // 回归（2026-10-22 用户报「我图表里的图呢？」）：成图放在 `_` 前缀文件夹里（真实库
+  // 写法 `figures/_ZT-1100-2h_v4/`）时要能扫到；面板层的内部目录过滤见 lib/library.js
+  // 的 INTERNAL_DIRS（按名字判定，不再一刀切 `_`）。
+  const gamma = deriveArtifacts(root, 'gamma');
+  check('`_` 前缀出图文件夹里的图被扫到',
+    gamma.some((a) => a.kind === 'figure' && a.path.includes('_ZT-v4/fig9.png')),
+    gamma.map((a) => a.path).join(','));
+
   const list = listProjects(root);
-  check('listProjects 两个课题都在', list.length === 2 && list.map((p) => p.slug).sort().join(',') === 'alpha,beta');
+  check('listProjects 三个课题都在', list.length === 3 && list.map((p) => p.slug).sort().join(',') === 'alpha,beta,gamma');
 }
 
 console.log('\n[2] 阶段机');
@@ -108,12 +121,12 @@ console.log('\n[5] 迁移');
   check('alpha 升级 / beta 跳过', plan.projects.find((p) => p.slug === 'alpha').action === 'upgrade' && plan.projects.find((p) => p.slug === 'beta').action === 'skip');
   check('plan 只读：原文件一字未动', fs.readFileSync(alphaFile, 'utf8') === beforeText);
   const first = await applyMigration(root, { backupPath: 'test-backup.zip', at: '2026-10-21T12:00:00Z' });
-  check('首轮迁移：1 写入 1 跳过', first.counts.applied === 1 && first.counts.skipped === 1);
+  check('首轮迁移：2 写入 1 跳过', first.counts.applied === 2 && first.counts.skipped === 1);
   const alpha = readProject(root, 'alpha');
   check('迁移后 alpha 是 0.3 形状', alpha.needsSchemaUpgrade === false && blocksWrite(alpha.project) === false);
   check('迁移记录写进 .research/migration.json', fs.existsSync(path.join(root, '.research', 'migration.json')));
   const second = await applyMigration(root, { backupPath: 'test-backup.zip', at: '2026-10-21T12:05:00Z' });
-  check('再跑一遍幂等：全跳过、零写入', second.counts.applied === 0 && second.counts.skipped === 2);
+  check('再跑一遍幂等：全跳过、零写入', second.counts.applied === 0 && second.counts.skipped === 3);
   const log = JSON.parse(fs.readFileSync(path.join(root, '.research', 'migration.json'), 'utf8'));
   check('migration.json 追加两条运行记录', log.runs.length === 2);
 }

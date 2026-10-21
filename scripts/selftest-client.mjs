@@ -1043,8 +1043,8 @@ console.log('\n[12] v2 工作台');
   const row = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('ZT 陶瓷'))[0];
   check('课题行可点', !!row);
   if (row) { row.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
-  check('详情有七阶段阶段条', findAll(wt, (n) => String((n.props && n.props.className) || '') === 'rl-stage').length === 7,
-    String(findAll(wt, (n) => String((n.props && n.props.className) || '') === 'rl-stage').length));
+  check('详情有七阶段阶段条', findAll(wt, (n) => String((n.props && n.props.className) || '').includes('rl-stage') && !String((n.props && n.props.className) || '').includes('rl-stages')).length === 7,
+    String(findAll(wt, (n) => String((n.props && n.props.className) || '').includes('rl-stage')).length));
   check('详情显示下一步检查项', allText(wt).includes('图缺溯源'));
 
   const adv = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('推进到'))[0];
@@ -1204,6 +1204,33 @@ console.log('\n[14] 排版与快速登记（0.3.6）');
     if (cancel) { cancel.props.onClick(); wt = await settle(T.Workbench, { call: fake, onImport() {} }); }
     check('取消后弹层关闭', !allText(wt).includes('正在读命令清单') && !allText(wt).includes('图文件 *'));
   }
+}
+
+console.log('\n[15] 阶段可选（0.3.10）');
+{
+  const T = clientExports.__test;
+  const calls = [];
+  const proj = { slug: 'zt', title: 'ZT 陶瓷', stage: 'figure', next: { ready: false, todo: [], blockers: [] } };
+  const fake = (action, args) => {
+    calls.push({ action, args: args || {} });
+    if (action === 'project.list') return Promise.resolve({ projects: [proj] });
+    if (action === 'system.receipts') return Promise.resolve({ receipts: [] });
+    if (action === 'snapshot') return Promise.resolve({ counts: {}, projects: [], submissions: [], refs: [], journals: [] });
+    if (action === 'project.get') return Promise.resolve({ project: proj, next: proj.next });
+    if (action === 'action.plan') return Promise.resolve({ planId: 'p', token: 't', actionId: 'project.stage.set', title: '推进/退回阶段', writes: [], warnings: [] });
+    return Promise.resolve({});
+  };
+  let wt = await settle(T.Workbench, { call: fake, onImport() {} });
+  const view = findAll(wt, (n) => n.tag === 'button' && String(n.props.className || '').includes('rl-wb__row'))[0];
+  if (view) { view.props.onClick(); wt = await settle(T.Workbench, { call: fake, onImport() {} }); }
+  const picks = findAll(wt, (n) => n.tag === 'button' && String(n.props.className || '').includes('rl-stage--pick'));
+  check('七个阶段都做成可点选按钮', picks.length === 7, String(picks.length));
+  const target = picks.find((b) => allText(b).includes('选题'));
+  if (target) { target.props.onClick(); wt = await settle(T.Workbench, { call: fake, onImport() {} }); }
+  const planned = calls.filter((c) => c.action === 'action.plan').slice(-1)[0];
+  check('点阶段发 action.plan（带 stage 与 force）',
+    !!planned && planned.args.actionId === 'project.stage.set' && planned.args.params.stage === 'topic' && planned.args.params.force === true,
+    JSON.stringify(planned && planned.args));
 }
 
 /* 汇总 */

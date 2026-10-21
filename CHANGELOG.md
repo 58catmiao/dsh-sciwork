@@ -5,6 +5,16 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.10] - 2026-10-22
+
+### Added
+
+- **阶段可在面板切换**：课题详情里的七阶段条改成可点选按钮，点任一阶段即走 `project.stage.set` 的计划 → 确认；跳阶段自动带 `force`，退回会把后续阶段重置为待办。
+
+### Fixed
+
+- **「图表」页整页空白**：`_` 前缀的出图文件夹（真实库里的 `figures/_ZT-1100-2h_v4/` 这类）被当成内部目录过滤，图与基金扫不到；内部目录改为按名字判定（`_history` / `_archive` / `_templates` / `_fetched` 等），其余 `_` 文件夹照常呈现。`test-projects` 补了对应回归。
+
 ## [0.3.9] - 2026-10-22
 
 ### Changed
