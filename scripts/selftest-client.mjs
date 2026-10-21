@@ -239,7 +239,7 @@ try {
 /* 3a. 第一次打开先给欢迎卡（新手引导），点「我自己看」才进库 */
 const welcomeText = tree ? allText(tree) : '';
 check('第一次打开先给欢迎卡', welcomeText.includes('欢迎使用科研库面板'), welcomeText.slice(0, 60));
-check('欢迎卡讲清三件事', welcomeText.includes('一屏读完') && welcomeText.includes('能读，也能写') && welcomeText.includes('边界写清楚了'));
+check('欢迎卡讲清三件事', welcomeText.includes('总览') && welcomeText.includes('读取与写入') && welcomeText.includes('写入边界'));
 check('欢迎卡有「看导览（N 步）」入口', /看导览（\d+ 步）/.test(welcomeText), (welcomeText.match(/看导览（\d+ 步）/) || [''])[0]);
 check('欢迎卡里七个页签仍然可见', ['图表', '草稿', '文献', '数据', '期刊档案', '投稿', '归档'].every((t) => welcomeText.includes(t)));
 const laterBtn = tree ? findByTagText(tree, 'button', '我自己看') : null;
@@ -361,29 +361,45 @@ if (figuresTab) {
   }
 }
 
-/* 6. 主题 token 闸门 */
-const OFFICIAL = new Set([
-  '--dsw-alias-bg-base', '--dsw-alias-bg-layer-1', '--dsw-alias-bg-layer-2', '--dsw-alias-bg-overlay',
-  '--dsw-alias-border-l1', '--dsw-alias-border-l2', '--dsw-alias-brand-primary',
-  '--dsw-alias-label-primary', '--dsw-alias-label-secondary',
-  // 品牌色块上的前景色（2026-10-19 加）。本站主题把 bg-base 设成全透明，
-  // 旧写法 `color: var(--dsw-alias-bg-base)`（拿表面背景色当文字色）会让
-  // 导入按钮 / 选中 chips 只剩一块粉。该 token 在宿主 app.asar 中有定义。
-  '--dsw-alias-label-primary-foreground',
-  '--dsw-alias-state-error-primary', '--dsw-alias-state-idle-primary', '--dsw-alias-state-success-primary', '--dsw-alias-state-warn-primary',
-  '--dsw-specific-sidebar-fill',
-]);
-console.log('\n[6] 主题 token（只许用官方白名单：' + OFFICIAL.size + ' 个）');
+/* 6. 色板闸门（面板自带「石墨蓝」module 色，不再吃宿主主题 token） */
+console.log('\n[6] 色板（12 个变量 + 明暗两套 + 文字对比度）');
 const cssSource = readFileSync(CLIENT, 'utf8');
-const used = Array.from(new Set((injectedCss.match(/var\((--dsw-[a-z0-9-]+)\)/g) || []).map((s) => s.slice(4, -1))));
-check('CSS 已注入（data-rl）', injectedCss.length > 200, `${injectedCss.length} 字符`);
-check('用到但不在官方表里的 token：无', used.every((t) => OFFICIAL.has(t)), used.filter((t) => !OFFICIAL.has(t)).join(', ') || '全部合法');
-ok('实际用到的 token', `${used.length} 个：${used.join(' ')}`);
-check('源码里没有传说中不存在的 bg-layer-3', !/--dsw-alias-bg-layer-3/.test(cssSource));
-check('源码里没有 label-tertiary', !/--dsw-alias-label-tertiary/.test(cssSource));
-check('没有拿 bg-base 当文字色（会随主题透明化）', !/color:var\(--dsw-alias-bg-base\)/.test(cssSource));
-check('品牌色块的前景用 label-primary-foreground',
-  /\.rl-btn-primary\{[^}]*color:var\(--dsw-alias-label-primary-foreground\)/.test(cssSource));
+check('CSS 已注入（data-rl）', injectedCss.length > 200, injectedCss.length + ' 字符');
+const PALETTE = ['bg', 'surf', 'surf2', 'bd', 'bd2', 'tx', 'mu', 'ac', 'ink', 'ok', 'warn', 'err'];
+const missingVars = PALETTE.filter(function (k) { return !new RegExp('--rl-' + k + ':').test(cssSource); });
+check('12 个色板变量齐备', missingVars.length === 0, missingVars.join(',') || 'bg surf surf2 bd bd2 tx mu ac ink ok warn err');
+function darkHex(k) { var m = cssSource.match(new RegExp('--rl-' + k + ':#([0-9a-f]{6})')); return m && m[1]; }
+function lightHex(k) { var m = cssSource.match(new RegExp('--rl-' + k + ':light-dark\\(#([0-9a-f]{6}),#([0-9a-f]{6})\\)')); return m && m[1]; }
+function lum(hex) {
+  var n = parseInt(hex, 16);
+  var c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function contrast(a, b) { var l1 = lum(a), l2 = lum(b); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); }
+function r2(n) { return Math.round(n * 10) / 10; }
+const D = {}, L = {};
+PALETTE.forEach(function (k) { D[k] = darkHex(k); L[k] = lightHex(k); });
+check('每个色板变量都有明暗两值', PALETTE.every(function (k) { return !!D[k] && !!L[k]; }), PALETTE.filter(function (k) { return !L[k]; }).join(',') || '12/12');
+const darkPairs = [
+  ['正文 tx / 底 bg', D.tx, D.bg, 10], ['正文 tx / 面 surf', D.tx, D.surf, 10],
+  ['次级 mu / 面 surf', D.mu, D.surf, 4.5], ['次级 mu / 底 bg', D.mu, D.bg, 4.5],
+  ['主色 ac / 面 surf', D.ac, D.surf, 4.5], ['ink / ac（按钮字）', D.ink, D.ac, 4.5],
+  ['ok / 面', D.ok, D.surf, 4.5], ['warn / 面', D.warn, D.surf, 4.5], ['err / 面', D.err, D.surf, 4.5],
+];
+darkPairs.forEach(function (p) {
+  var v = (p[1] && p[2]) ? contrast(p[1], p[2]) : 0;
+  check('深色 ' + p[0] + ' ≥ ' + p[3], v >= p[3], '实测 ' + r2(v) + ':1');
+});
+const lightPairs = [
+  ['正文 tx / 底 bg', L.tx, L.bg, 10], ['次级 mu / 面 surf', L.mu, L.surf, 4.5],
+  ['主色 ac / 面 surf', L.ac, L.surf, 4.5], ['ink / ac（按钮字）', L.ink, L.ac, 4.5],
+];
+lightPairs.forEach(function (p) {
+  var v = (p[1] && p[2]) ? contrast(p[1], p[2]) : 0;
+  check('浅色 ' + p[0] + ' ≥ ' + p[3], v >= p[3], '实测 ' + r2(v) + ':1');
+});
+check('不再引用宿主颜色 token（字体/间距除外）', !/var\(--dsw-alias-(bg|border|brand|label|state)/.test(cssSource));
+check('品牌按钮前景用 ink', /\.rl-btn-primary\{[^}]*color:var\(--rl-ink\)/.test(cssSource));
 
 /* 7. 新手引导（欢迎卡 / 分步导览 / 持久化）——「像 studyhub 一样」那部分 */
 console.log('\n[7] 新手引导（欢迎卡 / 分步导览 / 持久化）');
@@ -1018,10 +1034,10 @@ console.log('\n[12] v2 工作台');
   check('倒计时按投稿列出期刊', allText(wt).includes('Ceramics International'));
   check('体检指出缺图注与缺 DOI', allText(wt).includes('张图没有图注') && allText(wt).includes('条文献没有 DOI'));
 
-  const aiBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '让 AI 做')[0];
-  check('今日条目旁有「让 AI 做」', !!aiBtn);
+  const aiBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '生成指令')[0];
+  check('今日条目旁有「生成指令」', !!aiBtn);
   if (aiBtn) { aiBtn.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
-  check('点了给出可复制的指令', allText(wt).includes('发给昔涟的指令') && allText(wt).includes('Ceramics International'));
+  check('点了给出可复制的指令', allText(wt).includes('待发送指令') && allText(wt).includes('Ceramics International'));
   check('跨课题待办总表列出下一步', allText(wt).includes('跨课题待办') && allText(wt).includes('journal.check'));
 
   const row = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('ZT 陶瓷'))[0];
@@ -1090,17 +1106,36 @@ console.log('\n[13] 面板交互（0.3.3）');
   if (backV1) backV1.props.onClick();
   pt = await settle(Panel, {});
 
+  // 图卡参数折叠：真库的侧车可能都放在  目录（不算本次交付图），这里用假快照保证卡片存在
+  const fakeFig = {
+    figureId: 'fig1', graph: 'Graph1', caption: '', sidecar: 'projects/demo/figures/fig1.json',
+    file: 'projects/demo/figures/fig1.png', fileExists: true, createdAt: '2026-10-11T15:00:00+08:00',
+    params: { hkl: 200, d: 3.135 }, warnings: [], sources: [], fileList: [],
+  };
+  const fakeFigSnap = {
+    root: 'X:Fake', readAt: '2026-10-11T15:00:00+08:00', counts: {}, warnings: [],
+    projects: [{ slug: 'demo', title: '演示课题', journal: null, figures: [fakeFig], drafts: [], datasets: [], tables: [], opju: [], folders: {} }],
+    refs: [], pdfs: [], journals: [], submissions: [],
+  };
+  intercept = (p) => (p && p.action === 'snapshot' ? { ok: true, value: fakeFigSnap } : null);
+  const refreshBtn = vbtn(pt, '刷新');
+  if (refreshBtn) refreshBtn.props.onClick();
+  pt = await settle(Panel, {});
   const figTab = vbtn(pt, '图表');
   if (figTab) figTab.props.onClick();
   pt = await settle(Panel, {});
-  const expand = vbtn(pt, '展开');
-  if (expand) expand.props.onClick();
+  const expandFig = vbtn(pt, '展开');
+  if (expandFig) expandFig.props.onClick();
   pt = await settle(Panel, {});
   const pbtn = findAll(pt, (n) => n.tag === 'button' && /^参数（\d+ 项）$/.test(allText(n).trim()))[0];
   check('图卡参数默认收成一行按钮', !!pbtn, pbtn ? allText(pbtn) : '没找到');
   if (pbtn) pbtn.props.onClick();
   pt = await settle(Panel, {});
   check('点开后按钮变「收起参数」', !!findAll(pt, (n) => n.tag === 'button' && allText(n).trim() === '收起参数')[0]);
+  intercept = null;
+  const backLive = vbtn(pt, '刷新');
+  if (backLive) backLive.props.onClick();
+  pt = await settle(Panel, {});
 }
 
 /* [14] 0.3.6 排版：页头 / 指标条 / 待办表格 + 快速登记弹层 */
