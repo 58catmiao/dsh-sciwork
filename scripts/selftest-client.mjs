@@ -323,11 +323,9 @@ if (figuresTab) {
     expands.forEach((b) => b.props.onClick());
     const t5 = await settle(Panel, {});
     const x5 = allText(t5);
-    let img = null, select = null, replotBtn = null, disabledReplot = null;
+    let img = null;
     walk(t5, (n) => {
       if (n.tag === 'img' && !img) img = n;
-      if (n.tag === 'select' && !select) select = n;
-      if (n.tag === 'button' && typeof n.props.onClick === 'function' && allText(n).includes('重画')) { replotBtn = n; disabledReplot = n.props.disabled; }
     });
     // 库里可能一张「图文件存在」的图都没有（用户会在面板里删图）——那时没有 img 不是缺陷，跳过不判失败
     const snapThumb = await handleResearchCall({ action: 'snapshot' });
@@ -360,11 +358,6 @@ if (figuresTab) {
     const paramHit = realParamKeys.filter((k) => x5.includes(k));
     check('参数 JSON 渲染', realParamKeys.length ? paramHit.length > 0 : (x5.includes('plot_type') || x5.includes('figureId')),
       realParamKeys.length ? `命中 ${paramHit.slice(0, 3).join(' / ')}（共 ${realParamKeys.length} 个 key）` : '库里这张图没有 params');
-    check('重画表单：X 列下拉来自真实表头', !!select && (select.children || []).length >= 2,
-      select ? '选项 ' + (select.children || []).map((c) => c.props.value).join(' / ') : '没有 select');
-    check('重画表单：Y 列 chips', x5.includes('Y 列'));
-    check('重画按钮存在且**没有**被点', !!replotBtn, replotBtn ? `disabled=${disabledReplot}` : '没有重画按钮');
-    check('重画按钮未禁用（有源数据）', disabledReplot === false || disabledReplot === undefined);
   }
 }
 
@@ -564,9 +557,9 @@ check('图条目：同主名的侧车一起带上（归档/删除成对）',
 const oddEntry = T2.figureEntry({ figureId: 'fig2', file: 'projects/p/figures/Graph3.png', sidecar: 'projects/p/figures/fig2.json', fileExists: true });
 check('图条目：主名不同的登记侧车也要带上（Graph3.png + fig2.json）',
   oddEntry.path === 'projects/p/figures/Graph3.png' && oddEntry.sidecar === 'projects/p/figures/fig2.json', JSON.stringify(oddEntry));
-const replotEntry = T2.figureEntry({ figureId: 'fig2', file: 'projects/p/figures/fig2-replot-20261011-005322.png', sidecar: 'projects/p/figures/fig2.json', fileExists: true });
-check('图条目：重画产物也带上登记侧车（只删 PNG 会留下幽灵图）',
-  replotEntry.path === 'projects/p/figures/fig2-replot-20261011-005322.png'
+const replotEntry = T2.figureEntry({ figureId: 'fig2', file: 'projects/p/figures/fig2-20261011-005322.png', sidecar: 'projects/p/figures/fig2.json', fileExists: true });
+check('图条目：带登记的图也挂上侧车（只删 PNG 会留下幽灵图）',
+  replotEntry.path === 'projects/p/figures/fig2-20261011-005322.png'
   && replotEntry.sidecar === 'projects/p/figures/fig2.json', JSON.stringify(replotEntry));
 const ghostEntry = T2.figureEntry({ figureId: 'fig1', file: 'projects/p/figures/fig1-jv.png', sidecar: 'projects/p/figures/fig1.json', fileExists: false });
 check('图条目：幽灵图（文件已不在）以侧车为主，删它能真的让卡片消失',
@@ -847,12 +840,12 @@ console.log('\n[10] 命令台');
     const ctxt = allText(t);
     check('命令台弹层打开了', findAll(t, (n) => String((n.props && n.props.className) || '').indexOf('rl-modal') >= 0).length > 0, ctxt.slice(-160));
     check('命令列表按只读/写库/危险分组', ctxt.includes('只读') && ctxt.includes('写库') && ctxt.includes('危险'));
-    check('默认选中第一条命令并显示说明', ctxt.includes('status') && ctxt.includes('库概况'), ctxt.slice(0, 120));
+    check('默认选中第一条命令并显示说明', ctxt.includes('库概况') && !ctxt.includes('status ——'), ctxt.slice(0, 160));
 
     const itemBtns = findAll(t, (n) => n.tag === 'button' && String(n.props.className || '').indexOf('rl-console__item') >= 0);
     check('命令条目可点（≥10 条）', itemBtns.length >= 10, 'N=' + itemBtns.length);
 
-    const cc = itemBtns.filter((b) => allText(b).trim() === 'check-citations')[0];
+    const cc = itemBtns.filter((b) => allText(b).trim() === '引用核查')[0];
     if (cc) {
       cc.props.onClick();
       t = await settle(Panel, {});
@@ -872,7 +865,7 @@ console.log('\n[10] 命令台');
       }
     }
 
-    const danger = findAll(t, (n) => n.tag === 'button' && allText(n).trim() === 'remove-ref')[0];
+    const danger = findAll(t, (n) => n.tag === 'button' && allText(n).trim() === '删除文献')[0];
     if (danger) {
       danger.props.onClick();
       t = await settle(Panel, {});
@@ -972,7 +965,7 @@ console.log('\n[12] v2 工作台');
   const fakeCall = (action, args) => {
     calls.push({ action, args: args || {} });
     if (action === 'project.list') {
-      return Promise.resolve({ projects: [{ slug: 'zt', title: 'ZT 陶瓷', stage: 'figure', next: { ready: false, todo: [{ action: 'figure.replot', why: '还没有图页' }], blockers: [{ why: '图缺溯源', hint: '先登记侧车' }] } }] });
+      return Promise.resolve({ projects: [{ slug: 'zt', title: 'ZT 陶瓷', stage: 'figure', next: { ready: false, todo: [{ action: 'journal.check', why: '还没有图页' }], blockers: [{ why: '图缺溯源', hint: '先登记侧车' }] } }] });
     }
     if (action === 'system.receipts') {
       return Promise.resolve({ receipts: [{ startedAt: '2026-10-21T10:00:00Z', action: 'project.stage.set', ok: true, wrote: ['projects/zt/project.json'] }] });

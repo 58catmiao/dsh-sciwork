@@ -3,10 +3,8 @@
  * ===========================================================================
  * 用法：
  *   node scripts/selftest-actions.mjs
- *   加 --replot 才会真的跑一次 Origin 重画（默认不跑：绝不为了自检去冷启动 Origin）。
- *
  * 它证明的是「面板那一半的宿主逻辑在**没有 Harness** 的情况下也是对的」：
- *   1. 24 个动作名与文档一致；
+ *   1. 23 个动作名与文档一致（`replot` 已于 0.3.2 移除）；
  *   2. 只读动作在真实库上返回真数据（自适应挑样本，库为空就 SKIP 而不是假装通过）；
  *   3. 错误码正确（bad-request / not-found / denied）；
  *   4. 路径护栏真的拦住 `..`、绝对路径、Unix 绝对路径；
@@ -18,9 +16,6 @@
 import fs from 'node:fs';
 
 import { ACTIONS, CLI_COMMANDS, CLI_HINTS, buildCliArgs, handleResearchCall, parseRawArgs, probePathGuard } from '../lib/actions.js';
-
-const argv = process.argv.slice(2);
-const RUN_REPLOT = argv.includes('--replot');
 
 let pass = 0;
 let fail = 0;
@@ -52,7 +47,7 @@ console.log('='.repeat(72));
 
 /* 1. 动作名与 CLI 模板 ------------------------------------------------- */
 console.log('\n[1] 契约面');
-const EXPECTED_ACTIONS = ['snapshot', 'readText', 'readBinary', 'tableColumns', 'checkCitations', 'replot', 'cliHint', 'import', 'importInfo', 'archive', 'remove', 'restore', 'archiveInfo', 'fetchRefMeta', 'writeText', 'newDraft', 'removeRef', 'cliCommands', 'runCli', 'transformOps', 'tablePreview', 'tableTransform', 'checkJournal', 'exportPackage'];
+const EXPECTED_ACTIONS = ['snapshot', 'readText', 'readBinary', 'tableColumns', 'checkCitations', 'cliHint', 'import', 'importInfo', 'archive', 'remove', 'restore', 'archiveInfo', 'fetchRefMeta', 'writeText', 'newDraft', 'removeRef', 'cliCommands', 'runCli', 'transformOps', 'tablePreview', 'tableTransform', 'checkJournal', 'exportPackage'];
 check('ACTIONS 与面板一致', JSON.stringify(ACTIONS) === JSON.stringify(EXPECTED_ACTIONS), ACTIONS.join(', '));
 
 /* 1b. 命令台：spec → argv -------------------------------------------------- */
@@ -215,23 +210,10 @@ if (!snapUsable) {
     skipped('readBinary', '库里没有存在的图文件样本');
   }
 
-  /* 4. 可选：真跑一次 Origin 重画 ------------------------------------- */
-  console.log(`\n[4] replot（${RUN_REPLOT ? '已开启 --replot：会真跑 Origin' : '默认跳过'}）`);
-  if (!RUN_REPLOT) {
-    const noSidecar = await handleResearchCall({ action: 'replot', args: {} });
-    check('replot 缺 sidecar → bad-request', noSidecar.ok === false && noSidecar.error.code === 'bad-request', JSON.stringify(noSidecar.error || {}));
-    skipped('replot 端到端', '未传 --replot（不为自检冷启动 Origin）');
-  } else if (firstFig) {
-    const r = await handleResearchCall({ action: 'replot', args: { sidecar: firstFig.f.sidecar } });
-    if (r.ok) {
-      check('replot 成功且有新文件', !!r.value.file && r.value.verifyPassed === true,
-        `${r.value.file} · verify=${r.value.verifyPassed} · trace=${r.value.traceId} · ${r.value.elapsedMs} ms`);
-    } else {
-      bad('replot 成功', JSON.stringify(r.error));
-    }
-  } else {
-    skipped('replot 端到端', '没有带源数据的图样本');
-  }
+  /* 4. replot 已于 0.3.2 整体移除 ---------------------------------- */
+  console.log('\n[4] replot（0.3.2 起整体移除）');
+  const gone = await handleResearchCall({ action: 'replot', args: {} });
+  check('replot 已移除 → bad-request', gone.ok === false && gone.error.code === 'bad-request', JSON.stringify(gone.error || {}));
 }
 
 /* 5. 错误码 ------------------------------------------------------------ */

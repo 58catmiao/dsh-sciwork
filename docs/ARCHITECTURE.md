@@ -21,8 +21,8 @@
 | 技能 | `skills/` 下 5 个：`research-studio`（总控与路由）、`origin-plot`、`paper-writing`、`literature-refs`、`journal-profile` |
 | 「科研库」面板 | 宿主半边 `lib/*.js` + 客户端半边 `lib/client.js`，读写科研库 |
 
-面板是**辅助视图**：它让用户自己看库、整理库、重画已有图；**新图一律由智能体走 Origin**（`origin-plot` 技能 + Origin MCP）。
-面板自 2026-10-13 起不再自己出图，见 §11。
+面板是**辅助视图**：它让用户自己看库、整理库、导入/归档/删除；**出图与改图一律由智能体走 Origin**（`origin-plot` 技能 + Origin MCP）。
+面板自 2026-10-13 起不再自己出图，0.3.2 起连图卡上的「重画」也一并移除，见 §11。
 
 ## 2. 仓库结构
 
@@ -47,7 +47,6 @@ dsh-sciwork/
 │  ├─ import.js           #   导入：落位（同名自动 -1）→ 需要时再跑 research.py 登记
 │  ├─ archive.js          #   归档 / 恢复 / 真删
 │  ├─ refmeta.js          #   CrossRef 抓元数据（只在用户点「抓取」时联网，不写文件）
-│  ├─ replot.js           #   重画：起 Origin MCP server（stdio JSON-RPC）、锁、重画 + 自动登记
 │  ├─ table.js            #   读表 parseTable(text)
 │  ├─ transform.js        #   数据变换算子（面板内计算，不经 Origin）
 │  └─ client.js           #   浏览器半边：侧栏图标 + 中央页面（含新手引导），手写、无构建
@@ -123,7 +122,7 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 `bad-request` · `not-found` · `denied` · `busy` · `timeout` · `network` · `internal` · `cli-failed`
 
 `describe(error)` 会把底层异常归一到这些码上（例如含 `ENOENT` 或「课题不存在」→ `not-found`；
-含「锁 / lock / 正在重画」→ `busy`）。未知码不会让面板崩，只会显示原文。
+含「锁 / lock / 正在出图」→ `busy`）。未知码不会让面板崩，只会显示原文。
 
 ## 5. 路径安全与写入边界
 
@@ -232,7 +231,6 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 | `fetchRefMeta` | 抓 CrossRef 元数据（**只在用户点「抓取」时才联网**，不写文件） |
 | `runCli` | 命令台跑一条 `research.py` 子命令（危险命令需显式确认） |
 | `tableTransform` | 数据变换（见 §6.1），产物落 `projects/<课题>/tables/` |
-| `replot` | 重画一张已登记的图（见 §7） |
 | `archiveInfo` | 归档批次与真删记录 |
 | `exportPackage` | 打投稿包到 `submissions/packages/`（稿件 + 图 + 数据 + refs.bib + manifest，见 §6.3） |
 
@@ -252,7 +250,7 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 - **没有表头**（真实仪器导出常这样，第一行就是数字）→ 按列序给通用列名 `#1` `#2` …，**首行算数据**；
 - `NaN` / `NA` / `null` / `-` 与空单元格读成缺失（`null`），**不填充**。
 
-面板的列下拉、`tablePreview`、`tableTransform` 与重画共用这一套规则。
+面板的列下拉、`tablePreview`、`tableTransform` 共用这一套规则。
 
 ### 6.3 投稿闸门（0.2）
 
@@ -286,15 +284,13 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 - 稿件按 `.md` → `.docx` → `.tex` 优先级挑一份；图件从图的侧车与磁盘收集；数据只收 `data/` 下文件；**缺什么写进 `missing`，不伪造空文件**。
 - 打包纯标准库（`zipfile`），输出目录固定在 `submissions/packages/`，同名追加时间戳，绝不覆盖已有包。
 
-## 7. 锁文件与 Origin 串行化
+## 7. 面板与 Origin 的边界（0.3.2 起）
 
-- 重画前拿 `<库根>/.research/locks/origin.lock`（`wx` 创建）。同一时刻只允许一次重画；持锁信息写进锁文件。
-- 锁**过期 15 分钟**后可接管（`LOCK_STALE_MS = 15 * 60 * 1000`）。锁在时重画返回 `busy` 并说明是谁在持锁。
-- 重画走 venv 解释器 + `origin_mcp_server.py`（与 MCP 工具同一条链路，stdio JSON-RPC）。
-- **绝不抢占、绝不重启用户已开着的 Origin 实例**：不 `taskkill`、不 `Stop-Process`；
-  Origin 没开就由插件冷启动，用完交还控制权。
-- 重画**只新增不覆盖**（`freeFigureId()` 查重），产物为 `figures/<图号>-replot-<时间戳>.png`；
-  成功后自动 `register-figure`（`file` = 新图，旧图进 `files[]`）。**登记失败只进 `warnings`，不假装成功。**
+- 面板**不再重画图**：`lib/replot.js`、`replot` 动作、锁文件 `.research/locks/origin.lock` 一并删除；
+  图卡上只剩 看图 / 归档 / 删除 / 看侧车 JSON。
+- 出图与改图统一由智能体走 `origin-plot` 技能 + Origin MCP；面板不启动、不访问、也不关闭任何 Origin 进程。
+- 历史实现（venv 解释器 + `origin_mcp_server.py` + stdio JSON-RPC、锁 15 分钟过期、只新增不覆盖）留在 git 历史里，
+  最后一个带它的版本是 `v0.3.1`。
 
 ## 8. 科研库工具链
 
@@ -339,9 +335,8 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主数据层：路径闸门、快照、读文件
-node scripts/selftest-actions.mjs   # 24 个动作 + 命令台 + 读表 + 写动作真跑（在临时库副本上）
+node scripts/selftest-actions.mjs   # 23 个动作 + 命令台 + 读表 + 写动作真跑（在临时库副本上）
 node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真渲染 + 真点击
-node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默认跳过）
 ```
 
 当前基线（2026-10-13 实测复跑）：
@@ -355,14 +350,12 @@ node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默�
 要点：
 
 - **两条基线都会随真库内容浮动。** 真库里没有对应样本时，相关断言打 `SKIP` 而不是假失败
-  （3 条 `SKIP` = 没有草稿样本 / 没有存在的图文件样本 / 未传 `--replot`）。
+  （`SKIP` = 没有草稿样本 / 没有存在的图文件样本）。
   数字变了先看 `SKIP` 条数与原因，别当成回归。
 - 写动作**真跑**，但只跑在 `os.tmpdir()` 的**库副本**上；硬闸门 `snapshot.root === 副本` 不过就 `exit 2`，
   一个字节都不写。样本先种进副本，所以真库被清空也能跑。
-- 客户端自检**绝不点「重画」**（会真启动 Origin），写动作全部用假信封挡住；并含**反向断言**
+- 客户端自检写动作全部用假信封挡住；并含**反向断言**（面板没有「重画」按钮）
   （数据页没有「出图」按钮、没有成组选择、头部没有「目标图对齐」；CSS 只出现官方 token）。
-- 要验重画链路，用 `node lib/replot.js` 或 `selftest-actions.mjs --replot`，
-  并如实报告「这次把用户的 Origin 冷启动起来了」。
 
 > **为什么必须有渲染自检**：这套自检抓到过三个只看代码看不出来的真 bug——
 > 组件漏了第二个形参导致所有按钮标签被静默丢掉；把带 hook 的组件当普通函数直接调用导致 hook 顺序违规；
@@ -396,7 +389,7 @@ node scripts/selftest-actions.mjs --replot   # 可选：会真跑 Origin（默�
 | `factory` 只收 `require` | 平台 seed 表里才有 React，只能 `require('react')` / `require('react-dom')`；其他服务一律 `ctx.get(name)` 惰性取。 |
 | 两个挂点**同名** | `sidebar.panellist` 注册 `{id, order, label}`，`main` 注册 `{name, key}` —— **侧栏 id 必须与 main key 同名**，否则点了图标出不来页面。 |
 | 只用官方设计 token | 渲染只许用 `Theme.listTokens` 那 14 个 `--dsw-*` token；不写自定义色值。 |
-| 面板**不出图**（2026-10-13 起） | 原「直接出图 / 成组出图 / 目标图对齐」三个入口整体移除，`ACTIONS` 从 25 减到 22，`lib/stylefig.js` 删除，`lib/replot.js` 只保留 `replotFigure()`。面板只负责看、整理与**重画已有图**；新图一律让智能体走 Origin（真 Origin、带 `verify` 与 `.json` 溯源）。读表规则与「变换」保留，图卡上的「重画」保留。 |
+| 面板**不出图、也不重画** | 2026-10-13 起「直接出图 / 成组出图 / 目标图对齐」三个入口整体移除；0.3.2 按用户要求再删 `lib/replot.js`、`replot` 动作与图卡上的「重画」表单（连自动登记一起删）。面板只负责看、整理、归档/删除；出图与改图一律让智能体走 Origin（真 Origin、带 `verify` 与 `.json` 溯源）。读表规则与「变换」保留。 |
 | 大文件走**本机绝对路径** | base64 走 JSON-RPC 有体积上限；让宿主直接读盘（只复制、不移动）比把几百 MB 塞进信封可靠。 |
 | 登记索引**面板只读** | 索引与登记记录一旦能被就地编辑，引用可核查性就没了；所有元数据变更收敛到 `research.py` 一条路径。 |
 | 三条硬约束 | 引用零编造可溯源（无 DOI/URL 不入库 + `check-citations` 闸门）、绝不抢占或强杀用户正在使用的 Origin、图 + 数据 + 参数可回溯（每张交付图有 `figures/<figN>.json` 侧车）。 |

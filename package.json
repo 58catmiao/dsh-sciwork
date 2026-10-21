@@ -1,6 +1,6 @@
 {
   "name": "dsh-sciwork",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "DSH 科研模式：给 DeepSeek Harness 装一套科研工作台——「科研模式」agent 预设 + 本机实体科研库（Python 引擎与登记索引）+ 12 份期刊投稿档案 + 投稿闸门（期刊合规体检 / 投稿包导出 / 递归全文索引）+ 绘图/写作/文献/期刊技能 + 「科研库」面板。0.3 起动作走「能力清单 + 确认令牌 + 回执」：课题是一等公民（七阶段机），面板与 agent 共用同一套动作，旧面板与 24 个旧动作名继续可用。出图由智能体经上游 dsh-origin-plugin（Origin MCP）完成。",
   "keywords": [
     "dsh",

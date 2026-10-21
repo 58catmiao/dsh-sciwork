@@ -106,7 +106,7 @@ Sidebar → "Research Library". There are seven tabs (Figures / Drafts / Referen
 | Tab | What you see | What you can do |
 | --- | --- | --- |
 | **Counts header row** (not a tab) | Library root, live counts for the seven categories (projects / figures / drafts / datasets / references / journal profiles / submissions), index time, collection warnings | Click "Refresh" to re-read the snapshot; click "Tour" for a highlighted walkthrough of the UI |
-| **Figures** | Registered figures, each with its registered provenance (source data, script, generated-at); grouped by project | View the figure, view a PDF attachment, copy the path, replot, archive, delete |
+| **Figures** | Registered figures, each with its registered provenance (source data, script, generated-at); grouped by project | View the figure, view a PDF attachment, copy the path, archive, delete |
 | **Drafts** | Markdown manuscripts under `drafts/` | Read in place, create a draft, edit and save, archive, delete |
 | **References** | Entries in `refs/refs.json` plus local PDF attachments under `refs/pdf/` | Import (a DOI or URL is mandatory to register; a PDF is optional), view PDFs, archive, delete |
 | **Data** | Data files under `data/` (`.txt/.csv/.dat` …) and project group headers | Preview rows and columns, run a **data transform** (6 operators), archive, delete |

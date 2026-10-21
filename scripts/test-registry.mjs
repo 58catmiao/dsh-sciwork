@@ -27,7 +27,7 @@ const check = (name, ok, detail = '') => {
 
 console.log('[1] 旧名契约（0.3 期间一个都不许变）');
 ensureRegistered();
-check('旧名数量 = 24', legacyNames().length === 24, String(legacyNames().length));
+check('旧名数量 = 23（replot 0.3.2 移除）', legacyNames().length === 23, String(legacyNames().length));
 check('旧名集合 = LEGACY_ORDER（一个不多一个不少）',
   [...legacyNames()].sort().join(',') === [...LEGACY_ORDER].sort().join(','), legacyNames().join(','));
 check('每个旧名都能解析', LEGACY_ORDER.every((n) => !!resolveAction(n)));

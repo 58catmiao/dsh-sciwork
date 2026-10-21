@@ -1,5 +1,8 @@
 # 科研模式 0.3 架构方案：「一条能力清单 + 两块屏幕」
 
+> **历史文档**：0.3.2 起 `figure.replot` / `replot` 动作与 `lib/replot.js` 已整体移除（面板不再重画图），
+> 文中涉及它们的设计保留为当时的施工记录。
+>
 > 决策记录见 [decisions-architecture.md](./decisions-architecture.md)。本文件是给实施者的施工图：
 > 读完应能直接开工，不需要再问「为什么这样拆」。
 

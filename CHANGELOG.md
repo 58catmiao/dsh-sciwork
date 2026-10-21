@@ -7,6 +7,21 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-21
+
+### Removed
+
+- **面板不再重画图**（按用户要求整体移除）：删掉 `lib/replot.js`、`replot` 动作与其登记入口、
+  `lib/actions/figure.js`、图卡上的「重画这张图」表单、`.research/locks/origin.lock` 串行化与相关自检分支。
+  出图与改图一律由智能体走 `origin-plot` 技能 + Origin MCP；面板只负责看、整理、归档/删除。
+
+### Changed
+
+- **命令台全中文化**：18 条命令补 `title`，每个参数补 `label`，7 处 `select` 补 `optionsCn`；
+  面板左侧列表、表单标题、参数名与下拉选项都显示中文（原值仍原样提交给 CLI，argv 构造零变化）。
+- 技能里的阶段说明跟着改口：`research-stages` 不再提 `figure.replot`，`research-studio` 说明面板已不重画。
+- 文档同步：`ARCHITECTURE` §7 改写为「面板与 Origin 的边界」、`INSTALL` 删掉 `--replot` 说明、中英文 README 的图表能力去掉「重画」。
+
 ## [0.3.1] - 2026-10-21
 
 ### Changed

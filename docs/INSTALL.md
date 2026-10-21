@@ -120,11 +120,11 @@ node scripts/install.mjs
 ## 4. 验证安装
 
 三条自检都能裸 node 复跑，不需要装依赖。它们**只读仓库与库**（写动作跑在临时库副本上），
-不会碰你的 Origin（除非你显式加 `--replot`）：
+不会碰你的 Origin：
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主数据层：路径闸门、快照、读文件 → exit 0
-node scripts/selftest-actions.mjs   # 24 个动作 + 命令台 + 读表 + 写动作走临时库副本 → 141 通过 · 0 失败 · 1 跳过（夹具库；通过数随库内容浮动）
+node scripts/selftest-actions.mjs   # 23 个动作 + 命令台 + 读表 + 写动作走临时库副本 → 141 通过 · 0 失败 · 1 跳过（夹具库；通过数随库内容浮动）
 node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真渲染 + 真点击 → 172 通过 · 0 失败
 ```
 
@@ -132,7 +132,6 @@ node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真
 
 - 基线数字会随**真库内容**浮动：真库里没有对应样本时相关断言打 `SKIP`，不是失败。
   数字变了先看 `SKIP` 条数与原因。
-- `--replot` 会**真跑 Origin**（把用户的 Origin 冷启动起来），默认跳过。
 - 改完补丁文件（`cordis.patch.yml`）先跑 `py.cmd scripts/validate-patch.py` 之类的语法预检，再重启 Harness。
 
 ## 5. 装了之后有什么
@@ -141,7 +140,7 @@ node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真
 - **5 个技能**：`research-studio`（总控与路由）、`origin-plot`、`paper-writing`、`literature-refs`、`journal-profile`。
   在科研模式下直接用自然语言，技能会按路由表加载。
 - **「科研库」面板**：侧栏图标 + 中央页面。它是辅助视图——看库、整理库、导入/归档/删除、就地改草稿、
-  数据变换、重画已有图。**面板不出图**，新图让智能体走 Origin。
+  数据变换、归档/删除。**面板不出图、也不重画**，出图/改图让智能体走 Origin。
 
 面板出现在界面上需要**重启 Harness + 刷新页面**：只重启不刷新、或只刷新不重启，都可能看不到。
 
@@ -159,9 +158,7 @@ node scripts/selftest-client.mjs    # 把 lib/client.js 当浏览器加载：真
 Origin MCP server 脚本会依次找 `origin_mcp_server.py` / `origin_mcp_stdio.py`。
 它由 profile 层的 MCP 加载器条目注册，**改了要重启 Harness 才生效**。
 
-面板的「重画」走的是同一条链路（venv 解释器 + MCP server 脚本，stdio JSON-RPC）：
-同一时刻只允许一次，靠 `<库根>/.research/locks/origin.lock` 串行化，锁过期 15 分钟可接管；
-Origin 没开就冷启动它，**绝不抢占或重启你正在用的那个实例**。
+面板**不再重画图**（0.3.2 起 `lib/replot.js` 与 `replot` 动作已删除）：出图与改图一律让智能体走科研模式的 `origin-plot` 技能，它连的是同一个 Origin MCP（venv 解释器 + `origin_mcp_server.py`），**绝不抢占或重启你正在用的那个实例**。
 
 ## 7. 升级与卸载
 

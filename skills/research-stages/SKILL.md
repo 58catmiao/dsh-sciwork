@@ -17,7 +17,7 @@ sciwork_workflow_next {project}     # {stage, todo, blockers, ready}
 
 - `stage` 只有七个取值：`topic design data analysis figure draft submission`
 - `blockers` = 当前阶段未通过的检查项（每个带 `check` / `why` / `hint`）
-- `todo` 给出建议动作（`data.import` / `figure.replot` / `submission.add` 等），按它走
+- `todo` 给出建议动作（`data.import` / `journal.check` / `submission.add` 等），按它走
 - `ready: true` 才代表当前阶段做完；"我觉得做完了"不算
 
 ## 1. 七阶段：目标 / 动作 / 退出条件
@@ -28,7 +28,7 @@ sciwork_workflow_next {project}     # {stage, todo, blockers, ready}
 | design | 变量与对照、样品与批次、统计口径、图表清单、期刊候选 | `project.update`（把研究设计写进 notes） | `design.plan`：notes 里有研究设计 |
 | data | 原始数据入库，留来源与哈希 | `data.import` | 至少一条数据产物登记 |
 | analysis | 派生表与统计量可复核 | `data.transform` | 至少一条派生产物 |
-| figure | 按期刊档案出图 + 侧车溯源 + 登记进课题 | `figure.replot`、`journal.check` 看版式 | 图文件存在且同名 `.json` 侧车在 |
+| figure | 按期刊档案出图 + 侧车溯源 + 登记进课题 | `figure.list` 对账、`journal.check` 看版式 | 图文件存在且同名 `.json` 侧车在 |
 | draft | 只写库里能追溯的内容，引用逐条对应 refs | `draft.new` / `draft.write` / `draft.check_citations` | 草稿存在且引用核查通过 |
 | submission | 核对期刊要求与材料清单、打包、登记投稿 | `journal.check` / `draft.package` / `submission.add` | `submission.record`：`<库根>\submissions\` 有本课题记录 |
 
