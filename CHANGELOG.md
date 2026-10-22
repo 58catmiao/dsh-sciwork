@@ -5,6 +5,22 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.12] - 2026-10-22
+
+### Added
+
+- **面板里检查更新并更新**：工作台页头新增「检查更新」，拿本机 `package.json` 的版本与 GitHub `main` 上那份比对：首屏只读本地版本（不联网），点按钮才去 GitHub 看一眼；有新版本时旁边出现「更新到 vX.Y.Z」，走 `system.update_apply` 的计划 → 确认 → 回执后执行 `git pull --ff-only`。宿主新动作两个：`system.update_check`（只读，`sciwork_system_update_check`）与 `system.update_apply`（写，`sciwork_system_update_apply`）。更新成功会报「X → Y」并提示重启 Harness（客户端 bundle 不热替换）。面板会如实说明三种情况：不是 git 工作树（ZIP / 链接安装）、工作区有未提交改动（列出文件后拒绝）、`git pull` 失败（原样转述 git 的话，常见是分叉）。
+- **无包管理器安装器**：新增 `scripts/install-plugin.mjs`（`node scripts/install-plugin.mjs --profile <profile> [--source <目录>] [--dry-run] [--force]`）。只用 Node 内置模块，做三件事：给 profile 的 `package.json` 加 `"dsh-sciwork": "link:<目录>"`、把 `<profile>/node_modules/dsh-sciwork` 链接到该目录（Windows 用 junction，不需要管理员权限）、把 `dsh-sciwork` 追加进 `dsh.profile.bundles`；改前自动备份 `package.json.bak-<时间戳>`，真实目录（pnpm 拷贝）不擅自删除。`package.json` 增加 `install-plugin` 脚本。
+- **版本比对模块** `lib/host/version.js`：`parseVersion` / `compareVersions` / `isNewer`，解析失败不抛错。
+
+### Fixed
+
+- **安装文档把 npm 当成了包源**：README / README.en / `docs/INSTALL.md` 原来写 `dsh plugin --profile <profile> add dsh-sciwork`，但这个包从未发布到 npm，这条命令在别人的机器上只会得到 404（或被报「npm 找不到这个包」）。现在统一写成 `add github:58catmiao/dsh-sciwork`，并写清「为什么必须带 `github:` 前缀」；同时给出「没有 npm / pnpm」的两套退路（GitHub ZIP 解压 + `install-plugin.mjs`；`git clone` + 同一条命令）与新故障排查表（404 / npm 找不到 / 重启后才生效 / 不是 git 工作树 / 侧栏没面板看 `--dump-config`）。
+
+### Changed
+
+- 客户端自检从 218 条涨到 222 条（新增：首屏报本地版本、检查更新按钮、检查后报新版本与更新入口、点更新走 `system.update_apply` 的计划）；`settle()` 的可等待时间改成可传参，真库那几处等 400 ms——`project.list` 实测 159–190 ms，原来固定 160 ms 会让真库检查偶发先读空。
+
 ## [0.3.11] - 2026-10-22
 
 ### Added

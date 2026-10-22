@@ -23,11 +23,32 @@
 ### 2.1 作为插件装进 profile
 
 ```bash
-dsh plugin --profile <profile> add dsh-sciwork
+dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
 ```
+
+**必须带 `github:` 前缀。** 这个包没有发布到 npm，写 `add dsh-sciwork` 会让包管理器去 npm 解析，结果是 404（或「找不到这个包」）。
+
+`dsh plugin` 本身不实现安装，它把参数转发给 profile 里的包管理器（pnpm）执行，所以要求本机能跑 pnpm。
 
 装完**必须重启 Harness**：`cordis.patch.yml` 与宿主半边 `lib/*.js` 都只在启动时读取。
 重启前只能说「已写入」，不能说「已生效」。
+
+### 2.1b 本机没有 npm / pnpm（报「npm 找不到」）
+
+不用包管理器也能装。`scripts/install-plugin.mjs` 只用 Node 内置模块，做三件事：给 profile 的 `package.json` 加 `"dsh-sciwork": "link:<目录>"`、把 `<profile>/node_modules/dsh-sciwork` 链接到该目录、把 `dsh-sciwork` 追加进 `dsh.profile.bundles`（改前备份 `package.json.bak-<时间戳>`）。
+
+```bash
+# 方式 A：GitHub 页面 Code → Download ZIP，解压后用解压目录做源
+node scripts/install-plugin.mjs --profile <profile> --source <解压目录>
+
+# 方式 B：git clone 后在本仓库根目录
+node scripts/install-plugin.mjs --profile <profile> --source .
+
+# 只看会改什么，不写盘
+node scripts/install-plugin.mjs --profile <profile> --dry-run
+```
+
+验证接线：`dsh --profile <profile> --dump-config | grep -c dsh-sciwork`（应大于 0）。注意用这条路装进来的目录**不是 git 仓库**，面板里点「检查更新」会如实提示「不是 git 工作树」，更新方式是重新解压新版再跑一遍脚本。
 
 ### 2.2 铺技能与科研库骨架
 
@@ -162,7 +183,12 @@ Origin MCP server 脚本会依次找 `origin_mcp_server.py` / `origin_mcp_stdio.
 
 ## 7. 升级与卸载
 
-- **升级**：重新 `dsh plugin … add` 或更新源目录后重启 Harness。
+- **面板里直接查更新**（0.3.12 起）：工作台页头的「检查更新」会读本机 `package.json` 与 GitHub 上的版本比对，有新版本时旁边出现「更新到 vX.Y.Z」。
+  - 该功能只对**干净的 git 工作树**生效：`system.update_apply` 先检查 `git status`，仓库有未提交改动会拒绝并列出文件；`git pull --ff-only` 分叉时如实返回 git 的原话，不吞错。
+  - 更新后**宿主半边当场生效，面板要重启 Harness**（客户端 bundle 不热替换）。
+  - 从 ZIP 解压 / `install-plugin.mjs` 链接进来的目录不是 git 仓库，面板会提示「不是 git 工作树」，此时按 ZIP 方式重装。
+  - 等价命令：`system.update_check`（只读）/ `system.update_apply`（写，走计划 → 确认 → 回执）。
+- **升级（手动）**：重新 `dsh plugin … add github:58catmiao/dsh-sciwork`，或在源目录 `git pull` 后重启 Harness。
   技能与库骨架重跑 `node scripts/install.mjs` 即可（幂等）；库数据不会被覆盖。
   改过库里工具脚本的现场修复不会被静默回退，除非显式 `--force-scripts`。
 - **卸载插件**：用 DSH 的插件管理移除该 bundle，然后重启。技能与库数据不会跟着消失。
@@ -170,9 +196,19 @@ Origin MCP server 脚本会依次找 `origin_mcp_server.py` / `origin_mcp_stdio.
 
 ## 8. 常见问题
 
+**装的时候报 404 / 「找不到 dsh-sciwork」**
+这个包没发布到 npm，安装源要写成 `github:58catmiao/dsh-sciwork`。
+
+**装的时候报「npm 找不到」/ 本机没有 pnpm**
+`dsh plugin` 把参数转给 pnpm 执行。没有包管理器就走 `scripts/install-plugin.mjs`（见 §2.1b），它只用 Node 内置模块。
+
 **面板里点了按钮只回一句「未知动作：xxx」**
 宿主半边是启动时读进内存的。改了 `lib/*.js`（含 `library.js` / `import.js`）或 `cordis.patch.yml`
 之后必须**重启 Harness**，只刷新页面会变成「新按钮 + 旧宿主」。
+
+**点了「检查更新」说不是 git 工作树**
+这份安装是 ZIP 解压目录或 `install-plugin.mjs` 链接进来的，没有 `.git`。面板不能替它 `git pull`，
+重新解压新版再跑一遍 `install-plugin.mjs` 即可（库数据不受影响）。
 
 **「科研模式 · Research（加载失败）」**
 preset 里某一行缺了必填字段，导致该行 schema 校验失败、整个 preset 被标成 broken。

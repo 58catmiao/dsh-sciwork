@@ -98,14 +98,14 @@ function renderNode(node, path = '') {
   return { tag: node.type, props: node.props || {}, children: node.children.map((c, i) => renderNode(c, path + '/' + i)).filter(Boolean) };
 }
 
-async function settle(rootType, props, rounds = 8) {
+async function settle(rootType, props, rounds = 8, wait = 160) {
   let tree = null;
   for (let r = 0; r < rounds; r += 1) {
     dirty = false; pendingEffects = [];
     tree = renderNode(React.createElement(rootType, props));
     const effects = pendingEffects.slice();
     for (const fn of effects) { try { fn(); } catch (e) { check('effect 不抛异常', false, String(e.message || e)); } }
-    await new Promise((res) => setTimeout(res, 160));
+    await new Promise((res) => setTimeout(res, wait));
     if (!dirty) break;
   }
   return tree;
@@ -231,7 +231,7 @@ console.log('\n[3] 渲染（真实库数据经 actions.js → library.js）');
 const Panel = main ? main.comp : () => null;
 let tree = null;
 try {
-  tree = await settle(Panel, {});
+  tree = await settle(Panel, {}, 8, 400);
   ok('首次渲染 + 异步取数后重渲染，全程无异常');
 } catch (error) {
   check('首次渲染无异常', false, String(error.message || error));
@@ -245,7 +245,7 @@ check('欢迎卡里七个页签仍然可见', ['图表', '草稿', '文献', '�
 const laterBtn = tree ? findByTagText(tree, 'button', '我自己看') : null;
 check('找到「我自己看」按钮', !!laterBtn, buttonTexts(tree));
 if (laterBtn) laterBtn.props.onClick();
-tree = await settle(Panel, {});
+tree = await settle(Panel, {}, 8, 400);
 ok('点「我自己看」后进库（重渲染无异常）');
 check('欢迎卡看过一次就记进 localStorage', lsStore.get('research-panel-setup:welcome:local') === '1',
   String(lsStore.get('research-panel-setup:welcome:local')));
@@ -524,7 +524,7 @@ if (T && Array.isArray(T.TOUR_STEPS)) {
 
 /* 7g. 卸载重挂（清掉 hook 状态）→ 欢迎卡不再自动出现，直接进库 */
 hookStores.clear();
-const remount = await settle(Panel, {});
+const remount = await settle(Panel, {}, 8, 400);
 const remountText = allText(remount);
 check('看过一次后重开不再自动弹欢迎卡', !remountText.includes('欢迎使用科研库面板'), remountText.slice(0, 60));
 check('重开后直接进库', !liveSlug || remountText.includes(liveSlug) || remountText.includes(liveTitle), remountText.slice(0, 80));
@@ -999,6 +999,18 @@ console.log('\n[12] v2 工作台');
     if (action === 'system.receipts') {
       return Promise.resolve({ receipts: [{ startedAt: '2026-10-21T10:00:00Z', action: 'project.stage.set', ok: true, wrote: ['projects/zt/project.json'] }] });
     }
+    if (action === 'system.update_check') {
+      // 首屏只问本地版本（remote:false），点「检查更新」才带 remote:true —— 夹具按两种调用各回一份。
+      const withRemote = Boolean(args && args.remote === true);
+      return Promise.resolve({
+        plugin: { name: 'dsh-sciwork', version: '0.3.11', dir: '<repo>' },
+        git: { ok: true, commit: '447f1a2', branch: 'main', dirty: false, dirtyFiles: [], ahead: 0, behind: 0, remote: 'https://github.com/58catmiao/dsh-sciwork' },
+        remote: withRemote ? { ok: true, version: '0.3.12' } : null,
+        updateAvailable: withRemote,
+        canSelfUpdate: withRemote ? true : undefined,
+        hint: withRemote ? '有新版本 0.3.12，可以在这里更新。' : '还没比对远端：点「检查更新」去 GitHub 看一眼。',
+      });
+    }
     if (action === 'library.cli_commands') {
       return Promise.resolve({
         commands: [
@@ -1044,6 +1056,23 @@ console.log('\n[12] v2 工作台');
   check('工作台列出课题（标题 + 阶段）', allText(wt).includes('ZT 陶瓷') && allText(wt).includes('图表'));
   check('工作台显示最近回执', allText(wt).includes('project.stage.set'));
 
+  // 0.3.12：页头报版本 + 「检查更新」入口（首屏只问本地，不联网）
+  check('页头报出插件版本（首屏只查本地）',
+    allText(wt).includes('插件 v0.3.11') && allText(wt).includes('还没比对远端'), allText(wt).slice(0, 160));
+  const upBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '检查更新')[0];
+  check('页头有「检查更新」按钮', !!upBtn);
+  if (upBtn) {
+    upBtn.props.onClick();
+    wt = await settle(T.Workbench, { call: fakeCall, onImport() {} });
+    const ut = allText(wt);
+    check('检查后报出新版本与更新入口',
+      ut.includes('有新版本 0.3.12') && ut.includes('更新到 v0.3.12'), ut.slice(0, 220));
+    const goBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '更新到 v0.3.12')[0];
+    if (goBtn) { goBtn.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
+    const updPlan = calls.filter((c) => c.action === 'action.plan' && c.args.actionId === 'system.update_apply').slice(-1)[0];
+    check('点更新走 system.update_apply 的计划', !!updPlan, updPlan ? JSON.stringify(updPlan.args) : '没有发计划');
+  }
+
   // 仪表：打开就说一件你还不知道的事（0.3.4）
   check('工作台首屏有「今日该做」', allText(wt).includes('今日该做'));
   check('仪表含投稿倒计时 / 库体检 / 最近动态 / 备份',
@@ -1088,7 +1117,7 @@ console.log('\n[12] v2 工作台');
   const adv = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('推进到'))[0];
   check('图阶段后面是「推进到写作」', !!adv && allText(adv).includes('写作'), adv ? allText(adv) : '没有按钮');
   if (adv) { adv.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
-  const planned = calls.find((c) => c.action === 'action.plan');
+  const planned = calls.filter((c) => c.action === 'action.plan' && c.args && c.args.actionId === 'project.stage.set').slice(-1)[0];
   check('点推进只生成计划（不发写请求）', !!planned && planned.args.actionId === 'project.stage.set'
     && JSON.stringify(planned.args.params) === JSON.stringify(planParams), JSON.stringify(planned && planned.args));
   check('计划弹窗显示会写的文件', allText(wt).includes('确认写动作') && allText(wt).includes('projects/zt/project.json'));
@@ -1189,6 +1218,7 @@ console.log('\n[14] 排版与快速登记（0.3.6）');
       return Promise.resolve({ projects: [{ slug: 'zt', title: 'ZT 陶瓷', stage: 'figure', next: { ready: false, todo: [{ action: 'journal.check', why: '还没有图页' }], blockers: [] } }] });
     }
     if (action === 'system.receipts') return Promise.resolve({ receipts: [] });
+    if (action === 'system.update_check') return Promise.resolve({ plugin: { version: '0.3.11' }, remote: null, updateAvailable: false, hint: '还没比对远端：点「检查更新」去 GitHub 看一眼。' });
     if (action === 'snapshot') {
       return Promise.resolve({
         counts: { project: 1, figure: 3, draft: 0, dataset: 0, ref: 7, journal: 2, submission: 1 },
@@ -1253,6 +1283,7 @@ console.log('\n[15] 阶段可选（0.3.10）');
     calls.push({ action, args: args || {} });
     if (action === 'project.list') return Promise.resolve({ projects: [proj] });
     if (action === 'system.receipts') return Promise.resolve({ receipts: [] });
+    if (action === 'system.update_check') return Promise.resolve({ plugin: { version: '0.3.11' }, remote: null, updateAvailable: false, hint: '还没比对远端：点「检查更新」去 GitHub 看一眼。' });
     if (action === 'snapshot') return Promise.resolve({ counts: {}, projects: [], submissions: [], refs: [], journals: [] });
     // 详情只给 id（真库形状），列表行才带 slug
     if (action === 'project.get') return Promise.resolve({ project: { id: 'zt', title: 'ZT 陶瓷', stage: 'figure' }, next: proj.next });

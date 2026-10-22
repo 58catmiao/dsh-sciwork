@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.3.11 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.3.12 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -43,10 +43,39 @@ Version 0.3.11 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <h
 ## Install
 
 ```bash
-dsh plugin --profile <profile> add dsh-sciwork
+dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
 ```
 
-Installing from the plugin marketplace takes the same path. **Restart Harness** afterwards.
+> **Why the `github:` prefix**: this package is **not published to npm**, so `add dsh-sciwork` sends the package manager to npm and gets a 404 (or "package not found"). The `github:` form installs straight from GitHub and records `"dsh-sciwork": "github:58catmiao/dsh-sciwork"` in the profile.
+
+**Restart Harness** afterwards — the panel is a client bundle, so reloading the page is not enough.
+
+### No npm / pnpm, or the command above says npm cannot be found
+
+`dsh plugin` forwards its arguments to the profile's package manager (pnpm), so it needs a working pnpm. On machines where the DSH runtime does not ship one, use the package-manager-free path instead:
+
+1. On GitHub click `Code → Download ZIP` and unpack it to a fixed directory (for example `D:/apps/dsh-sciwork`), or `git clone https://github.com/58catmiao/dsh-sciwork.git`.
+2. From that directory run:
+
+```bash
+node scripts/install-plugin.mjs --profile <profile> --source .
+```
+
+It adds a `link:` dependency line to the profile's `package.json`, links `<profile>/node_modules/dsh-sciwork` to that directory, and appends `dsh-sciwork` to `dsh.profile.bundles`. The existing `package.json` is backed up as `package.json.bak-<timestamp>` first; `--dry-run` shows the changes without writing.
+
+Verify with `dsh --profile <profile> --dump-config | grep -c dsh-sciwork` (should be greater than 0).
+
+### After installing, nothing changed
+
+| Symptom | Check first |
+| --- | --- |
+| 404 or "package not found" | the source must be `github:58catmiao/dsh-sciwork` (the package is not on npm) |
+| "npm / pnpm not found" | use the package-manager-free path above |
+| the panel still looks old | restart Harness (client bundle); a page reload is not enough |
+| "check for updates" says it is not a git work tree | that install is a copy or a link to an unpacked ZIP; update by unpacking the new ZIP and re-running `install-plugin.mjs` |
+| no "Research Library" entry in the sidebar | `dsh --profile <profile> --dump-config` should contain a `name: dsh-sciwork` section |
+
+Installing from the plugin marketplace takes the same path (it also needs a package manager).
 
 What you get after installing:
 
@@ -273,11 +302,11 @@ Every **content** check (the ones that need real drafts / figures / data tables 
 
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 126 passed · 0 failed · 3 skipped (fixture library; counts vary with library content)
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 218 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 222 passed · 0 failed
 ```
 
 - `selftest-host.mjs` — tallies passes and failures only, exit code 0. The only check that can be recorded as "skipped" is one that depends on the real library actually containing a figure file (when there is none, it is not counted as a failure).
-- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `218 passed · 0 failed`, exit code 0.
+- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `222 passed · 0 failed`, exit code 0.
 - `validate-patch.py` — prints `✓ 补丁预检通过` (patch preflight passed), exit code 0. It reports the `preset-research` preset's top-level row count (19 rows, 29 leaf rows after recursion, 2 of them disabled by an `!!js` condition), its nested groups (planning / compaction / delegation), the persona length, and confirmation that the inserted `research-library` row belongs to the host plugin rather than to an agent preset.
 - `selftest-actions.mjs` — the write-action stage **requires the library root to point at the isolated copy the script creates**. If it finds the snapshot pointing somewhere else, it prints `FAIL 隔离闸门：snapshot 指向副本` and exits with code 2, having written **not a single byte**. That is by design, not a plugin defect: write actions always run inside the copy and never touch your real library.
 

@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.3.11 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.3.12 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -41,10 +41,49 @@
 ## 安装
 
 ```bash
-dsh plugin --profile <profile> add dsh-sciwork
+dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
 ```
 
-插件市场里点安装，走的也是同一条路径。装完**重启 Harness**。
+> **为什么带 `github:` 前缀**：这个包**没有发布到 npm 仓库**，直接写 `add dsh-sciwork` 会让包管理器去 npm 找、回一个 404（或“npm 找不到这个包”）。`github:58catmiao/dsh-sciwork` 是从 GitHub 装，装完 profile 里会多一条 `"dsh-sciwork": "github:58catmiao/dsh-sciwork"`。
+
+装完**重启 Harness**。
+
+### 没有 npm / pnpm，或者上面那条命令报 npm 找不到
+
+`dsh plugin` 是把参数转给 profile 里的包管理器（PNPM）执行的，所以它要求本机能跑 pnpm——有些机器上 DSH 的运行时里没有带，就会报“npm/pnpm 找不到”。这种情况**不需要任何包管理器**，两条退路：
+
+**退路 A（推荐）：解压 ZIP + 一句话接线**
+
+1. 在 GitHub 页面点 `Code → Download ZIP`，解压到一个固定目录（例如 `D:/apps/dsh-sciwork`）；
+2. 在该目录里跑：
+
+```bash
+node scripts/install-plugin.mjs --profile <profile> --source .
+```
+
+它会做三件事：给 profile 的 `package.json` 加依赖行（`link:` 到该目录）、把 `<profile>/node_modules/dsh-sciwork` 链接过去、把 `dsh-sciwork` 加进 `dsh.profile.bundles`；改之前自动备份 `package.json.bak-<时间戳>`。加 `--dry-run` 可以先看会改什么。
+
+**退路 B：有 git 但没包管理器**
+
+```bash
+git clone https://github.com/58catmiao/dsh-sciwork.git
+cd dsh-sciwork
+node scripts/install-plugin.mjs --profile <profile> --source .
+```
+
+装完同样要重启 Harness；验证方式是 `dsh --profile <profile> --dump-config | grep -c dsh-sciwork`（应大于 0）。
+
+### 装完没变化 / 面板报错怎么查
+
+| 现象 | 先查什么 |
+| --- | --- |
+| 命令回 404 或“找不到这个包” | 安装源写了吗？要写 `github:58catmiao/dsh-sciwork`（npm 上没有这个包） |
+| 报 npm / pnpm 找不到 | 走上文的「退路 A」，不依赖包管理器 |
+| 重启后面板还是旧的 | 面板是客户端 bundle：**关掉 Harness 再打开**，只刷新页面不算 |
+| 面板里点「检查更新」说不是 git 工作树 | 这份安装是拷贝/链接到 ZIP 目录的，不是 git 仓库；更新要重新解压 ZIP 再跑一遍 `install-plugin.mjs` |
+| 装了但侧栏没有「科研库」 | `dsh --profile <profile> --dump-config` 看有没有 `name: dsh-sciwork` 这一段；没有就是 bundle 没进 `dsh.profile.bundles` |
+
+插件市场里点安装，走的也是同一条路径（同样需要包管理器；没有就走退路 A）。
 
 装完后你会多出：
 
@@ -107,7 +146,7 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 
 侧栏「科研库」。默认是**工作台**（v2），页头右上角可切到**列表面板**（v1）。列表面板有七个页签（图表 / 草稿 / 文献 / 数据 / 期刊档案 / 投稿 / 归档），另有顶部的**计数行**与「命令台」弹层（两者都不是页签）：
 
-**工作台（v2）**一屏看全库：页头（标题 + 统计 + 快速登记 / 新建课题 / 导入数据 / 刷新）、指标条（课题 / 图 / 文献 / 在投）、跨课题待办表、概览（今日该做 / 投稿倒计时 / 库体检 / 最近动态 / 备份）、课题两栏。页签行右侧的搜索框在 v2 里筛的是**课题与待办**：课题列表、跨课题待办、今日该做、库体检、最近动态一起过滤，顶部给命中数与「清空筛选」，空结果按种类给明确空状态（指标条始终按全库算，不随筛选变）。选中课题后，详情里还有一条**本课题产物速览**（图 / 草稿 / 数据 / 表 / 工程 / 文献 / 在投）：数字是该课题已登记的产物数与相关文献、在投记录；点数字跳到列表页签并自动带上这个课题当筛选词，只留它的条目（数量为 0 的按钮置灰）。
+**工作台（v2）**一屏看全库：页头（标题 + 统计 + 快速登记 / 新建课题 / 导入数据 / 检查更新 / 刷新）、指标条（课题 / 图 / 文献 / 在投）、跨课题待办表、概览（今日该做 / 投稿倒计时 / 库体检 / 最近动态 / 备份）、课题两栏。页签行右侧的搜索框在 v2 里筛的是**课题与待办**：课题列表、跨课题待办、今日该做、库体检、最近动态一起过滤，顶部给命中数与「清空筛选」，空结果按种类给明确空状态（指标条始终按全库算，不随筛选变）。选中课题后，详情里还有一条**本课题产物速览**（图 / 草稿 / 数据 / 表 / 工程 / 文献 / 在投）：数字是该课题已登记的产物数与相关文献、在投记录；点数字跳到列表页签并自动带上这个课题当筛选词，只留它的条目（数量为 0 的按钮置灰）。页头还报出插件当前版本：首屏只读本地 `package.json`，点「检查更新」才去 GitHub 比对，有新版本时旁边给「更新到 vX.Y.Z」——更新做到 `git pull --ff-only`，只对干净的 git 工作树生效，完成后提示重启 Harness。
 
 | 页签 | 看什么 | 能做什么 |
 | --- | --- | --- |
@@ -276,11 +315,11 @@ python scripts/validate-patch.py    # ✓ 补丁预检通过
 
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 126 通过 · 0 失败 · 3 跳过
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 218 通过 · 0 失败
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 222 通过 · 0 失败
 ```
 
 - `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
-- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `218 通过 · 0 失败`，退出码 0。
+- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `222 通过 · 0 失败`，退出码 0。
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
 - `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。⚠️ 0.2.1 起 `SCIWORK_LIBRARY` **优先于**随包的 `library/config.json`（此前次序反了，导致本机把库指向真库时这道闸门永远拿真库当副本、写动作整节被跳过）。
 
