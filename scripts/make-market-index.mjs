@@ -30,6 +30,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { compareVersions } from '../lib/host/version.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARGV = process.argv.slice(2);
@@ -120,6 +121,8 @@ function buildIndex() {
   }
   versions = versions.filter((v) => v.version !== version);
   versions.push(versionEntry(version, commit, epoch));
+  // format 1 要 SemVer 降序，最新版排第一；市场默认展示 versions[0]。
+  versions.sort((a, b) => compareVersions(b.version, a.version));
 
   return {
     format: 1,
@@ -211,12 +214,18 @@ function validateIndex(index) {
     }
     if (!Array.isArray(plugin.versions) || plugin.versions.length === 0) push(`${at}.versions`, '必须是非空数组');
     const seen = new Set();
+    let previousVersion = null;
     for (const [j, v] of (Array.isArray(plugin.versions) ? plugin.versions : []).entries()) {
       const vat = `${at}.versions[${j}]`;
       if (!v || typeof v !== 'object') { push(vat, '必须是对象'); continue; }
       if (typeof v.version !== 'string' || !SEMVER.test(v.version)) push(`${vat}.version`, '必须是精确 SemVer');
       if (seen.has(v.version)) push(`${vat}.version`, `重复 ${v.version}`);
       seen.add(v.version);
+      // format 1 要求按 SemVer 降序；顺序错了，市场会把旧版当最新版展示。
+      if (previousVersion !== null && compareVersions(v.version, previousVersion) > 0) {
+        push(`${vat}.version`, `必须按 SemVer 降序：${v.version} 排在 ${previousVersion} 之后`);
+      }
+      previousVersion = v.version;
       if (!Number.isInteger(v.publishTimestamp) || v.publishTimestamp < 0 || v.publishTimestamp >= 1e11) push(`${vat}.publishTimestamp`, '必须是 [0, 1e11) 的整数秒');
       const src = v.source || {};
       if (src.type === 'git') {

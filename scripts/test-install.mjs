@@ -20,6 +20,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { loadBundledSkills, parseSkillFile, registerBundledSkills, userSkillsRoot, SKILLS_DIR } from '../lib/host/skills.js';
+import { compareVersions } from '../lib/host/version.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -104,6 +105,13 @@ if (fs.existsSync(indexFile)) {
     check('索引里已有上一个发布版本且钉了 git commit', !!latest && latest.source.type === 'git' && /^[0-9a-f]{40}$/.test(String(latest.source.commit)), latest ? `${latest.version} → ${String(latest.source.commit).slice(0, 7)}` : '索引是空的');
   }
   check('repository.url 指向本仓库', entry && entry.repository && /58catmiao\/dsh-sciwork/.test(entry.repository.url));
+  // market 展示的是 versions[0]，顺序错了会把旧版当最新版；format 1 要求 SemVer 降序。
+  const order = (entry && entry.versions || []).map((v) => v.version);
+  check(
+    '版本按 SemVer 降序（最新版在第一位）',
+    order.every((v, i) => i === 0 || compareVersions(order[i - 1], v) >= 0),
+    order.join(' > ')
+  );
 }
 
 /* ------------------------------------------------------------ 3. 包清单 */
@@ -122,7 +130,7 @@ check('scripts.install-plugin 有登记', !!(pkg.scripts && pkg.scripts['install
 check('scripts.market-index 有登记', !!(pkg.scripts && pkg.scripts['market-index']));
 // 本机路径绝不能随包发布：library/config.json 是 .gitignore 过的本机覆盖，
 // 不带 ! 排除时 npm 会顺着 files 里的 library 目录把它打进 tarball，
-// 新用户装到的库根就成了维护者的 E:/Research。
+// 新用户装到的库根就成了维护者机器上的那个（不存在），install.mjs 也会拿它当模板。
 check(
   'files 里排除本机库配置（!library/config.json）',
   (pkg.files || []).some((f) => /^!.*library\/config\.json$/.test(f)),
