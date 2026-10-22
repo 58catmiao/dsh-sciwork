@@ -20,7 +20,15 @@
 
 ## 2. 安装
 
-### 2.1 作为插件装进 profile
+三条通道装的是同一个包，按手边界面选一条：
+
+| 通道 | 命令 / 操作 | 说明 |
+|---|---|---|
+| 官方插件页（侧栏「插件」→ 添加插件） | 填 `github:58catmiao/dsh-sciwork` | 也可填解压目录的**绝对路径**；装完点「立即启用」 |
+| 终端 | `dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork` | 参数转发给 profile 里的 pnpm |
+| 插件市场（「插件 → 发现」） | 先加索引 URL，再从发现页装（见 §2.1c） | 市场只读用户给的索引 |
+
+### 2.1 作为插件装进 profile（终端）
 
 ```bash
 dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
@@ -32,6 +40,12 @@ dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
 
 装完**必须重启 Harness**：`cordis.patch.yml` 与宿主半边 `lib/*.js` 都只在启动时读取。
 重启前只能说「已写入」，不能说「已生效」。
+
+### 2.1a 官方插件页
+
+侧栏「插件」→ 添加插件 → 输入框填 `github:58catmiao/dsh-sciwork`（或解压目录的绝对路径）→ 安装 →「立即启用」→ 重启 Harness。
+
+插件页内部先 `inspect` 再走与终端同一套安装流程（GitHub 源会先 `git ls-remote` 探活，默认 5 秒超时）；失败会回滚 profile 的 `package.json` 与 `pnpm-lock.yaml`。
 
 ### 2.1b 本机没有 npm / pnpm（报「npm 找不到」）
 
@@ -50,9 +64,31 @@ node scripts/install-plugin.mjs --profile <profile> --dry-run
 
 验证接线：`dsh --profile <profile> --dump-config | grep -c dsh-sciwork`（应大于 0）。注意用这条路装进来的目录**不是 git 仓库**，面板里点「检查更新」会如实提示「不是 git 工作树」，更新方式是重新解压新版再跑一遍脚本。
 
+### 2.1c 插件市场（加索引 URL）
+
+市场的「发现」页由可选组合包 `@deepseek-ai/dsh-experimental-plugin-market-bundle` 提供，**不自动抓 GitHub**：它只读用户添加的索引 URL。本仓库自带 format 1 索引 `market/plugins.json`（git 源、钉到发布 commit），在市场的索引设置里加：
+
+```
+https://raw.githubusercontent.com/58catmiao/dsh-sciwork/main/market/plugins.json
+```
+
+索引里的版本记录形如 `{ version: "0.3.13", source: { type: "git", url: "https://github.com/58catmiao/dsh-sciwork", commit: "<40 位 sha>" } }`，市场把它翻成 `git+https://github.com/58catmiao/dsh-sciwork.git#<sha>` 交给 pnpm —— 所以装到的版本可复现。
+
+发版后刷新索引：
+
+```bash
+node scripts/make-market-index.mjs --commit v0.3.13   # 重写 market/plugins.json
+node scripts/test-install.mjs                          # 核对 format 与 commit 是否对得上 tag
+```
+
+> 第三方市场 `dshmarket` 读自己的精选目录，读不到这份索引；要出现在里面得它先收录。
+
 ### 2.2 铺技能与科研库骨架
 
 `scripts/install.mjs` 做两件幂等的事：把 `skills/` 下的技能装到技能根，把 `library/` 骨架铺到库根。
+
+**0.3.13 起技能不需要这一步**：插件激活时把包内 6 个技能注册成 runtime 技能（`ctx.skills.register`），装完即用；`~/.dsh/skills` 下已有同名技能时跳过、不覆盖用户版本。`install.mjs` 仍保留，用于「希望技能以文件形式落在磁盘上、可自行编辑」的场景。
+
 
 ```bash
 # 预检：只检查，不写任何文件

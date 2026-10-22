@@ -5,6 +5,20 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.13] - 2026-10-22
+
+### Added
+
+- **三条安装通道都写清楚并各自可走**：README / README.en 的「安装」与 `docs/INSTALL.md` §2 改成一张三通道表——①官方插件页（侧栏「插件」→ 添加插件）填 `github:58catmiao/dsh-sciwork`，也可以填解压目录的绝对路径；②终端 `dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork`；③插件市场加索引 URL 后从「发现」页装。每条通道单独一节，写清它实际做了什么、失败会怎样、装完要重启。
+- **市场索引生成器** `scripts/make-market-index.mjs` 与随包索引 `market/plugins.json`：产出 format 1 的插件索引（`title` / `description` 中英双语、`metadata.categories` 与 `labels`、git 源钉到发布 tag 的 40 位 commit、`publishTimestamp` 取 commit 时间），支持 `--stdout` / `--check` / `--validate` / `--commit <sha|ref>` / `--version` / `--out`；历史版本从旧索引继承。索引由 `validateIndex()` 按 `@deepseek-ai/dsh-plugin-market-index` 的规则自校，另外用 DSH 运行时里真实的 `parseMarketIndex` 交叉验证过：`marketInstallTarget` 能翻成 `git+https://github.com/58catmiao/dsh-sciwork.git#<sha>`。`package.json` 增加 `market-index` 脚本，`files` 补上 `market`。
+- **技能随包注册** `lib/host/skills.js` + `lib/index.js` 接线：插件激活时把包内 6 个技能读出来（`parseSkillFile` 解 frontmatter，`loadBundledSkills` 容忍坏文件并记录问题），经 `ctx.skills.register()` 注册成 runtime 技能——装完即用，不用再手动跑 `scripts/install.mjs`。`~/.dsh/skills/<名字>/SKILL.md` 已存在时**跳过**，用户自己那份永远优先，不覆盖、不改写。
+- **安装面自检** `scripts/test-install.mjs`（39 条断言）：随包技能可读/命名/正文与跳过用户副本、市场索引在位且与 tag 对得上（没有 tag 时只校验已存在的版本，避免发版前假红）、`package.json` 的 `files` / `dsh.bundle` / `dsh.client` / 零依赖 / 脚本键、以及 `apply()` 在只有最少服务时的接线（技能注册数 + 跳过数 = 6，没有 connection / skills 服务也不抛）。`cycle.mjs` 把它排进门禁，门禁从 14 项变 15 项；`package.json` 增加 `test:install` 脚本。
+
+### Fixed
+
+- **装完没有技能**：0.3.12 及以前技能只能靠 `scripts/install.mjs` 拷到 `~/.dsh/skills`，漏跑就一条都看不到，而 README 没把这一步写成必须。现在技能跟着插件走，`install.mjs` 只在「希望技能落盘可编辑」时才需要。
+- **文档只认终端一条路**：官方插件页、插件市场、无包管理器三种情况此前分散在故障排查里，且没说明「市场只读用户给的索引、不会爬 GitHub」「第三方 `dshmarket` 读自己的精选目录、读不到本索引」。现在三通道各自成节，故障排查表补「市场 Discover 搜不到」「技能没出现」两行。
+
 ## [0.3.12] - 2026-10-22
 
 ### Added

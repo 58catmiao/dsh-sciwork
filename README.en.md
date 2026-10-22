@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.3.12 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.3.13 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -42,13 +42,45 @@ Version 0.3.12 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <h
 
 ## Install
 
+Three channels; each installs the same thing. Pick the one your UI offers.
+
+| Channel | How | Notes |
+| --- | --- | --- |
+| **Official plugin page** (sidebar "Plugins" → add plugin) | enter `github:58catmiao/dsh-sciwork` | an unpacked ZIP's **absolute path** works too; click "enable now" afterwards |
+| **Terminal** | `dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork` | `dsh plugin` forwards the arguments to the profile's pnpm |
+| **Plugin marketplace** ("Plugins → Discover") | add the index URL below first, then install from Discover | the market only reads the indexes you give it; it never crawls GitHub |
+
+### Channel 1: official plugin page
+
+Sidebar "Plugins" → add plugin, then enter:
+
+```
+github:58catmiao/dsh-sciwork
+```
+
+**Restart Harness** afterwards — the panel is a client bundle, so reloading the page is not enough.
+
+### Channel 2: terminal
+
 ```bash
 dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
 ```
 
 > **Why the `github:` prefix**: this package is **not published to npm**, so `add dsh-sciwork` sends the package manager to npm and gets a 404 (or "package not found"). The `github:` form installs straight from GitHub and records `"dsh-sciwork": "github:58catmiao/dsh-sciwork"` in the profile.
 
-**Restart Harness** afterwards — the panel is a client bundle, so reloading the page is not enough.
+### Channel 3: plugin marketplace (add the index)
+
+DSH's marketplace does not crawl GitHub and does not guess repository names: it only reads **index URLs you add yourself**. This repository ships one (`market/plugins.json`, git source pinned to the release commit):
+
+```
+https://raw.githubusercontent.com/58catmiao/dsh-sciwork/main/market/plugins.json
+```
+
+It requires the optional bundle `@deepseek-ai/dsh-experimental-plugin-market-bundle`; without it the Discover tab does not exist, so use channel 1 or 2 instead (they are equivalent).
+
+> The third-party `dshmarket` reads its own curated catalog, **not this index**; it has to list the plugin first. Until then use channel 1 or 2.
+
+The index is rewritten after every release with `node scripts/make-market-index.mjs --commit v<version>`, which pins the version to that tag's commit — marketplace installs are therefore reproducible. `node scripts/test-install.mjs` checks its format and commit.
 
 ### No npm / pnpm, or the command above says npm cannot be found
 
@@ -63,6 +95,8 @@ node scripts/install-plugin.mjs --profile <profile> --source .
 
 It adds a `link:` dependency line to the profile's `package.json`, links `<profile>/node_modules/dsh-sciwork` to that directory, and appends `dsh-sciwork` to `dsh.profile.bundles`. The existing `package.json` is backed up as `package.json.bak-<timestamp>` first; `--dry-run` shows the changes without writing.
 
+(The plugin page's "add plugin" also accepts that unpacked directory's **absolute path** — same result.)
+
 Verify with `dsh --profile <profile> --dump-config | grep -c dsh-sciwork` (should be greater than 0).
 
 ### After installing, nothing changed
@@ -72,17 +106,17 @@ Verify with `dsh --profile <profile> --dump-config | grep -c dsh-sciwork` (shoul
 | 404 or "package not found" | the source must be `github:58catmiao/dsh-sciwork` (the package is not on npm) |
 | "npm / pnpm not found" | use the package-manager-free path above |
 | the panel still looks old | restart Harness (client bundle); a page reload is not enough |
-| "check for updates" says it is not a git work tree | that install is a copy or a link to an unpacked ZIP; update by unpacking the new ZIP and re-running `install-plugin.mjs` |
+| "check for updates" says it is not a git work tree | that install is a copy or a link to an unpacked ZIP; update by unpacking the new ZIP and re-running `install-plugin.mjs` (marketplace installs are copies too) |
 | no "Research Library" entry in the sidebar | `dsh --profile <profile> --dump-config` should contain a `name: dsh-sciwork` section |
-
-Installing from the plugin marketplace takes the same path (it also needs a package manager).
+| the plugin is missing from Discover | add the index URL (channel 3); is the marketplace bundle installed |
+| skills are missing | since 0.3.13 the plugin registers them on activation; if `~/.dsh/skills/<name>/SKILL.md` already exists it is skipped on purpose — remove that directory and restart to switch to the bundled copy |
 
 What you get after installing:
 
 - an agent preset "Research Mode" with id `research` (selectable in a session);
-- a new sidebar panel entry, "Research Library" (科研库);
+- a new sidebar panel entry, "Research Library" (科研库), opening on the workbench; the header reports the plugin version and offers "check for updates";
 - one precisely registered read-only route, `/api/research/call`, which the panel uses for snapshots and actions;
-- six skills added to the skill catalog.
+- six skills registered by the plugin on activation (runtime skills), so no manual `scripts/install.mjs` run is needed; your own copies under `~/.dsh/skills` win and are never overwritten.
 
 > Prerequisites: Node on the machine (the host half and the self-test scripts use it) and a working Python 3 interpreter (the library engine `research.py` uses it). **`python` is not required to be on `PATH`** — the launcher probes candidates in order: explicit configuration → `SCIWORK_PYTHON` → the library's own venv → the Origin plugin directory's venv → `PATH`. Plotting additionally needs Origin — see below.
 
@@ -273,12 +307,13 @@ Skills are discipline documents, not code: they constrain the agent's behaviour 
 
 ## Self-tests
 
-The repository ships three self-test scripts and one patch preflight. None of them writes to your real library (write actions run against an isolated copy behind a hard gate). The first three need Node only; the patch preflight is written in Python and needs one non-stdlib dependency, PyYAML:
+The repository ships four self-test scripts and one patch preflight. None of them writes to your real library (write actions run against an isolated copy behind a hard gate). The first four need Node only; the patch preflight is written in Python and needs one non-stdlib dependency, PyYAML:
 
 ```bash
 node scripts/selftest-host.mjs      # host half: route registration, path guards, snapshot shape
 node scripts/selftest-actions.mjs   # the 23 actions: read/guard checks + writes against an isolated copy
 node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlays, buttons and request shapes
+node scripts/test-install.mjs       # install surface: bundled skills, market index, package files, apply wiring
 python -m pip install pyyaml        # only for the next line (CI installs it in its own step)
 python scripts/validate-patch.py    # cordis.patch.yml preflight: preset rows, persona, inserted row
 ```

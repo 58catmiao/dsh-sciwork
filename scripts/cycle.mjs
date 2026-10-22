@@ -4,7 +4,7 @@
  *
  * 跑的就是 .github/workflows/ci.yml 那套东西，不另立标准：
  *   1) node --check  lib/*.js + scripts/*.mjs   （语法，零依赖）
- *   2) selftest-host / selftest-actions / selftest-client
+ *   2) selftest-host / selftest-actions / selftest-client / test-install
  *   3) python scripts/validate-patch.py          （patch 预检，需 PyYAML）
  *   4) scripts/check-local-info.mjs              （本机信息，推送前必须零命中）
  * 另外附一段只读的 git 状态，方便同步 GitHub 那一步心里有数。
@@ -158,6 +158,7 @@ for (const [label, script, skip] of [
   ['projects 自检（课题/迁移/备份）', 'scripts/test-projects.mjs', false],
   ['tools 自检（工具暴露/schema 窄化）', 'scripts/test-tools.mjs', false],
   ['契约自检（python 映射/超时）', 'scripts/test-contract.mjs', false],
+  ['安装面自检（随包技能/市场索引/包清单）', 'scripts/test-install.mjs', false],
   ['client 自检（面板渲染）', 'scripts/selftest-client.mjs', false],
 ]) {
   if (skip) {

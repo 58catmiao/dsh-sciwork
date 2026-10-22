@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.3.12 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.3.13 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -40,6 +40,26 @@
 
 ## 安装
 
+三条通道，装的是同一个东西；按你手边的界面选一条。
+
+| 通道 | 怎么装 | 说明 |
+| --- | --- | --- |
+| **官方插件页**（侧栏「插件」→ 添加插件） | 填 `github:58catmiao/dsh-sciwork` | 也可以填 ZIP 解压后的**绝对路径**；装完点「立即启用」 |
+| **终端** | `dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork` | `dsh plugin` 把参数转给 profile 里的 pnpm 执行 |
+| **插件市场**（「插件 → 发现」） | 先加索引 URL（见通道 3），再从「发现」页装 | 市场只读你给的索引，不自动抓 GitHub |
+
+### 通道 1：官方插件页
+
+侧栏「插件」→ 添加插件，输入框里填：
+
+```
+github:58catmiao/dsh-sciwork
+```
+
+装完对话框给一个「立即启用」；新组合包默认启用。**重启 Harness** 面板才出现。
+
+### 通道 2：终端
+
 ```bash
 dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
 ```
@@ -47,6 +67,20 @@ dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
 > **为什么带 `github:` 前缀**：这个包**没有发布到 npm 仓库**，直接写 `add dsh-sciwork` 会让包管理器去 npm 找、回一个 404（或“npm 找不到这个包”）。`github:58catmiao/dsh-sciwork` 是从 GitHub 装，装完 profile 里会多一条 `"dsh-sciwork": "github:58catmiao/dsh-sciwork"`。
 
 装完**重启 Harness**。
+
+### 通道 3：插件市场（加索引）
+
+DSH 的市场（`插件 → 发现`）不抓 GitHub、也不猜仓库名：它只读**你手动填进去的索引 URL**。本仓库自带一份索引（`market/plugins.json`，git 源、钉死到发布 commit），把这条 URL 加进市场索引即可：
+
+```
+https://raw.githubusercontent.com/58catmiao/dsh-sciwork/main/market/plugins.json
+```
+
+前提：这个市场由可选组合包 `@deepseek-ai/dsh-experimental-plugin-market-bundle` 提供；本机没装的话「发现」页不会出现，那就走通道 1 / 2（等价）。
+
+> 第三方市场 `dshmarket` 用的是它自己的精选目录，**读不到这份索引**；想在它里面装得等它收录，或者直接走通道 1 / 2。
+
+索引在每次发版后由 `node scripts/make-market-index.mjs --commit v<版本>` 重写（把版本钉到该 tag 的 commit），所以市场装到的版本是确定、可复现的。`node scripts/test-install.mjs` 会核对这份索引的 format 与 commit。
 
 ### 没有 npm / pnpm，或者上面那条命令报 npm 找不到
 
@@ -62,6 +96,8 @@ node scripts/install-plugin.mjs --profile <profile> --source .
 ```
 
 它会做三件事：给 profile 的 `package.json` 加依赖行（`link:` 到该目录）、把 `<profile>/node_modules/dsh-sciwork` 链接过去、把 `dsh-sciwork` 加进 `dsh.profile.bundles`；改之前自动备份 `package.json.bak-<时间戳>`。加 `--dry-run` 可以先看会改什么。
+
+（插件页的「添加插件」也能直接填这个解压目录的**绝对路径**，效果相同。）
 
 **退路 B：有 git 但没包管理器**
 
@@ -80,20 +116,22 @@ node scripts/install-plugin.mjs --profile <profile> --source .
 | 命令回 404 或“找不到这个包” | 安装源写了吗？要写 `github:58catmiao/dsh-sciwork`（npm 上没有这个包） |
 | 报 npm / pnpm 找不到 | 走上文的「退路 A」，不依赖包管理器 |
 | 重启后面板还是旧的 | 面板是客户端 bundle：**关掉 Harness 再打开**，只刷新页面不算 |
-| 面板里点「检查更新」说不是 git 工作树 | 这份安装是拷贝/链接到 ZIP 目录的，不是 git 仓库；更新要重新解压 ZIP 再跑一遍 `install-plugin.mjs` |
+| 面板里点「检查更新」说不是 git 工作树 | 这份安装是拷贝/链接到 ZIP 目录的，不是 git 仓库；更新要重新解压 ZIP 再跑一遍 `install-plugin.mjs`（从市场装的也是拷贝，同理） |
 | 装了但侧栏没有「科研库」 | `dsh --profile <profile> --dump-config` 看有没有 `name: dsh-sciwork` 这一段；没有就是 bundle 没进 `dsh.profile.bundles` |
-
-插件市场里点安装，走的也是同一条路径（同样需要包管理器；没有就走退路 A）。
+| 市场「发现」页里搜不到本插件 | 索引 URL 加了吗（见通道 3）；市场组合包装了吗 |
+| 技能没出现 | 0.3.13 起随包注册；若 `~/.dsh/skills/<名字>/SKILL.md` 已存在，插件会跳过（有意为之：删掉旧目录重启即可换成包内版本） |
 
 装完后你会多出：
 
 - 一个 ID 为 `research` 的 agent 预设「科研模式」（可直接在会话里选）——**科研只有一个模式**：课题的七阶段
   （选题 → 设计 → 数据 → 分析 → 成图 → 写作 → 投稿）都在这个模式里推进，阶段只是课题 `project.json` 里的一个字段，
   不再单设阶段预设；
-- 侧栏多一个面板入口「科研库」；
+- 侧栏多一个面板入口「科研库」（默认进工作台，页头报插件版本、可点「检查更新」）；
 - 一条精确注册的只读路由 `/api/research/call`（面板靠它取快照与执行动作）；
-- 六个技能进入技能目录（`research-studio` 总控、`research-stages` 七阶段路线、`origin-plot`、`paper-writing`、
-  `literature-refs`、`journal-profile`）。
+- 六个技能：`research-studio` 总控、`research-stages` 七阶段路线、`origin-plot`、`paper-writing`、
+  `literature-refs`、`journal-profile`。**0.3.13 起由插件激活时注册**（runtime 技能），不必再手动跑
+  `scripts/install.mjs`；你自己往 `~/.dsh/skills` 装过同名的，插件会跳过、不覆盖。
+
 
 > 前置：本机有 Node（宿主半边与自检脚本用它）与一个可用的 Python 3 解释器（科研库引擎 `research.py` 用它）。**不要求 `python` 出现在 PATH 上**——启动器会按「显式配置 → `SCIWORK_PYTHON` → 库自己的 venv → Origin 插件目录的 venv → PATH」逐个探测。出图另需 Origin，见下文。
 
@@ -284,17 +322,18 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 
 ## 自检
 
-仓库自带三个自检脚本与一个补丁预检，都不写你的正式库（写动作在隔离副本里跑，并有一道硬闸门）。前三个只要 Node；补丁预检是 Python 写的，需要一个非标准库的依赖 PyYAML：
+仓库自带四个自检脚本与一个补丁预检，都不写你的正式库（写动作在隔离副本里跑，并有一道硬闸门）。前四个只要 Node；补丁预检是 Python 写的，需要一个非标准库的依赖 PyYAML：
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主半边：路由注册、路径守卫、快照形状
 node scripts/selftest-actions.mjs   # 23 个动作：读/守卫检查 + 隔离副本里的写动作
 node scripts/selftest-client.mjs    # 客户端：七个页签的渲染、弹层、按钮与请求形状
+node scripts/test-install.mjs       # 安装面：随包技能、市场索引、包清单、apply 接线
 python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 Install PyYAML 步骤）
 python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
 ```
 
-想一条命令跑完全部（14 天一轮的周期自检就是这么跑的），用 `node scripts/cycle.mjs`：它把上面五项按 CI 的顺序跑一遍，附一段只读的 git 状态，输出汇总表与退出码，并把完整报告落到 `out/cycle/<日期>/`（`out/` 已 gitignore）。
+想一条命令跑完全部（两周一轮的周期自检就是这么跑的），用 `node scripts/cycle.mjs`：它把上面这些按 CI 的顺序跑一遍，附一段只读的 git 状态，输出汇总表与退出码，并把完整报告落到 `out/cycle/<日期>/`（`out/` 已 gitignore）。
 
 推送到公开仓库前另有一条门禁：`node scripts/check-local-info.mjs`（`cycle.mjs` 也会跑它）。它拿这台机器的家目录、用户名、主机名、临时目录、库根等标记，去扫全部跟踪文件与全部提交信息，命中就说明仓库里带了本机信息——换成 `<仓库根>` / `<库根>` / `<系统临时目录>` 这类占位符再提交。
 

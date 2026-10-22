@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "title": {
+    "en": "dsh-sciwork plugins",
+    "zh": "科研模式 · dsh-sciwork"
+  },
+  "description": {
+    "en": "Research mode for DeepSeek Harness: project stages, figures, references, drafting, submission prep.",
+    "zh": "DeepSeek Harness 的科研模式：课题阶段、出图、文献、写作、投稿准备，带一块科研库面板。"
+  },
+  "metadata": {
+    "categories": {
+      "research": {
+        "title": {
+          "en": "Research",
+          "zh": "科研"
+        }
+      }
+    },
+    "labels": {
+      "plugin": {
+        "title": {
+          "en": "Plugin",
+          "zh": "插件"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dsh-sciwork",
+      "title": {
+        "en": "Research mode (dsh-sciwork)",
+        "zh": "科研模式"
+      },
+      "description": {
+        "en": "Seven-stage research workflow with a library panel: projects, figures, references, drafts, journals, submissions.",
+        "zh": "课题七阶段 + 科研库面板：课题、图、文献、草稿、期刊档案、投稿"
+      },
+      "author": "58catmiao",
+      "homepage": "https://github.com/58catmiao/dsh-sciwork",
+      "repository": {
+        "url": "https://github.com/58catmiao/dsh-sciwork"
+      },
+      "metadata": {
+        "category": "research",
+        "labels": [
+          "plugin"
+        ],
+        "keywords": [
+          "research",
+          "origin",
+          "paper",
+          "reference",
+          "submission"
+        ]
+      },
+      "versions": [
+        {
+          "version": "0.3.12",
+          "publishTimestamp": 1792647448,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/58catmiao/dsh-sciwork",
+            "commit": "d5b8a93b5cbc019105a1097bd5c18c95b52da5f0"
+          }
+        }
+      ]
+    }
+  ]
+}
