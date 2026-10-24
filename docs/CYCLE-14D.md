@@ -59,7 +59,9 @@ ls <库根>/projects
 python <库根>/.research/bin/py.cmd --help   # 或 library/scripts/research.py
 ```
 
-护栏：**自检只允许在隔离副本里写**（`scripts/selftest-actions.mjs` 会把真库 `cp` 到系统临时目录下的 `research-selftest/<random>/lib` 再改写副本配置）。`<库根>` 里的数据、图、稿**一个字节都不许动**。
+护栏：**自检只允许在隔离副本里写**（`scripts/selftest-actions.mjs` 会把真库 `cp` 到系统临时目录下本次运行专属的 `sciwork-actions-<随机>/lib` 再改写副本配置，跑完只删自己这一份）。`<库根>` 里的数据、图、稿**一个字节都不许动**。
+
+> 2026-10-24 修：临时根以前是所有运行共用的 `<tmp>/research-selftest`，每次开跑先删整个根；两处门禁并行跑时后启动的那次会把前一次的副本删掉（读 `.research/config.json` 时 ENOENT，写动作整节红掉）。现在每次运行 `mkdtemp` 一个专属根，并发跑不会互删。
 
 ### ③ 找问题 + 修（≈2 小时）
 

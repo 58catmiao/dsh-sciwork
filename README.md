@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.3.13 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.3.14 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -353,7 +353,7 @@ python scripts/validate-patch.py    # ✓ 补丁预检通过
 **B. 指向一个真库（数字随库内容浮动，下面是夹具库实测）**
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 126 通过 · 0 失败 · 3 跳过
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 127 通过 · 0 失败 · 3 跳过
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 222 通过 · 0 失败
 ```
 

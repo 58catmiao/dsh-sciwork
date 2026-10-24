@@ -400,6 +400,7 @@ try {
  * 必须把副本自己的 config.json 也改成副本。这一节就是那次事故的回归测试。 */
 console.log('\n[9] 写动作（隔离副本 + 硬闸门）');
 let copiedRoot = null;
+let ownRoot = null;
 if (!snapUsable) {
   skipped('写动作隔离自检', '本机没有可用的科研库可复制（设 SCIWORK_LIBRARY 指向一个库根再跑）');
 } else {
@@ -408,13 +409,20 @@ try {
   const os = await import('node:os');
   const pathMod = await import('node:path');
   const LIB_REAL = rel(snapRes && snapRes.value && snapRes.value.root);
-  const tmpBase = pathMod.join(os.tmpdir(), 'research-selftest');
-  await rm(tmpBase, { recursive: true, force: true }).catch(() => {});
-  await (await import('node:fs/promises')).mkdir(tmpBase, { recursive: true });
+  // 每次运行用自己的临时根 `sciwork-actions-<随机>`，**不共用**固定路径。
+  // 回归（2026-10-24）：以前固定用 `<tmp>/research-selftest`，每次开跑先 `rm` 整个根；
+  // 两处门禁/自检并行跑时，后启动的那次会把前一次的隔离副本删掉，前一次就在读
+  // 副本配置时 ENOENT（`...\lib\.research\config.json`），写动作整节红掉。
+  // 临时根不再有共享状态，并发跑多份门禁互不影响。
+  ownRoot = await mkdtemp(pathMod.join(os.tmpdir(), 'sciwork-actions-'));
+  check('隔离副本落在本次运行专属临时目录（并发跑门禁不互删）',
+    /^sciwork-actions-[A-Za-z0-9]{6}$/.test(pathMod.basename(ownRoot))
+    && ownRoot !== pathMod.join(os.tmpdir(), 'research-selftest'),
+    ownRoot);
   // 回归（2026-10-19）：随包 library/config.json 一旦写了 libraryRoot，环境变量曾被它压住，
   // 隔离闸门随之失效、写动作整节被跳过。这里先单独钉住「env 压过随包快照」这条规则。
   {
-    const probeRoot = pathMod.join(tmpBase, 'env-override-probe');
+    const probeRoot = pathMod.join(ownRoot, 'env-override-probe');
     const savedNew = process.env.SCIWORK_LIBRARY;
     const savedOld = process.env.RESEARCH_LIBRARY;
     process.env.SCIWORK_LIBRARY = probeRoot;
@@ -425,8 +433,7 @@ try {
     if (savedOld !== undefined) process.env.RESEARCH_LIBRARY = savedOld;
     check('库根：环境变量压过随包 library/config.json', pathMod.resolve(probed.root) === pathMod.resolve(probeRoot), '得到 ' + rel(probed.root));
   }
-  copiedRoot = await mkdtemp(pathMod.join(tmpBase, pathMod.sep));
-  copiedRoot = pathMod.join(copiedRoot, 'lib');
+  copiedRoot = pathMod.join(ownRoot, 'lib');
   await cp(LIB_REAL, copiedRoot, { recursive: true });
   // 副本的 config.json 必须指向副本自己（三处路径全换）
   const cfgPath = pathMod.join(copiedRoot, '.research', 'config.json');
@@ -669,11 +676,12 @@ try {
 } catch (error) {
   bad('写动作隔离自检可运行', String(error && error.message ? error.message : error));
 } finally {
-  if (copiedRoot && !process.argv.includes('--keep-copy')) {
+  // 只删自己这次的临时根：固定路径共享根会让并发跑的另一次门禁把自己的副本删掉。
+  if (ownRoot && !process.argv.includes('--keep-copy')) {
     const { rm } = await import('node:fs/promises');
-    await rm(copiedRoot, { recursive: true, force: true }).catch(() => {});
-  } else if (copiedRoot) {
-    console.log('  （副本保留：' + copiedRoot + '）');
+    await rm(ownRoot, { recursive: true, force: true }).catch(() => {});
+  } else if (ownRoot) {
+    console.log('  （副本保留：' + ownRoot + '）');
   }
 }
 }

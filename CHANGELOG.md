@@ -5,6 +5,12 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.14] - 2026-10-24
+
+### Fixed
+
+- **两处门禁并行跑会互相删掉隔离副本**：`scripts/selftest-actions.mjs` 把临时根写死在 `os.tmpdir()/research-selftest`，每次开跑先 `rm -rf` 这个固定目录再 `mkdtemp` 子目录。于是同时有两个门禁在跑时，后启动的那个会把前一个正在用的隔离副本删掉，前一个读副本的 `.research/config.json` 直接 `ENOENT`，整节「写动作隔离自检」假红（实测：一个 `79 通过 · 1 失败 · 2 跳过`，另一个 `126 通过 · 0 失败`；单独重跑又全绿，很容易被当成偶发抖动忽略过去）。现在每次运行用 `mkdtemp(os.tmpdir()/sciwork-actions-)` 建自己的临时根，跑完只删自己这份，两个门禁并发也各跑各的。新增一条断言盯着这件事（副本必须落在本次运行专属目录里），action 自检从 126 条变 127 条。
+
 ## [0.3.13] - 2026-10-22
 
 ### Added
