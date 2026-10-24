@@ -705,7 +705,19 @@ if (editBtn) {
   t = await settle(Panel, {});
   let area = findAll(t, (n) => n.tag === 'textarea' && String(n.props.className || '').includes('rl-edit'))[0];
   check('点「编辑」出现就地编辑框', !!area);
+  /*
+   * 回归（2026-10-24）：不点「预览」直接点「编辑」时，以前编辑框是空的（body 留空），
+   * 连点保存就把整份草稿写成 0 字节。这里钉住「进编辑态时框里已经是原文」。
+   */
+  const openText = allText(t);
+  const draftPath = (openText.match(/projects\/[^\s/]+\/drafts\/[^\s]+\.md/) || [])[0] || '';
   if (area) {
+    const orig = draftPath
+      ? String((await handleResearchCall({ action: 'readText', args: { path: draftPath } })).text || '')
+      : '';
+    check('直接点「编辑」的编辑框带着原文（不是空框）',
+      !!orig && String(area.props.value) === orig,
+      'path=' + draftPath + ' value=' + JSON.stringify(String(area.props.value || '').slice(0, 40)));
     area.props.onChange({ target: { value: '# 新正文\n' } });
     t = await settle(Panel, {});
     const saveBtn = findAll(t, (n) => n.tag === 'button' && allText(n).includes('保存'))[0];
@@ -717,6 +729,54 @@ if (editBtn) {
       check('保存走 writeText，带 path + text', !!s && s.action === 'writeText' && /drafts\/[^/]+\.md$/.test(s.args.path) && s.args.text === '# 新正文\n',
         JSON.stringify(s));
       check('保存后提示 .bak 备份', allText(t).includes('.bak'), allText(t).slice(0, 200));
+    }
+  }
+}
+
+/* 9b2. 回归（2026-10-24）：草稿卡「编辑」不等「预览」，编辑框里也必须已经是原文。
+   真库没草稿时 9b 会整段跳过，所以这里用自足夹具直接挂 DraftCard，不依赖本地库内容。 */
+console.log('\n[9b2] 草稿卡就地编辑：不点预览直接编辑（回归）');
+{
+  const T = clientExports.__test;
+  check('__test 暴露 DraftCard（供夹具直挂）', typeof T.DraftCard === 'function');
+  const original = '# 原文标题\n\n第一段正文。\n';
+  const writes = [];
+  const cardProps = {
+    draft: { path: 'projects/demo/drafts/manuscript.md', name: 'manuscript.md', bytes: 26, mtime: '2026-10-24T09:00:00+08:00' },
+    call: (action) => Promise.resolve(action === 'readText' ? { text: original } : {}),
+    ctx: {
+      get: (name) => (name === 'connection' ? {
+        rpc: {
+          call: async (channel, endpoint, payload) => {
+            writes.push(payload);
+            return { ok: true, value: { path: payload.args.path, backup: payload.args.path + '.bak', bytes: 26, beforeBytes: 26, mtime: '2026-10-24T10:00:00+08:00' } };
+          },
+        },
+      } : undefined),
+    },
+    onReload() {},
+  };
+  let dc = await settle(T.DraftCard, cardProps);
+  const editB = findByTagText(dc, 'button', '编辑');
+  check('夹具草稿卡有「编辑」按钮', !!editB, buttonTexts(dc));
+  if (editB) {
+    editB.props.onClick();
+    dc = await settle(T.DraftCard, cardProps);
+    const area = findAll(dc, (n) => n.tag === 'textarea')[0];
+    check('不点「预览」直接点「编辑」：编辑框里已经是原文',
+      !!area && String(area.props.value) === original,
+      'value=' + JSON.stringify(String(area && area.props.value).slice(0, 40)));
+    if (area) {
+      const saveB = findAll(dc, (n) => n.tag === 'button' && allText(n).includes('保存'))[0];
+      check('编辑态「保存」可点', !!saveB && saveB.props.disabled !== true, buttonTexts(dc));
+      if (saveB) {
+        saveB.props.onClick();
+        dc = await settle(T.DraftCard, cardProps);
+        check('一个字没改就保存：写回的是原文，不是空串',
+          writes.length === 1 && writes[0].action === 'writeText' && writes[0].args.text === original,
+          JSON.stringify(writes.map((w) => w.args.text)));
+        check('保存后回显 .bak 备份路径', allText(dc).includes('.bak'), allText(dc).slice(0, 160));
+      }
     }
   }
 }
@@ -1143,6 +1203,26 @@ console.log('\n[12] v2 工作台');
   if (goCreate) { goCreate.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
   const createPlan = calls.filter((c) => c.action === 'action.plan').map((c) => c.args).filter((a) => a.actionId === 'project.create').pop();
   check('新建课题同样先出计划', !!createPlan && createPlan.params.slug === 'new-proj', JSON.stringify(createPlan));
+}
+
+/* 12b. 回归（2026-10-24）：库根不可读时工作台必须报错，不能把故障说成「库里还没有课题」 */
+console.log('\n[12b] v2 工作台：库不可读 ≠ 空库');
+{
+  const T = clientExports.__test;
+  const badRoot = 'X:\\nope';
+  const badCall = (action) => {
+    if (action === 'project.list') return Promise.resolve({ projects: [] });
+    if (action === 'system.receipts') return Promise.resolve({ receipts: [] });
+    /* 真宿主就是这么回的：外层信封 ok:true，快照自己带 ok:false（lib/library.js snapshot 根不存在）。 */
+    if (action === 'snapshot') {
+      return Promise.resolve({ ok: false, root: badRoot, error: '科研库根目录不存在：' + badRoot, projects: [], refs: [], pdfs: [], journals: [], counts: {} });
+    }
+    return Promise.resolve({});
+  };
+  const bad = await settle(T.Workbench, { call: badCall, onImport() {} });
+  const bt = allText(bad);
+  check('库根不可读时工作台报出原因', bt.includes('科研库不可读') && bt.includes('科研库根目录不存在'), bt.slice(0, 200));
+  check('库根不可读时不再假装「库里还没有课题」', !bt.includes('库里还没有课题'), bt.slice(0, 200));
 }
 
 /* [13] 0.3.3 面板交互：v1/v2 页签、遮罩/Esc 关闭、图卡参数折叠 */
