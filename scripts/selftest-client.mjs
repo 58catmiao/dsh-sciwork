@@ -1138,12 +1138,22 @@ console.log('\n[12] v2 工作台');
   check('工作台列出课题（标题 + 阶段）', allText(wt).includes('ZT 陶瓷') && allText(wt).includes('图表'));
   check('工作台显示最近回执', allText(wt).includes('project.stage.set'));
 
-  // 0.3.12：页头报版本 + 「检查更新」入口（首屏只问本地，不联网）
-  check('页头报出插件版本（首屏只查本地）',
+  // 0.3.12：页头报版本；0.4.1 起「检查更新」挪到版本号旁边（页头只留干活的动作）
+  check('版本行报出插件版本（首屏只查本地）',
     allText(wt).includes('插件 v0.3.11') && allText(wt).includes('还没比对远端'), allText(wt).slice(0, 160));
   const upBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '检查更新')[0];
-  check('页头有「检查更新」按钮', !!upBtn);
+  check('有「检查更新」按钮', !!upBtn);
   if (upBtn) {
+    // 要点：它得在版本行里（`rl-wb__recLine`），不能又飘回页头按钮组（`rl-page__acts`）
+    const cls = (n) => String((n && n.props && n.props.className) || '');
+    // 页脚有两行都带 rl-wb__recLine（回执行 + 版本行），取含「插件 v」的那一行
+    const verRow = findAll(wt, (n) => cls(n).split(/\s+/).indexOf('rl-wb__recLine') >= 0
+      && allText(n).includes('插件 v'))[0];
+    const inVerRow = !!verRow && findAll(verRow, (n) => n === upBtn).length > 0;
+    check('「检查更新」在版本号那一行里', inVerRow);
+    const headActs = findAll(wt, (n) => cls(n).split(/\s+/).indexOf('rl-page__acts') >= 0)[0];
+    const strayInHead = !!headActs && findAll(headActs, (n) => n === upBtn).length > 0;
+    check('「检查更新」不再留在页头按钮组', !strayInHead);
     upBtn.props.onClick();
     wt = await settle(T.Workbench, { call: fakeCall, onImport() {} });
     const ut = allText(wt);
