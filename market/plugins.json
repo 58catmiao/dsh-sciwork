@@ -57,6 +57,15 @@
       },
       "versions": [
         {
+          "version": "0.3.16",
+          "publishTimestamp": 1793441694,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/58catmiao/dsh-sciwork",
+            "commit": "a7b8f615974c24a0ff5b529ca927f5b53a3ece88"
+          }
+        },
+        {
           "version": "0.3.15",
           "publishTimestamp": 1792842705,
           "source": {
