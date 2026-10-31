@@ -1448,6 +1448,44 @@ console.log('\n[15] 阶段可选（0.3.10）');
   check('没有计划时 confirmPlan 直接报错，不发请求', /没有待确认的计划/.test(emptyErr) && seen.length === 1, emptyErr);
 }
 
+/* 0.4.2 回归锁：设置弹层与模型清单
+ * 真机上「问模型」报「宿主里没有已配置的模型」：面板原先读 `ctx.get('llm')`，
+ * 而渲染进程里那个服务未必在。现在模型清单改由插件宿主侧的 `llm.info` 动作给。 */
+{
+  const T4 = clientExports.__test;
+  const calls = [];
+  const fake = (action, args) => {
+    calls.push({ action, args: args || {} });
+    if (action === 'llm.info') {
+      return Promise.resolve({ available: true, providers: [{ id: 'deepseek-official', name: 'DeepSeek' }], models: [
+        { provider: 'deepseek-official', id: 'deepseek-chat', name: 'deepseek-chat', vision: false },
+        { provider: 'deepseek-official', id: 'deepseek-vision', name: 'deepseek-vision', vision: true },
+      ], reason: '' });
+    }
+    return Promise.resolve({});
+  };
+  const sm = await settle(T4.SettingsModal, { call: fake, onClose() {}, version: '0.4.2' });
+  check('设置弹层标题是「设置」', allText(sm).includes('设置'), allText(sm).slice(0, 60));
+  check('设置弹层向宿主要模型清单（llm.info）', calls.some((c) => c.action === 'llm.info'), calls.map((c) => c.action).join(','));
+  const opts = findAll(sm, (n) => n.tag === 'option');
+  check('模型下拉里有宿主给的模型',
+    opts.some((o) => String(o.props.value) === 'deepseek-official/deepseek-chat'), opts.map((o) => o.props.value).join(','));
+  check('能看图的模型单独标出来', opts.some((o) => String(allText(o)).indexOf('👁') >= 0), opts.map((o) => allText(o)).join(' | '));
+  check('设置里报出模型总数', allText(sm).includes('2 个可用'), allText(sm).slice(-120));
+  check('设置分成栏目（模型 / 习惯 / 本地数据 / 关于）', ['模型', '习惯', '本地数据', '关于'].every((x) => allText(sm).includes(x)), allText(sm).slice(0, 80));
+
+  const empty = await settle(T4.SettingsModal, {
+    call: (a) => Promise.resolve(a === 'llm.info' ? { available: false, models: [], reason: '宿主里一个提供方都没有：到「设置 → 模型」里加一个提供方和 API Key。' } : {}),
+    onClose() {},
+    version: '0.4.2',
+  });
+  check('没有模型时给出「为什么空」的人话',
+    allText(empty).includes('一个提供方都没有'), allText(empty).slice(0, 200));
+
+  check('设置项读写走独立前缀', T4.settingsGet('__probe__', 'x') === 'x', String(T4.settingsGet('__probe__', 'x')));
+  check('本机对话缓存统计不炸（Node 里没有 localStorage）', typeof T4.countChatTurns() === 'number', String(T4.countChatTurns()));
+}
+
 /* 汇总 */
 console.log('\n' + '='.repeat(72));
 console.log(`${pass} 通过 · ${fail} 失败`);

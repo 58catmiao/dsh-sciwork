@@ -359,6 +359,17 @@ function fixture(action, args) {
           { id: 'baseline', name: '扣基线', needs: ['y'], params: [], desc: '扣掉背景' },
         ],
       };
+    case 'llm.info':
+      // 0.4.2：模型清单来自插件宿主侧。夹具给两个模型（一个能看图），设置弹层要能列出来。
+      return {
+        available: true,
+        providers: [{ id: 'stub-provider', name: 'Stub' }],
+        models: [
+          { provider: 'stub-provider', id: 'stub-chat', name: 'stub-chat', vision: false },
+          { provider: 'stub-provider', id: 'stub-vision', name: 'stub-vision', vision: true },
+        ],
+        reason: '',
+      };
     case 'tableTransform':
       return { summary: '已另存为新表', path: 'projects/demo-perovskite/data/uvvis_smooth.csv', warnings: [] };
 
@@ -553,6 +564,8 @@ const PAGES = [
   { name: '归档', id: 'archive', entry: '归档', scope: 'body', expect: '20261021-150000' },
   { name: '列表面板', id: 'v1', entry: '列表面板', scope: 'shell', expect: '新建课题', excludeLabels: ['列表面板'] },
   { name: '命令台', id: 'console', entry: '命令台', scope: 'modal', expect: '关闭' },
+  // 0.4.2 新增：设置（模型 / 默认页签 / 本地对话缓存）。
+  { name: '设置', id: 'settings', entry: '设置', scope: 'modal', expect: '关闭' },
   { name: '引导', id: 'tour', entry: '引导', scope: 'tour', expect: '下一步' },
 ];
 

@@ -5,6 +5,25 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.2] - 2026-11-01
+
+### Added
+
+- 顶栏「设置」：左栏分栏（模型 / 习惯 / 本地数据 / 关于），加栏目只需往 `SETTINGS_SECTIONS` 里加一项。
+- 宿主动作 `llm.info`：汇总 DSH 里已配置的提供方与模型（`inputModalities` 含 image 的标能看图），设置与圈选问模型共用。
+- 宿主动作 `llm.chat`：面板拿不到宿主流式接口时，退到宿主侧一次性拿整段回答。
+
+### Changed
+
+- 「问模型」不再读渲染进程里的 `ctx.get('llm')`（那里在部分版本是空的，表现为「宿主里没有已配置的模型」），改走 `llm.info`。
+- 设置项只留真的会生效的：默认页签、Alt+Q 开关、画图对话缓存清理、默认模型。
+
+### Fixed
+
+- 关于页的版本号读不到时显示「—」：改成弹层自己取一次 `system.update_check`（`remote:false`，不联网）。
+- `llm.info` 拿不到宿主模型服务：动作执行上下文里没有 Cordis 插件上下文（`ctx.llm` 永远是空）。改成在插件 `apply()` 里把 `llm` 服务挂到 `lib/host/host-services.js` 的桥上，动作从桥上取；`inject(['llm'])` 兜住服务晚于插件出现的情况。
+- 回归锁：`scripts/selftest-actions.mjs` 新增 [14] 节（6 条）——桥默认空、没接桥时说人话、接桥后能列出模型、能看图的标 `vision`、模型带 provider、卸载后桥回到空。
+
 ## [0.4.1] - 2026-11-01
 
 ### Changed

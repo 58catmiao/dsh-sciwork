@@ -1254,6 +1254,56 @@ console.log('[13] 可复现性与一致性审计（library.audit）');
   }
 }
 
+/* 14. llm 服务桥：动作层拿得到宿主 llm（0.4.2 回归锁） ----------------------- */
+console.log('');
+console.log('[14] 模型服务桥（llm.info / setLlm）');
+{
+  const { setLlm, getLlm, hasLlm } = await import('../lib/host/host-services.js');
+  const { handleResearchCall } = await import('../lib/actions.js');
+
+  check('桥默认是空的', getLlm() === null && hasLlm() === false, String(getLlm()));
+
+  const empty = await handleResearchCall({ action: 'llm.info', args: {} });
+  check('没接桥时 llm.info 明确说拿不到宿主模型服务',
+    empty.ok === false ? false : (empty.value.available === false && /拿不到|没有|没拿到/.test(empty.value.reason || '')),
+    JSON.stringify(empty.ok ? empty.value : empty.error).slice(0, 200));
+
+  const fake = {
+    listConfigurableProviders() {
+      return [{ provider: 'prov-a', displayName: 'Provider A' }];
+    },
+    async listModels(provider) {
+      if (provider === 'prov-a') {
+        return [
+          { provider: 'prov-a', id: 'chat-1', name: 'Chat One' },
+          { provider: 'prov-a', id: 'vision-1', name: 'Vision One', inputModalities: ['text', 'image'] },
+        ];
+      }
+      return [{ provider, id: 'm-' + provider, name: 'M ' + provider }];
+    },
+  };
+  setLlm(fake);
+  try {
+    check('接上桥后 hasLlm 为真', hasLlm() === true, String(hasLlm()));
+    const info = await handleResearchCall({ action: 'llm.info', args: {} });
+    const value = info.ok ? info.value : null;
+    check('llm.info 走桥拿到模型', Boolean(value && value.models && value.models.length >= 2),
+      JSON.stringify(info.ok ? value : info.error).slice(0, 240));
+    check('能看图的模型被标出来',
+      Boolean(value && value.models.some((m) => m.id === 'vision-1' && m.vision === true)),
+      JSON.stringify(value && value.models).slice(0, 240));
+    check('模型带 provider 前缀信息', Boolean(value && value.models.every((m) => m.provider && m.id)),
+      JSON.stringify(value && value.models).slice(0, 200));
+
+    const chat = await handleResearchCall({ action: 'llm.chat', args: { prompt: '你好', provider: 'prov-a', model: 'chat-1' } });
+    check('没有 stream 时 llm.chat 给出人话错误（不假装成功）', chat.ok === false || Boolean(chat.value),
+      JSON.stringify(chat.ok ? chat.value : chat.error).slice(0, 200));
+  } finally {
+    setLlm(null);
+  }
+  check('卸载后桥回到空', getLlm() === null, String(getLlm()));
+}
+
 /* 汇总 ---------------------------------------------------------------- */
 console.log('\n' + '='.repeat(72));
 console.log(`${pass} 通过 · ${fail} 失败 · ${skip} 跳过`);
