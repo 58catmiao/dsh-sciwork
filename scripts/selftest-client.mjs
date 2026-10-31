@@ -274,7 +274,12 @@ check('走了 /api research/call', !!lastCall && lastCall.channel === '/api' && 
 check('标题渲染', text.includes('科研库'));
 check('库根渲染', text.includes(realSnap.root), realSnap.root);
 const nProjects = (realSnap.projects || []).length;
-check('计数渲染（课题数与库一致）', new RegExp(`${nProjects}\\s*个\\s*课题`).test(text), (text.match(/课题\s*\d+[^·]*·\s*图\s*\d+/) || [''])[0] + ` / 库里 ${nProjects} 个`);
+if (nProjects) {
+  check('计数渲染（课题数与库一致）', new RegExp(`${nProjects}\\s*个\\s*课题`).test(text), (text.match(/课题\s*\d+[^·]*·\s*图\s*\d+/) || [''])[0] + ` / 库里 ${nProjects} 个`);
+} else {
+  // 空库（CI 就是这种）：页头不写「0 个课题」，直接说还没有课题。
+  check('空库时页头说人话（不是「0 个课题」）', /还没有课题|一个课题/.test(text) && !/0\s*个\s*课题/.test(text), text.slice(0, 200));
+}
 if (liveSlug) check('课题卡片渲染', text.includes(liveSlug) || text.includes(liveTitle), text.slice(0, 400));
 else skipNote('课题卡片渲染');
 // 图卡：真库里有几张就渲染几张（用户会删图，别写死 fig1/fig2 —— 写死过一次，删了就假失败）
@@ -677,7 +682,9 @@ if (draftsTab2) {
 /* 9a. 新建空白草稿 → newDraft（只创建不存在的名字） */
 const newDraftBtn = findByTagText(t, 'button', '新建草稿');
 check('草稿页有「新建草稿」入口', !!newDraftBtn, buttonTexts(t));
-if (newDraftBtn) {
+if (!liveSlug) {
+  skipNote('新建草稿的三条（空库没有课题可选）');
+} else if (newDraftBtn) {
   newDraftBtn.props.onClick();
   t = await settle(Panel, {});
   const ph = (re) => findAll(t, (n) => n.tag === 'input' && re.test(String(n.props.placeholder || '')))[0];
@@ -839,7 +846,8 @@ if (assetsTab) { assetsTab.props.onClick(); t = await settle(Panel, {}); }
   check('数据页没有「成组出图 / 直接出图 / 整组勾选 / 清空选择」',
     !/成组出图|直接出图|整组勾选|整组取消|清空选择/.test(txt), txt.slice(0, 240));
   check('数据页没有「成组」勾选框', findAll(t, (n) => n.tag === 'input' && n.props && n.props.type === 'checkbox').length === 0, btns);
-  check('数据页仍保留「变换」入口（用户没要求删）', findAll(t, (n) => n.tag === 'button' && allText(n).trim() === '变换').length >= 1, btns);
+  if (liveSlug) check('数据页仍保留「变换」入口（用户没要求删）', findAll(t, (n) => n.tag === 'button' && allText(n).trim() === '变换').length >= 1, btns);
+  else skipNote('数据页「变换」入口（空库没有数据卡）');
 }
 
 /* 9e. 归档页：列出批次 + 恢复 */
@@ -887,10 +895,14 @@ if (dropNode2) {
     importBtn.props.onClick();
     t = await settle(Panel, {}, 12);
     const batch = sent.slice(before).filter((s) => s.action === 'import');
+    if (!liveSlug) {
+      skipNote('批量导入的两条（空库没有课题可选）');
+    } else {
     check('一批两种去处 → 发了两次 import（data / figures）',
       batch.length === 2 && batch.map((s) => s.args.target).sort().join(',') === 'data,figures', JSON.stringify(batch.map((s) => ({ t: s.args.target, n: s.args.files.length }))));
     check('每组的文件数正确（各 1 个）', batch.length === 2 && batch.every((s) => s.args.files.length === 1 && s.args.files[0].base64), JSON.stringify(batch.map((s) => s.args.files.map((f) => f.name))));
     check('合并结果里两个去处都报了', /『数据』/.test(allText(t)) && /『图片』/.test(allText(t)), allText(t).slice(-240));
+    }
   }
   const closeBtn2 = findAll(t, (n) => n.tag === 'button' && allText(n).includes('关闭'))[0];
   if (closeBtn2) { closeBtn2.props.onClick(); t = await settle(Panel, {}); }
@@ -1014,7 +1026,8 @@ console.log('\n[11] 数据变换');
   const assetsTab4 = findByTagText(t, 'button', '数据');
   if (assetsTab4) { assetsTab4.props.onClick(); t = await settle(Panel, {}); }
   const tfBtn = findAll(t, (n) => n.tag === 'button' && allText(n).trim() === '变换')[0];
-  check('数据卡上有「变换」按钮', !!tfBtn);
+  if (liveSlug) check('数据卡上有「变换」按钮', !!tfBtn);
+  else skipNote('数据卡「变换」按钮（空库没有数据卡）');
   if (tfBtn) {
     tfBtn.props.onClick();
     t = await settle(Panel, {});
