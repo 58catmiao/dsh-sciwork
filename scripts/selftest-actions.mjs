@@ -94,13 +94,14 @@ check('CLI_HINTS 七段齐全', Object.keys(CLI_HINTS).length === 7, Object.keys
 import { normalize, baseline, smooth, integrate, peaks, linear, tableToCsv, runTransform } from '../lib/transform.js';
 {
   // 基线 ends 模式必须用用户选的 X 列，不能写死第 0 列
-  // 首段 3 点严格共线（Y=2X），拟合后首点校正应为 0
+  // 首段 3 点严格共线（y=2x）、末段 3 点在 y=2x−10 上；ends 口径是「首段+末段联合」拟合一条线
   const tab = { header: ['a','b','x','y'], delimiter: ',', rows: [
     [9,9,1,2],[9,9,2,4],[9,9,3,6],[9,9,4,3],[9,9,5,5],[9,9,6,7],[9,9,7,4],[9,9,8,6],[9,9,9,8],[9,9,10,10],
   ] };
   const out = baseline(tab, 3, 2, 'ends', 3).table.rows.map((r) => r[3]);
-  check('baseline ends 用选中的 X 列拟合（首段共线 → 首点校正为 0）', Math.abs(out[0]) < 1e-9, 'out[0]=' + out[0]);
-  check('baseline ends 真的减了基线（末行≠原始值）', Math.abs(out[9] - 10) > 1e-6, 'out[9]=' + out[9]);
+  // 联合最小二乘的解析解：k=20/31、c=76/31，两端残差互为相反数 → 首点 −34/31、末点 +34/31
+  check('baseline ends 用选中的 X 列联合拟合（首点校正 = −34/31）', Math.abs(out[0] + 34 / 31) < 1e-9, 'out[0]=' + out[0]);
+  check('baseline ends 两端平衡（末点校正 = +34/31，确实减了基线）', Math.abs(out[9] - 34 / 31) < 1e-9, 'out[9]=' + out[9]);
   // 用错列（第0列全是9）时拟不出基线，应原样返回并给出提示，绝不假装成功
   const buggy = baseline(tab, 3, 0, 'ends', 3);
   check('基线选错列（全9列）时不假装成功：原样返回', buggy.table.rows[9][3] === 10 && /X 变化太小/.test(buggy.notes[0] || ''), JSON.stringify(buggy.notes));
@@ -673,6 +674,121 @@ try {
     JSON.stringify((subProj.folders || {}).data));
   const subDirOnDisk = await stat(pathMod.join(copiedRoot, 'projects', 'demo-perovskite', 'data', 'ZT-1500-2h', 'sub-sample.csv')).then(() => true).catch(() => false);
   check('子目录确实落在磁盘上（不是只改了返回文案）', subDirOnDisk === true, 'projects/demo-perovskite/data/ZT-1500-2h/sub-sample.csv');
+  /* 10. library.rename：同目录改名；图件带兄弟文件与侧车；引用跟着改 ------------------ */
+  console.log('\n[10] library.rename（改名 + 图件侧车 + 引用扫描）');
+  const { planAction, dispatch } = await import('../lib/host/dispatch.js');
+  const { resolveAction, validateAction } = await import('../lib/host/registry.js');
+  const renameCtx = { root: copiedRoot, source: 'selftest' };
+  const renameVia = async (from, to) => {
+    const plan = planAction('library.rename', { from, to }, renameCtx);
+    if (!plan.ok) return plan;
+    return dispatch('library.rename', { from, to }, { ...renameCtx, planId: plan.value.planId, confirmToken: plan.value.token });
+  };
+  const fileAt = async (p) => stat(pathMod.join(copiedRoot, ...p.split('/'))).then(() => true, () => false);
+  const readRel = async (p) => readFile(pathMod.join(copiedRoot, ...p.split('/')), 'utf8').catch(() => null);
+
+  const renameAction = resolveAction('library.rename');
+  const renameProblems = validateAction(renameAction);
+  check('library.rename 已登记且通过描述符校验',
+    !!renameAction && renameAction.id === 'library.rename' && renameProblems.length === 0,
+    JSON.stringify(renameProblems));
+  check('library.rename：params 只有 from/to、关掉额外键、effects/confirm/engine/工具名都对',
+    !!renameAction && JSON.stringify(renameAction.params.required) === JSON.stringify(['from', 'to'])
+    && renameAction.params.additionalProperties === false
+    && renameAction.effects === 'write' && renameAction.confirm === 'write' && renameAction.engine === 'node'
+    && renameAction.tool && renameAction.tool.name === 'sciwork_library_rename',
+    JSON.stringify(renameAction && { params: renameAction.params, effects: renameAction.effects, confirm: renameAction.confirm, tool: renameAction.tool }));
+  const rpMissing = planAction('library.rename', { from: 'a.csv' }, renameCtx);
+  const rpExtra = planAction('library.rename', { from: 'a.csv', to: 'b.csv', nested: 1 }, renameCtx);
+  check('library.rename 缺 to / 多给键 → schema（不静默忽略）',
+    rpMissing.ok === false && rpMissing.error.code === 'schema' && rpExtra.ok === false && rpExtra.error.code === 'schema',
+    JSON.stringify({ missing: rpMissing.error && rpMissing.error.code, extra: rpExtra.error && rpExtra.error.code }));
+
+  // 样本全落在副本里：普通数据、占位目标、图件组（json/png/pdf 同基名）、参照侧车
+  await seedText('projects/demo-perovskite/data/rename-seed.csv', 'seed-content');
+  await seedText('projects/demo-perovskite/data/rename-taken.csv', 'taken');
+  await seedText('projects/demo-perovskite/data/rename-data.csv', 'V,Jsc');
+  await writeFile(pathMod.join(figDir, 'rename-fig.png'), Buffer.from('89504e470d0a1a0a', 'hex'));
+  await seedText('projects/demo-perovskite/figures/rename-fig.pdf', '%PDF-1.4 selftest');
+  await seedText('projects/demo-perovskite/figures/rename-fig.json', JSON.stringify({
+    schema: 1, figureId: 'rename-fig', project: 'demo-perovskite',
+    file: 'projects/demo-perovskite/figures/rename-fig.png',
+    files: ['projects/demo-perovskite/figures/rename-fig.png', 'projects/demo-perovskite/figures/rename-fig.pdf'],
+    sourceData: ['projects/demo-perovskite/data/rename-data.csv'],
+  }, null, 1));
+  await seedText('projects/demo-perovskite/figures/rename-ref.json', JSON.stringify({
+    schema: 1, figureId: 'rename-ref', project: 'demo-perovskite',
+    file: 'projects/demo-perovskite/figures/rename-ref.png', files: [],
+    sourceData: ['projects/demo-perovskite/data/rename-data.csv'],
+  }, null, 1));
+
+  // 10a. 正常改名
+  const rn1 = await renameVia('projects/demo-perovskite/data/rename-seed.csv', 'projects/demo-perovskite/data/rename-normal.csv');
+  const rn1New = await readRel('projects/demo-perovskite/data/rename-normal.csv');
+  const rn1Old = await fileAt('projects/demo-perovskite/data/rename-seed.csv');
+  check('普通文件同目录改名成功（kind/moved/updated 齐全）',
+    rn1.ok === true && rn1.value.kind === 'file'
+    && rn1.value.from === 'projects/demo-perovskite/data/rename-seed.csv'
+    && rn1.value.to === 'projects/demo-perovskite/data/rename-normal.csv'
+    && Array.isArray(rn1.value.moved) && rn1.value.moved.length === 1
+    && Array.isArray(rn1.value.updated) && !!rn1.value.reindex,
+    JSON.stringify(rn1.ok ? rn1.value : rn1.error).slice(0, 260));
+  check('改名后新名里有原内容、旧名不在了', rn1New === 'seed-content' && rn1Old === false, JSON.stringify({ content: rn1New, old: rn1Old }));
+
+  // 10b. 目标已存在 → 拒；源不动
+  const rn2 = await renameVia('projects/demo-perovskite/data/rename-normal.csv', 'projects/demo-perovskite/data/rename-taken.csv');
+  const rn2Src = await fileAt('projects/demo-perovskite/data/rename-normal.csv');
+  check('目标已存在 → conflict，源文件原地不动',
+    rn2.ok === false && rn2.error.code === 'conflict' && rn2Src === true,
+    JSON.stringify(rn2.error || rn2).slice(0, 220));
+
+  // 10c. 跨目录 → 拒
+  const rn3 = await renameVia('projects/demo-perovskite/data/rename-normal.csv', 'projects/demo-perovskite/figures/rename-normal.csv');
+  check('跨目录改名 → denied', rn3.ok === false && rn3.error.code === 'denied', JSON.stringify(rn3.error || rn3).slice(0, 220));
+
+  // 10c2. 只改大小写：Windows 上目标名「已存在」是同一个文件，走临时名绕行
+  await seedText('projects/demo-perovskite/data/Case-Probe.csv', 'case');
+  const rnCase = await renameVia('projects/demo-perovskite/data/Case-Probe.csv', 'projects/demo-perovskite/data/case-probe.csv');
+  const dataNames = await readdir(pathMod.join(copiedRoot, 'projects', 'demo-perovskite', 'data'));
+  check('只改大小写的改名也能落地（目录里是新的小写名）',
+    rnCase.ok === true && dataNames.includes('case-probe.csv') && !dataNames.includes('Case-Probe.csv'),
+    JSON.stringify({ moved: rnCase.ok ? rnCase.value.moved : rnCase.error, names: dataNames }).slice(0, 240));
+
+  // 10d. 目录 → 拒（这条动作只改文件）
+  const rn4 = await renameVia('projects/demo-perovskite/data', 'projects/demo-perovskite/data-renamed');
+  check('目录改名 → denied 且说清是目录', rn4.ok === false && rn4.error.code === 'denied' && /目录/.test(rn4.error.message), JSON.stringify(rn4.error || rn4).slice(0, 220));
+
+  // 10e. 图件：同基名的 json/png/pdf 一起改名，侧车 file/files 重写，figureId 不变
+  const rn5 = await renameVia('projects/demo-perovskite/figures/rename-fig.json', 'projects/demo-perovskite/figures/rename-solo.json');
+  const soloSidecar = JSON.parse((await readRel('projects/demo-perovskite/figures/rename-solo.json')) || '{}');
+  const oldPng = await fileAt('projects/demo-perovskite/figures/rename-fig.png');
+  const newPdf = await fileAt('projects/demo-perovskite/figures/rename-solo.pdf');
+  const figBak = await readRel('projects/demo-perovskite/figures/rename-solo.json.bak');
+  check('图件改名：kind=figure，同基名 3 个文件一起走',
+    rn5.ok === true && rn5.value.kind === 'figure' && rn5.value.moved.length === 3
+    && rn5.value.to === 'projects/demo-perovskite/figures/rename-solo.json'
+    && oldPng === false && newPdf === true,
+    JSON.stringify(rn5.ok ? { kind: rn5.value.kind, moved: rn5.value.moved } : rn5.error).slice(0, 260));
+  check('图件侧车 file/files 指向新路径、figureId 不变',
+    soloSidecar.figureId === 'rename-fig'
+    && soloSidecar.file === 'projects/demo-perovskite/figures/rename-solo.png'
+    && JSON.stringify(soloSidecar.files) === JSON.stringify(['projects/demo-perovskite/figures/rename-solo.png', 'projects/demo-perovskite/figures/rename-solo.pdf']),
+    JSON.stringify({ file: soloSidecar.file, files: soloSidecar.files }).slice(0, 260));
+  check('侧车改写前留了 .bak（里面还是旧 file）', !!figBak && figBak.includes('rename-fig.png'), figBak ? `${figBak.length} B` : '没有 .bak');
+
+  // 10f. 普通数据改名后，图件侧车的 sourceData 跟着改
+  const rn6 = await renameVia('projects/demo-perovskite/data/rename-data.csv', 'projects/demo-perovskite/data/rename-data-v2.csv');
+  const refOther = JSON.parse((await readRel('projects/demo-perovskite/figures/rename-ref.json')) || '{}');
+  const refSolo = JSON.parse((await readRel('projects/demo-perovskite/figures/rename-solo.json')) || '{}');
+  const refBak = await readRel('projects/demo-perovskite/figures/rename-ref.json.bak');
+  const refUpdated = rn6.ok === true && rn6.value.updated.some((u) => u.path === 'projects/demo-perovskite/figures/rename-ref.json' && (u.fields || []).includes('sourceData'));
+  check('数据文件改名后，图件侧车的 sourceData 跟着改成新路径',
+    rn6.ok === true && rn6.value.kind === 'file'
+    && JSON.stringify(refOther.sourceData) === JSON.stringify(['projects/demo-perovskite/data/rename-data-v2.csv'])
+    && JSON.stringify(refSolo.sourceData) === JSON.stringify(['projects/demo-perovskite/data/rename-data-v2.csv'])
+    && refUpdated === true,
+    JSON.stringify({ kind: rn6.ok && rn6.value.kind, ref: refOther.sourceData, solo: refSolo.sourceData }).slice(0, 260));
+  check('改 sourceData 的侧车也留了 .bak', !!refBak && refBak.includes('rename-data.csv'), refBak ? `${refBak.length} B` : '没有 .bak');
 } catch (error) {
   bad('写动作隔离自检可运行', String(error && error.message ? error.message : error));
 } finally {
@@ -702,6 +818,441 @@ check('正常的 CSV 表头照旧当表头', csvHead.headerless === false && csv
   JSON.stringify({ h: csvHead.header, n: csvHead.rows.length }));
 const blank = parseTable('x,y\n1,\n2,NA\n');
 check('空单元格 / NA 当缺失（null），不填充', blank.rows[0][1] === null && blank.rows[1][1] === null, JSON.stringify(blank.rows));
+
+/* 12. 笔记 / 实验日志：列、读、写（自建临时库，绝不碰真实库） ------------------ */
+console.log('\n[12] 笔记 / 实验日志（notes.list / notes.read / notes.save）');
+{
+  const { mkdtemp, mkdir, readFile, rm, stat } = await import('node:fs/promises');
+  const osNotes = await import('node:os');
+  const pathNotes = await import('node:path');
+  const { ensureRegistered } = await import('../lib/actions/index.js');
+  const { planAction, dispatch } = await import('../lib/host/dispatch.js');
+  const { resolveAction, validateAction } = await import('../lib/host/registry.js');
+  const notesLib = await import('../lib/notes.js');
+  ensureRegistered();
+
+  const notesRoot = await mkdtemp(pathNotes.join(osNotes.tmpdir(), 'sciwork-notes-'));
+  const prevEnvNew = process.env.SCIWORK_LIBRARY;
+  const prevEnvLegacy = process.env.RESEARCH_LIBRARY;
+  process.env.SCIWORK_LIBRARY = notesRoot;
+  process.env.RESEARCH_LIBRARY = notesRoot;
+  const nctx = { root: notesRoot, source: 'selftest' };
+  const nAbs = (rel) => pathNotes.join(notesRoot, ...String(rel).split('/'));
+  const nText = (rel) => readFile(nAbs(rel), 'utf8').catch(() => null);
+  const nHas = (rel) => stat(nAbs(rel)).then(() => true, () => false);
+  const nCall = async (id, params) => {
+    const plan = planAction(id, params, nctx);
+    if (!plan.ok) return plan;
+    if (plan.value.confirmRequired !== true) return dispatch(id, params, nctx);
+    return dispatch(id, params, { ...nctx, planId: plan.value.planId, confirmToken: plan.value.token });
+  };
+  const demoP = 'demo-perovskite';
+  try {
+    /* 12a. 动作描述符 */
+    const noteIds = ['notes.list', 'notes.read', 'notes.save'];
+    const noteActions = noteIds.map((id) => resolveAction(id));
+    const noteProblems = noteActions.flatMap((a) => (a ? validateAction(a) : ['缺动作']));
+    check('三个笔记动作都已登记且通过描述符校验',
+      noteActions.every(Boolean) && noteProblems.length === 0,
+      noteProblems.join('；') || noteIds.join(', '));
+    const listA = noteActions[0];
+    const readA = noteActions[1];
+    const saveA = noteActions[2];
+    check('notes.list/read 是读动作、notes.save 是写动作（engine=node 且要确认）',
+      listA && listA.effects === 'read' && listA.confirm === 'never' && listA.engine === 'node'
+      && readA && readA.effects === 'read' && readA.confirm === 'never' && readA.engine === 'node'
+      && saveA && saveA.effects === 'write' && saveA.confirm === 'write' && saveA.engine === 'node',
+      JSON.stringify({
+        list: listA && [listA.effects, listA.confirm, listA.engine],
+        read: readA && [readA.effects, readA.confirm, readA.engine],
+        save: saveA && [saveA.effects, saveA.confirm, saveA.engine],
+      }));
+    check('notes.read/save 暴露的工具名与 save 参数契约正确',
+      readA && readA.tool && readA.tool.expose === true && readA.tool.name === 'sciwork_notes_read'
+      && saveA && saveA.tool && saveA.tool.expose === true && saveA.tool.name === 'sciwork_notes_save'
+      && JSON.stringify(saveA.params.required) === JSON.stringify(['project', 'text'])
+      && saveA.params.additionalProperties === false
+      && !!saveA.params.properties.name,
+      JSON.stringify({ read: readA && readA.tool && readA.tool.name, save: saveA && saveA.tool && saveA.tool.name }));
+    const extraKey = planAction('notes.save', { project: 'p', text: 'x', bogus: 1 }, nctx);
+    check('notes.save 多给未声明键 → schema（不静默忽略）',
+      extraKey.ok === false && extraKey.error.code === 'schema',
+      JSON.stringify(extraKey.error || extraKey).slice(0, 200));
+    check('笔记单文件上限 = 2 MiB，noteStamp 用本机时区',
+      notesLib.NOTES_MAX_BYTES === 2 * 1024 * 1024
+      && notesLib.noteStamp(new Date(2026, 9, 31, 23, 58)) === '2026-10-31-2358',
+      JSON.stringify({ max: notesLib.NOTES_MAX_BYTES, stamp: notesLib.noteStamp(new Date(2026, 9, 31, 23, 58)) }));
+
+    /* 12b. 列空目录 / 还没有 notes 目录 */
+    await mkdir(pathNotes.join(notesRoot, 'projects', demoP, 'notes'), { recursive: true });
+    const emptyList = await nCall('notes.list', { project: demoP });
+    check('列空目录：exists=true、count=0、notes=[]',
+      emptyList.ok === true && emptyList.value.exists === true && emptyList.value.count === 0
+      && Array.isArray(emptyList.value.notes) && emptyList.value.notes.length === 0,
+      JSON.stringify(emptyList.value || emptyList.error).slice(0, 240));
+    const noDirList = await nCall('notes.list', { project: 'no-such-project' });
+    check('还没写过笔记的课题（notes/ 不存在）→ 空列表而不是报错',
+      noDirList.ok === true && noDirList.value.exists === false && noDirList.value.count === 0,
+      JSON.stringify(noDirList.value || noDirList.error).slice(0, 240));
+
+    /* 12c. 写新笔记 */
+    const firstText = '# 第一条实验记录\n\n温度 25 ℃，湿度 40%。\n';
+    const write1 = await nCall('notes.save', { project: demoP, name: 'first-note', text: firstText });
+    const firstRel = `projects/${demoP}/notes/first-note.md`;
+    check('写新笔记：文件名补 .md、created=true、没有 .bak、标题取自首行',
+      write1.ok === true && write1.value.name === 'first-note.md' && write1.value.path === firstRel
+      && write1.value.created === true && write1.value.backup === null
+      && write1.value.title === '第一条实验记录',
+      JSON.stringify(write1.value || write1.error).slice(0, 240));
+    check('写新笔记：落盘正文逐字一致', (await nText(firstRel)) === firstText, JSON.stringify(await nText(firstRel)).slice(0, 140));
+    check('写新笔记：新建不产生 .bak', (await nHas(`${firstRel}.bak`)) === false);
+
+    /* 12d. 读回 */
+    const read1 = await nCall('notes.read', { project: demoP, name: 'first-note.md' });
+    check('读回正文与写入逐字一致（title/bytes/mtime 齐全）',
+      read1.ok === true && read1.value.text === firstText && read1.value.title === '第一条实验记录'
+      && read1.value.bytes === Buffer.byteLength(firstText, 'utf8') && typeof read1.value.mtime === 'string',
+      JSON.stringify(read1.value && { title: read1.value.title, bytes: read1.value.bytes }).slice(0, 180));
+
+    /* 12e. 列表字段 */
+    const list1 = await nCall('notes.list', { project: demoP });
+    const listed1 = (list1.value && list1.value.notes) || [];
+    const firstEntry = listed1.find((n) => n.name === 'first-note.md') || {};
+    check('列表带文件名/标题/修改时间/字节数/前 80 字摘要',
+      list1.ok === true && list1.value.count === 1 && firstEntry.title === '第一条实验记录'
+      && firstEntry.bytes === Buffer.byteLength(firstText, 'utf8')
+      && typeof firstEntry.mtime === 'string' && !Number.isNaN(Date.parse(firstEntry.mtime))
+      && firstEntry.summary === '温度 25 ℃，湿度 40%。',
+      JSON.stringify(firstEntry).slice(0, 280));
+
+    /* 12f. 覆盖保存先落 .bak */
+    const secondText = '# 第一条实验记录（改）\n\n温度 30 ℃。\n';
+    const write2 = await nCall('notes.save', { project: demoP, name: 'first-note.md', text: secondText });
+    check('覆盖保存：created=false、返回 .bak 路径、正文换成新内容',
+      write2.ok === true && write2.value.created === false && write2.value.backup === `${firstRel}.bak`
+      && (await nText(firstRel)) === secondText,
+      JSON.stringify(write2.value || write2.error).slice(0, 240));
+    check('.bak 里是覆盖前的旧内容（每次覆盖留一份回滚点）',
+      (await nText(`${firstRel}.bak`)) === firstText,
+      JSON.stringify(await nText(`${firstRel}.bak`)).slice(0, 140));
+    const list2 = await nCall('notes.list', { project: demoP });
+    check('列表不把 .bak 当笔记（覆盖后仍是 1 条）',
+      list2.ok === true && list2.value.count === 1,
+      JSON.stringify(((list2.value && list2.value.notes) || []).map((n) => n.name)));
+
+    /* 12g. 自动时间戳文件名 */
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const stampOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
+    const stampBefore = stampOf(new Date());
+    const write3 = await nCall('notes.save', { project: demoP, text: '# Auto Timestamp Probe\n\n没有给文件名。\n' });
+    const stampAfter = stampOf(new Date());
+    const autoName = (write3.value && write3.value.name) || '';
+    check('没给文件名 → YYYY-MM-DD-HHmm-<slug>.md（本机时区）',
+      write3.ok === true && /^\d{4}-\d{2}-\d{2}-\d{4}-auto-timestamp-probe\.md$/.test(autoName)
+      && (autoName.startsWith(stampBefore) || autoName.startsWith(stampAfter)),
+      JSON.stringify({ name: autoName, before: stampBefore, after: stampAfter }));
+    const write4 = await nCall('notes.save', { project: demoP, text: '# Auto Timestamp Probe\n\n同一分钟里的第二份。\n' });
+    check('同一分钟再建一份不会覆盖前一份（自动名撞了就加后缀）',
+      write4.ok === true && write4.value.name !== autoName
+      && (await nHas(`projects/${demoP}/notes/${autoName}`)) === true,
+      JSON.stringify({ first: autoName, second: write4.value && write4.value.name }));
+
+    /* 12h. 越界与非法输入 */
+    const dotdot = await nCall('notes.save', { project: demoP, name: '../escape.md', text: 'x' });
+    check('.. 越界被拒，且没在 notes/ 之外落下文件',
+      dotdot.ok === false && /\.\.|不合法|越界|相对路径/.test(dotdot.error.message)
+      && (await nHas(`projects/${demoP}/escape.md`)) === false,
+      JSON.stringify(dotdot.error || dotdot).slice(0, 220));
+    const dotdotRead = await nCall('notes.read', { project: demoP, name: '..\\escape.md' });
+    check('读笔记时 .. 逃逸同样被拒',
+      dotdotRead.ok === false && /不合法|越界|相对路径/.test(dotdotRead.error.message),
+      JSON.stringify(dotdotRead.error || dotdotRead).slice(0, 220));
+    const notMd = await nCall('notes.save', { project: demoP, name: 'note.txt', text: 'x' });
+    check('非 .md 被拒，也不留文件',
+      notMd.ok === false && /\.md|不合法|类型/.test(notMd.error.message)
+      && (await nHas(`projects/${demoP}/notes/note.txt`)) === false,
+      JSON.stringify(notMd.error || notMd).slice(0, 220));
+    const hugeText = '中'.repeat(700_000); // 约 2.1 MB UTF-8，超 2 MiB
+    const huge = await nCall('notes.save', { project: demoP, name: 'huge.md', text: hugeText });
+    check('超大文本被拒（按 UTF-8 字节算，> 2 MiB）',
+      huge.ok === false && /过大/.test(huge.error.message)
+      && (await nHas(`projects/${demoP}/notes/huge.md`)) === false,
+      JSON.stringify(huge.error || huge).slice(0, 220));
+    const absWin = await nCall('notes.read', { project: demoP, name: 'C:\\Windows\\win-note.md' });
+    const absUnix = await nCall('notes.read', { project: demoP, name: '/etc/passwd.md' });
+    check('库根外的绝对路径被拒（Windows 盘符 / Unix 绝对路径都 → denied）',
+      absWin.ok === false && absWin.error.code === 'denied'
+      && absUnix.ok === false && absUnix.error.code === 'denied',
+      JSON.stringify({ win: absWin.error && absWin.error.code, unix: absUnix.error && absUnix.error.code }));
+    const missing = await nCall('notes.read', { project: demoP, name: 'no-such-note.md' });
+    check('读不存在的笔记 → not-found（不是 internal）',
+      missing.ok === false && missing.error.code === 'not-found',
+      JSON.stringify(missing.error || missing).slice(0, 200));
+    const ghost = await nCall('notes.save', { project: 'typo-project', name: 'a.md', text: '# x\n' });
+    check('写笔记到不存在的课题 → not-found（不造幽灵课题目录）',
+      ghost.ok === false && ghost.error.code === 'not-found'
+      && (await nHas('projects/typo-project')) === false,
+      JSON.stringify(ghost.error || ghost).slice(0, 200));
+  } finally {
+    if (prevEnvNew === undefined) delete process.env.SCIWORK_LIBRARY;
+    else process.env.SCIWORK_LIBRARY = prevEnvNew;
+    if (prevEnvLegacy === undefined) delete process.env.RESEARCH_LIBRARY;
+    else process.env.RESEARCH_LIBRARY = prevEnvLegacy;
+    await rm(notesRoot, { recursive: true, force: true });
+  }
+}
+
+/* 13. 可复现性与一致性审计：library.audit（只读，自建临时库） ------------------ */
+console.log('');
+console.log('[13] 可复现性与一致性审计（library.audit）');
+{
+  const { mkdtemp, mkdir, readdir, rm, stat, writeFile } = await import('node:fs/promises');
+  const osAudit = await import('node:os');
+  const pathAudit = await import('node:path');
+  const { ensureRegistered } = await import('../lib/actions/index.js');
+  const { planAction, dispatch } = await import('../lib/host/dispatch.js');
+  const { resolveAction, validateAction } = await import('../lib/host/registry.js');
+  ensureRegistered();
+
+  const auditRoot = await mkdtemp(pathAudit.join(osAudit.tmpdir(), 'sciwork-audit-'));
+  const prevEnvNew = process.env.SCIWORK_LIBRARY;
+  const prevEnvLegacy = process.env.RESEARCH_LIBRARY;
+  process.env.SCIWORK_LIBRARY = auditRoot;
+  process.env.RESEARCH_LIBRARY = auditRoot;
+  const actx = { root: auditRoot, source: 'selftest' };
+  const aAbs = (rel) => pathAudit.join(auditRoot, ...String(rel).split('/'));
+  const aPut = async (rel, text) => {
+    const abs = aAbs(rel);
+    await mkdir(pathAudit.dirname(abs), { recursive: true });
+    await writeFile(abs, text);
+  };
+  const aCall = async (id, params) => {
+    const plan = planAction(id, params, actx);
+    if (!plan.ok) return plan;
+    if (plan.value.confirmRequired !== true) return dispatch(id, params, actx);
+    return dispatch(id, params, { ...actx, planId: plan.value.planId, confirmToken: plan.value.token });
+  };
+  /* 审计前后比这棵树：库根相对路径 + 字节数；隐藏目录也照收，证明读动作一个字节都没写 */
+  const aWalk = async (dirAbs, base = dirAbs, out = []) => {
+    const entries = await readdir(dirAbs, { withFileTypes: true }).catch(() => []);
+    for (const e of entries) {
+      const abs = pathAudit.join(dirAbs, e.name);
+      if (e.isDirectory()) { await aWalk(abs, base, out); continue; }
+      const info = await stat(abs).catch(() => null);
+      if (!info) continue;
+      out.push(`${pathAudit.relative(base, abs).split(pathAudit.sep).join('/')}|${info.size}`);
+    }
+    return out.sort();
+  };
+  const sidecar = (obj) => JSON.stringify(obj, null, 2);
+  const byCode = (value, code) => (value.issues || []).filter((i) => i.code === code);
+  const codesOf = (value) => (value.issues || []).map((i) => i.code);
+  try {
+    /* 13a. 造一个只在这里存在的库（alpha：四种图情况 + 一份草稿；beta：源数据丢失） */
+    await aPut('projects/alpha/project.json', JSON.stringify({ slug: 'alpha', title: '钙钛矿 A' }));
+    await aPut('projects/alpha/figures/_figs/fig-a.json', sidecar({
+      schema: 1,
+      figureId: 'fig-a',
+      file: 'projects/alpha/figures/_figs/fig-a.png',
+      sourceData: ['projects/alpha/data/ZT-1100'],
+      params: {},
+    }));
+    await aPut('projects/alpha/figures/_figs/fig-a.png', 'png');
+    await aPut('projects/alpha/figures/_figs/fig-b.json', sidecar({
+      schema: 1,
+      figureId: 'fig-b',
+      file: 'projects/alpha/figures/_figs/fig-b.pdf',
+      sourceData: ['projects/alpha/data/raw'],
+      params: { dpi: 300 },
+    }));
+    await aPut('projects/alpha/figures/_figs/fig-b.pdf', 'pdf');
+    await aPut('projects/alpha/figures/_figs/fig-d.json', sidecar({
+      schema: 1,
+      figureId: 'fig-d',
+      sourceData: [],
+      params: {},
+    }));
+    await aPut('projects/alpha/data/ZT-1100.txt', 'two_theta,intensity\n10.1,200\n');
+    await aPut('projects/alpha/data/raw/x.csv', 'a,b\n1,2\n');
+    await aPut('projects/alpha/data/orphan.csv', 'a,b\n3,4\n');
+    await aPut('projects/alpha/drafts/paper.md', '正文见 [@k1]，另引 [@k2]。');
+    await aPut('projects/beta/project.json', JSON.stringify({ slug: 'beta', title: '课题 B' }));
+    await aPut('projects/beta/figures/fig-c.json', sidecar({
+      schema: 1,
+      figureId: 'fig-c',
+      sourceData: ['projects/beta/data/ghost-run'],
+      params: { dpi: 300 },
+    }));
+    await aPut('projects/beta/figures/fig-c.png', 'png');
+    await aPut('journals/good-journal.json', JSON.stringify({
+      id: 'good', name: 'Good',
+      figure: { singleColumnMm: 89, maxHeightMm: 247, minFontPt: 5, rasterDpi: { photo: 300 } },
+      text: { abstractMaxWords: 250 },
+    }));
+    await aPut('journals/bad-journal.json', JSON.stringify({
+      id: 'bad', name: 'Bad',
+      figure: { singleColumnMm: null, maxHeightMm: 247, minFontPt: 5, rasterDpi: { photo: 300 } },
+      text: { abstractMaxWords: 250 },
+    }));
+    await aPut('refs/refs.json', JSON.stringify({ schema: 1, refs: { k2: { key: 'k2' } } }));
+
+    /* 13b. 动作描述符：读动作、confirm=never、工具名与参数契约 */
+    const auditA = resolveAction('library.audit');
+    const auditProblems = auditA ? validateAction(auditA) : ['缺动作'];
+    check('library.audit 已登记且描述符通过校验（读动作 / confirm=never / 工具名 / 参数可省）',
+      !!auditA && auditProblems.length === 0
+      && auditA.effects === 'read' && auditA.confirm === 'never' && auditA.engine === 'node'
+      && auditA.tool && auditA.tool.expose === true && auditA.tool.name === 'sciwork_library_audit'
+      && auditA.params.type === 'object' && auditA.params.additionalProperties === false
+      && !!auditA.params.properties.project
+      && !(Array.isArray(auditA.params.required) && auditA.params.required.includes('project')),
+      JSON.stringify(auditA && { id: auditA.id, effects: auditA.effects, confirm: auditA.confirm, tool: auditA.tool && auditA.tool.name })
+        .slice(0, 240));
+
+    /* 13c. 整库审计：一次把七类问题都找出来 */
+    const walkBefore = await aWalk(auditRoot);
+    const lib = await aCall('library.audit', {});
+    check('整库审计返回库根/作用域/汇总（2 个课题、4 张图、3 份数据）',
+      lib.ok === true && lib.value.root === auditRoot && lib.value.scope.project === null
+      && lib.value.counts.projects === 2 && lib.value.counts.figures === 4 && lib.value.counts.datasets === 3,
+      JSON.stringify(lib.ok ? lib.value.counts : lib.error).slice(0, 240));
+    const alphaV = (lib.value.projects || []).find((p) => p.slug === 'alpha') || { issues: [] };
+    const betaV = (lib.value.projects || []).find((p) => p.slug === 'beta') || { issues: [] };
+
+    const noParams = byCode(lib.value, 'figure-no-params');
+    check('侧车 params 为空 → figure-no-params（warn），整库 warn ≥ 1',
+      noParams.length === 2 && noParams.every((i) => i.level === 'warn')
+      && lib.value.counts.warn >= 1 && alphaV.figures && alphaV.figures.noParams === 2,
+      JSON.stringify(noParams.map((i) => [i.level, i.path])).slice(0, 240));
+
+    check('侧车 sourceData 为空 → figure-no-source（warn），有源数据的图不误报',
+      byCode(lib.value, 'figure-no-source').length === 1
+      && alphaV.figures && alphaV.figures.noSource === 1,
+      JSON.stringify(byCode(lib.value, 'figure-no-source').map((i) => i.path)).slice(0, 240));
+
+    const missingSrc = byCode(lib.value, 'figure-source-missing');
+    check('侧车源数据指向不存在的路径 → figure-source-missing（err），counts.err ≥ 1',
+      missingSrc.length === 1 && missingSrc[0].level === 'err' && missingSrc[0].path.includes('fig-c')
+      && lib.value.counts.err >= 1 && betaV.figures && betaV.figures.missingSource === 1,
+      JSON.stringify(missingSrc.map((i) => [i.level, i.path, i.text])).slice(0, 240));
+
+    check('源数据登记成不带扩展名的 data/ZT-1100、实际文件是 ZT-1100.txt → 不报 figure-source-missing',
+      alphaV.figures && alphaV.figures.missingSource === 0
+      && !(alphaV.issues || []).some((i) => i.code === 'figure-source-missing' && i.path.includes('fig-a'))
+      && !missingSrc.some((i) => i.path.includes('fig-a')),
+      JSON.stringify({ missingSource: alphaV.figures && alphaV.figures.missingSource, alpha: codesOf(alphaV) }).slice(0, 240));
+
+    check('源数据整串登记成目录（data/raw）也算存在，不报缺失',
+      !(alphaV.issues || []).some((i) => i.code === 'figure-source-missing'),
+      JSON.stringify((alphaV.issues || []).filter((i) => i.code === 'figure-source-missing')).slice(0, 240));
+
+    check('侧车没有同基名图文件 → figure-file-missing（err）',
+      byCode(lib.value, 'figure-file-missing').length === 1
+      && byCode(lib.value, 'figure-file-missing')[0].level === 'err'
+      && alphaV.figures && alphaV.figures.missingFile === 1,
+      JSON.stringify(byCode(lib.value, 'figure-file-missing').map((i) => i.path)).slice(0, 240));
+
+    const unusedInit = byCode(lib.value, 'dataset-unused');
+    check('没有任何侧车引用的数据文件 → dataset-unused（warn），被引用的不报',
+      unusedInit.length === 1 && unusedInit[0].level === 'warn'
+      && unusedInit[0].path === 'projects/alpha/data/orphan.csv'
+      && alphaV.datasets && alphaV.datasets.total === 3 && alphaV.datasets.unused === 1,
+      JSON.stringify(unusedInit.map((i) => [i.level, i.path])).slice(0, 240));
+
+    const citeMissing = byCode(lib.value, 'draft-cite-missing');
+    check('草稿 [@键] 在 refs.json 里找不到 → draft-cite-missing（warn），refs.missing 算得出来',
+      citeMissing.length === 1 && citeMissing[0].level === 'warn'
+      && citeMissing[0].path === 'projects/alpha/drafts/paper.md'
+      && alphaV.refs && alphaV.refs.total === 2 && alphaV.refs.missing === 1,
+      JSON.stringify({ issues: citeMissing.map((i) => i.text), refs: alphaV.refs }).slice(0, 240));
+
+    const journalNull = byCode(lib.value, 'journal-field-null');
+    check('期刊档案关键字段为 null → journal-field-null（warn），字段齐的档案不报',
+      journalNull.length === 1 && journalNull[0].level === 'warn'
+      && journalNull[0].path === 'journals/bad-journal.json',
+      JSON.stringify(journalNull.map((i) => [i.path, i.text])).slice(0, 240));
+
+    const wantCodes = ['figure-no-params', 'figure-no-source', 'figure-source-missing', 'figure-file-missing',
+      'dataset-unused', 'journal-field-null', 'draft-cite-missing'];
+    const gotCodes = new Set(codesOf(lib.value));
+    check('七类检查的 code 都在整库审计里出现（面板与测试的契约）',
+      wantCodes.every((c) => gotCodes.has(c)),
+      JSON.stringify([...gotCodes]));
+
+    check('counts 与 issues 逐条一致（err=2 / warn=6，全库汇总 = 各课题 + 期刊）',
+      lib.value.issues.length === lib.value.counts.err + lib.value.counts.warn
+      && lib.value.counts.err === 2 && lib.value.counts.warn === 6,
+      JSON.stringify({ issues: lib.value.issues.length, err: lib.value.counts.err, warn: lib.value.counts.warn }));
+
+    check('每条 issue 都是中文人话 text + 库根相对 path，text 里没有命令/代码',
+      lib.value.issues.every((i) => typeof i.text === 'string' && i.text.length > 6
+        && !i.text.includes('`') && !i.text.includes('sciwork_'))
+      && lib.value.issues.every((i) => typeof i.path === 'string' && i.path.length > 0
+        && !i.path.startsWith(auditRoot) && !pathAudit.isAbsolute(i.path)),
+      JSON.stringify(lib.value.issues.slice(0, 2)).slice(0, 240));
+
+    /* 13d. 作用域：给 project 只审一个课题 */
+    const scoped = await aCall('library.audit', { project: 'alpha' });
+    check('给 project 参数只审一个课题：scope=alpha、counts.projects=1、期刊检查不参与',
+      scoped.ok === true && scoped.value.scope.project === 'alpha'
+      && scoped.value.counts.projects === 1 && scoped.value.projects.length === 1
+      && scoped.value.projects[0].slug === 'alpha'
+      && scoped.value.counts.figures === 3 && scoped.value.counts.datasets === 3
+      && !scoped.value.issues.some((i) => i.code === 'journal-field-null'),
+      JSON.stringify(scoped.ok ? { scope: scoped.value.scope, counts: scoped.value.counts } : scoped.error).slice(0, 240));
+
+    const ghost = await aCall('library.audit', { project: 'no-such-project' });
+    check('审不存在的课题 → not-found（不是 internal）',
+      ghost.ok === false && ghost.error.code === 'not-found',
+      JSON.stringify(ghost.error || ghost).slice(0, 220));
+
+    const extra = planAction('library.audit', { bogus: 1 }, actx);
+    check('library.audit 多给未声明键 → schema（不静默忽略）',
+      extra.ok === false && extra.error.code === 'schema',
+      JSON.stringify(extra.error || extra).slice(0, 220));
+
+    /* 13e. 只读证明：审计前后临时库文件清单 + 字节数完全一致 */
+    const walkAfter = await aWalk(auditRoot);
+    const walkDiff = walkBefore.filter((x) => !walkAfter.includes(x))
+      .concat(walkAfter.filter((x) => !walkBefore.includes(x)));
+    check('整库 + 单课题审计后，临时库文件清单与字节数完全一致（读动作没写盘）',
+      walkBefore.length > 0 && walkDiff.length === 0,
+      JSON.stringify(walkDiff.slice(0, 6)).slice(0, 240));
+    check('审计没有顺带建回执目录（.research/receipts 不存在）',
+      walkAfter.every((x) => !x.startsWith('.research/receipts/')),
+      JSON.stringify(walkAfter.filter((x) => x.startsWith('.research/')).slice(0, 4)));
+
+    /* 13f. 数据被引用后，同一份数据在同一次新的审计里不再算「没人用」 */
+    await aPut('projects/alpha/figures/_figs/fig-a.json', sidecar({
+      schema: 1,
+      figureId: 'fig-a',
+      file: 'projects/alpha/figures/_figs/fig-a.png',
+      sourceData: ['projects/alpha/data/ZT-1100', 'projects/alpha/data/orphan.csv'],
+      params: {},
+    }));
+    const afterAdd = await aCall('library.audit', { project: 'alpha' });
+    const alpha2 = afterAdd.ok ? afterAdd.value.projects[0] : { issues: [] };
+    check('数据文件被侧车引用后，再审计一次就不再出现 dataset-unused',
+      afterAdd.ok === true && alpha2.datasets.unused === 0
+      && !afterAdd.value.issues.some((i) => i.code === 'dataset-unused'),
+      JSON.stringify({ unused: alpha2.datasets, codes: codesOf(afterAdd.ok ? afterAdd.value : {}) }).slice(0, 240));
+
+    /* 13g. refs.json 读不到：引用缺失算不了就给 null，不硬报 */
+    await rm(aAbs('refs/refs.json'));
+    const noRefs = await aCall('library.audit', { project: 'alpha' });
+    check('refs.json 读不到 → refs.missing 给 null、不硬报 draft-cite-missing',
+      noRefs.ok === true && noRefs.value.projects[0].refs.missing === null
+      && noRefs.value.projects[0].refs.total === 2
+      && !noRefs.value.issues.some((i) => i.code === 'draft-cite-missing'),
+      JSON.stringify(noRefs.ok ? noRefs.value.projects[0].refs : noRefs.error).slice(0, 240));
+  } finally {
+    if (prevEnvNew === undefined) delete process.env.SCIWORK_LIBRARY;
+    else process.env.SCIWORK_LIBRARY = prevEnvNew;
+    if (prevEnvLegacy === undefined) delete process.env.RESEARCH_LIBRARY;
+    else process.env.RESEARCH_LIBRARY = prevEnvLegacy;
+    await rm(auditRoot, { recursive: true, force: true });
+  }
+}
 
 /* 汇总 ---------------------------------------------------------------- */
 console.log('\n' + '='.repeat(72));

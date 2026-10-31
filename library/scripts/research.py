@@ -26,6 +26,8 @@
   check-citations             引用核查闸门（交稿前必跑）
   check-journal               投稿合规体检（图 / 稿 / 引用对期刊档案）
   export-package              导出投稿包 zip（稿件 + 图 + 数据 + refs.bib + manifest）
+  analyze                     峰分析（扣基线 + 找峰 + 高斯/洛伦兹拟合，纯标准库）
+  annot                       矢量标注层（归一化标注 → 叠加 SVG，纯标准库）
 """
 from __future__ import annotations
 
@@ -1469,6 +1471,77 @@ def cmd_export_package(args) -> None:
                       + (f"；警告 {len(warnings)} 条" if warnings else "") + "。")})
 
 
+# ─────────────────────────── 数据分析：峰分析 ───────────────────────────
+
+def _load_analysis():
+    """懒加载同目录的 analysis.py（峰分析引擎：LM 拟合，纯标准库）。"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    try:
+        import analysis  # noqa: F401 —— 同目录脚本按路径导入
+    except ImportError as exc:
+        fail(f"找不到峰分析引擎 analysis.py（应与 research.py 同目录）：{exc}")
+    return analysis
+
+
+def cmd_analyze(args) -> None:
+    engine = _load_analysis()
+    try:
+        payload = engine.analyze(
+            library=LIBRARY,
+            project_slug=slugify(args.project),
+            data_rel=args.data,
+            lineshape=args.lineshape,
+            baseline=args.baseline,
+            ends=args.ends,
+            min_prominence=args.min_prominence,
+            min_distance=args.min_distance,
+            x_col=args.x_col,
+            y_col=args.y_col,
+            out_name=args.out_name,
+            overwrite=args.overwrite,
+        )
+    except engine.AnalysisError as exc:
+        fail(str(exc))
+    except OSError as exc:
+        fail(f"峰分析读写失败：{exc}")
+    # 产物落 tables/ + .research/transforms/，与新登记项一起进索引。
+    reindex(quiet=True)
+    emit(payload)
+
+
+# ─────────────────────────── 图件标注：矢量标注层 ───────────────────────────
+
+def _load_annot():
+    """懒加载同目录的 annot.py（矢量标注层引擎：归一化标注 → 叠加 SVG）。"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    try:
+        import annot  # noqa: F401 —— 同目录脚本按路径导入
+    except ImportError as exc:
+        fail(f"找不到标注引擎 annot.py（应与 research.py 同目录）：{exc}")
+    return annot
+
+
+def cmd_annot(args) -> None:
+    """annot 子命令：参数**原样**交给 annot.py（含 add / render 两个动作）。
+
+    标注文件（.research/annot/）与叠加图（<基名>.annot.svg）都不是登记侧车，
+    不进索引，所以这里不 reindex。
+    """
+    engine = _load_annot()
+    argv = list(args.forward or [])
+    try:
+        payload = engine.run(library=LIBRARY, argv=argv)
+    except engine.AnnotError as exc:
+        fail(str(exc))
+    except OSError as exc:
+        fail(f"标注读写失败：{exc}")
+    emit(payload)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="research.py", description="科研模式科研库工具")
     sub = p.add_subparsers(dest="command", required=True)
@@ -1615,6 +1688,30 @@ def build_parser() -> argparse.ArgumentParser:
     ep.add_argument("--draft")
     ep.add_argument("--out", help="zip 输出路径（缺省 submissions/packages/<课题>-<时间戳>.zip）")
     ep.set_defaults(func=cmd_export_package)
+
+    an = sub.add_parser("analyze", help="峰分析（扣基线 + 找峰 + 高斯/洛伦兹拟合）")
+    an.add_argument("--project", required=True, help="课题 slug")
+    an.add_argument("--data", required=True, help="数据文件（库根相对路径；两列 x y 的 txt/csv）")
+    an.add_argument("--lineshape", choices=["gauss", "lorentz", "both"], default="both",
+                    help="拟合线型；both = 两种都拟合并按 R² 选主（默认 both）")
+    an.add_argument("--baseline", choices=["none", "min", "ends"], default="ends",
+                    help="扣基线方式，口径同 lib/transform.js 的 baseline()（默认 ends）")
+    an.add_argument("--ends", type=int, default=5,
+                    help="--baseline ends 时取首/末各多少个有效点拟合直线（默认 5）")
+    an.add_argument("--min-prominence", type=float,
+                    help="显著度阈值；缺省自动 = max(范围×2%%, 6×噪声σ)")
+    an.add_argument("--min-distance", type=float, help="峰间最小间距；缺省 5×X 中位步长")
+    an.add_argument("--x-col", help="X 列（列名或 0 基序号，缺省第 1 列）")
+    an.add_argument("--y-col", help="Y 列（列名或 0 基序号，缺省第 2 列）")
+    an.add_argument("--out-name", help="产物名（缺省 <原名>_peaks，落课题 tables/）")
+    an.add_argument("--overwrite", action="store_true", help="覆盖同名产物（原始数据永远不动）")
+    an.set_defaults(func=cmd_analyze)
+
+    an2 = sub.add_parser("annot", help="矢量标注层（归一化标注 → 叠加 SVG）")
+    an2.add_argument("forward", nargs=argparse.REMAINDER,
+                     help="原样转发给 annot.py：add|render + 参数"
+                          "（见 python library/scripts/annot.py --help）")
+    an2.set_defaults(func=cmd_annot)
 
     return p
 

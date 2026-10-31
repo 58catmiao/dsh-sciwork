@@ -278,9 +278,23 @@ check('计数渲染（课题数与库一致）', new RegExp(`${nProjects}\\s*个
 if (liveSlug) check('课题卡片渲染', text.includes(liveSlug) || text.includes(liveTitle), text.slice(0, 400));
 else skipNote('课题卡片渲染');
 // 图卡：真库里有几张就渲染几张（用户会删图，别写死 fig1/fig2 —— 写死过一次，删了就假失败）
+// 0.4.0 起首页不再有「最近动态」卡片，图号只在「图表」页签里出现，所以先切过去看，再切回来。
 if (realFigs.length) {
-  const missing = realFigs.filter((f) => !text.includes(f.figureId)).map((f) => f.figureId);
-  check('图卡片渲染', missing.length === 0, realFigs.map((f) => f.figureId).join(' + ') + (missing.length ? `（缺 ${missing.join('、')}）` : ''));
+  const figTabBtn = tree ? findByTagText(tree, 'button', '图表') : null;
+  let figText = '';
+  if (figTabBtn) {
+    figTabBtn.props.onClick();
+    const figTree = await settle(Panel, {}, 8, 400);
+    figText = allText(figTree);
+    const backBtn = findByTagText(figTree, 'button', '工作台');
+    if (backBtn) {
+      backBtn.props.onClick();
+      tree = await settle(Panel, {}, 8, 400);
+    }
+  }
+  const missing = realFigs.filter((f) => !figText.includes(f.figureId)).map((f) => f.figureId);
+  check('图卡片渲染（图表页）', !!figTabBtn && missing.length === 0,
+    realFigs.map((f) => f.figureId).join(' + ') + (missing.length ? `（缺 ${missing.join('、')}）` : ''));
 } else skipNote('图卡片渲染');
 if (realGhost) check('缺图告警如实显示', text.includes('图文件缺失'), '幽灵图如实提示'); else skipNote('缺图告警如实显示');
 check('六个标签页都在', ['图表', '草稿', '文献', '数据', '期刊档案', '投稿'].every((t) => text.includes(t)));
@@ -1042,7 +1056,8 @@ console.log('\n[12] v2 工作台');
   const T = clientExports.__test;
   const v1 = T.tabsFor('v1').map((x) => x.id);
   const v2 = T.tabsFor('v2').map((x) => x.id);
-  check('v1 页签与旧面板一致', JSON.stringify(v1) === JSON.stringify(['figures', 'drafts', 'refs', 'assets', 'journals', 'submissions', 'archive']), v1.join(','));
+  // 0.4.0：草稿后面插了「笔记」（实验日志，projects/<课题>/notes/*.md）。
+  check('v1 页签与旧面板一致', JSON.stringify(v1) === JSON.stringify(['figures', 'drafts', 'notes', 'refs', 'assets', 'journals', 'submissions', 'archive']), v1.join(','));
   check('v2 在最前面插「工作台」', v2[0] === 'workbench' && v2.length === v1.length + 1, v2.join(','));
 
   const cat = await handleResearchCall({ action: 'action.catalog', args: {} });
@@ -1140,11 +1155,11 @@ console.log('\n[12] v2 工作台');
     check('点更新走 system.update_apply 的计划', !!updPlan, updPlan ? JSON.stringify(updPlan.args) : '没有发计划');
   }
 
-  // 仪表：打开就说一件你还不知道的事（0.3.4）
-  check('工作台首屏有「今日该做」', allText(wt).includes('今日该做'));
-  check('仪表含投稿倒计时 / 库体检 / 最近动态 / 备份',
-    ['投稿倒计时', '库体检', '最近动态', '备份'].every((s) => allText(wt).includes(s)));
-  check('倒计时按投稿列出期刊', allText(wt).includes('Ceramics International'));
+  // 仪表（0.4.0 改版）：不再有独立卡片——计数收进页头一行，投稿截止并进待办表，库体检只在有问题时占一行
+  check('首页不再有概览卡片组（今日该做 / 投稿倒计时 / 最近动态 / 备份）',
+    !['今日该做', '投稿倒计时', '最近动态'].some((s) => allText(wt).includes(s)));
+  check('页头一行报计数', /1\s*个课题/.test(allText(wt)) && allText(wt).includes('条文献') && allText(wt).includes('项在投'));
+  check('投稿截止并进待办表', allText(wt).includes('Ceramics International'));
   check('体检指出缺图注与缺 DOI', allText(wt).includes('张图没有图注') && allText(wt).includes('条文献没有 DOI'));
 
   const aiBtn = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '生成指令')[0];
@@ -1392,6 +1407,35 @@ console.log('\n[15] 阶段可选（0.3.10）');
   check('详情只有 id 时阶段动作仍带上 project',
     !!planned && planned.args.params.project === 'zt',
     JSON.stringify(planned && planned.args.params));
+}
+
+/* 0.4.0 回归锁：写动作第二步（action.plan → 确认 → action.confirm）
+ * 2026-11-01 真实踩到：重命名 / 笔记保存 / 图卡「存进笔记」三处调 action.confirm 时漏了
+ * actionId，宿主直接 bad-request「action.confirm 需要 actionId」——点下去必定失败。
+ * 端到端脚本的假夹具当时不校验参数、也不看返回值形状，所以「门禁全绿」也没发现。
+ * 这里把参数与返回值解包一起钉死。 */
+{
+  const T3 = clientExports.__test;
+  const seen = [];
+  const fakeSend = (action, args) => {
+    seen.push({ action, args });
+    return Promise.resolve({ value: { ok: true, name: 'x.md', path: 'projects/zt/notes/x.md' }, receipt: { receiptId: 'r1' } });
+  };
+  const plan = { actionId: 'notes.save', planId: 'p1', token: 't1', params: { project: 'zt' } };
+  let out = null;
+  try { out = await T3.confirmPlan(fakeSend, plan, { project: 'zt', text: 'hi' }); } catch (e) { out = { error: String(e.message || e) }; }
+  const conf = seen[0] || {};
+  check('confirmPlan 发的是 action.confirm', conf.action === 'action.confirm', String(conf.action));
+  check('confirmPlan 带上 actionId', !!(conf.args && conf.args.actionId === 'notes.save'), JSON.stringify(conf.args));
+  check('confirmPlan 带上 planId 与 token',
+    !!(conf.args && conf.args.planId === 'p1' && conf.args.token === 't1'), JSON.stringify(conf.args));
+  check('confirmPlan 用调用方给的新参数（不只是计划里的）',
+    !!(conf.args && conf.args.params && conf.args.params.text === 'hi'), JSON.stringify(conf.args && conf.args.params));
+  check('confirmPlan 把 {value,receipt} 解成 value', !!(out && out.ok === true && out.name === 'x.md'), JSON.stringify(out));
+
+  let emptyErr = '';
+  try { await T3.confirmPlan(fakeSend, null, {}); } catch (e) { emptyErr = String(e.message || e); }
+  check('没有计划时 confirmPlan 直接报错，不发请求', /没有待确认的计划/.test(emptyErr) && seen.length === 1, emptyErr);
 }
 
 /* 汇总 */

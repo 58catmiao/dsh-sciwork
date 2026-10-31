@@ -219,6 +219,8 @@ if (skipLibrary) {
     { src: configTemplate, dest: path.join(research, 'config.json'), data: true },
     { src: path.join(libraryTemplate, 'bin', WIN ? 'py.cmd' : 'py'), dest: path.join(research, 'bin', WIN ? 'py.cmd' : 'py'), data: false, exec: !WIN },
     { src: path.join(libraryTemplate, 'scripts', 'research.py'), dest: path.join(research, 'scripts', 'research.py'), data: false },
+    // 0.4.0：峰分析引擎（`research.py analyze` 用）。不 seed 的话装完的库会报「找不到峰分析引擎」。
+    { src: path.join(libraryTemplate, 'scripts', 'analysis.py'), dest: path.join(research, 'scripts', 'analysis.py'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'journal-index.py'), dest: path.join(research, 'scripts', 'journal-index.py'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'pdf-text.mjs'), dest: path.join(research, 'scripts', 'pdf-text.mjs'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'cdp-text.mjs'), dest: path.join(research, 'scripts', 'cdp-text.mjs'), data: false },

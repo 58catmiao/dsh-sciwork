@@ -158,8 +158,21 @@ for (const [label, script, skip] of [
   ['projects 自检（课题/迁移/备份）', 'scripts/test-projects.mjs', false],
   ['tools 自检（工具暴露/schema 窄化）', 'scripts/test-tools.mjs', false],
   ['契约自检（python 映射/超时）', 'scripts/test-contract.mjs', false],
+  // 数据变换内核：ends 基线是「首段末段联合拟合一条线」，JS 与 Python 必须同构。
+  ['数据变换内核（baseline ends 联合拟合）', 'scripts/test-transform.mjs', false],
+  // 六个算子逐个跑一遍（含错误路径与空串参数），防止「参数填一半也算成功」。
+  ['数据变换六算子（含错误路径）', 'scripts/test-transform-ops.mjs', false],
+  // 从动作入口写盘：产物文件 / 溯源侧车 / 同名冲突 / 幂等重放 / 源数据不动。
+  ['数据变换端到端（写盘与溯源）', 'scripts/test-transform-action.mjs', false],
+  // 峰分析引擎（纯标准库）：找峰 + 高斯/洛伦兹拟合，精度有硬断言。
+  ['峰分析引擎（找峰/拟合/峰表）', 'scripts/test-analysis.mjs', false],
+  // 矢量标注层：.research/annot/<图号>.json + 叠加 SVG，坐标归一化、越界不写盘。
+  ['矢量标注层（annot add/render）', 'scripts/test-annot.mjs', false],
   ['安装面自检（随包技能/市场索引/包清单）', 'scripts/test-install.mjs', false],
   ['client 自检（面板渲染）', 'scripts/selftest-client.mjs', false],
+  // 端到端点击：把面板里每个可点元素都点一遍，死按钮与点击抛错都算失败。
+  // 加新功能时只需 `node scripts/e2e-panel.mjs --only <页签>` 单测那一页，不必每次全量。
+  ['面板端到端点击（每个按钮都试一遍）', 'scripts/e2e-panel.mjs', false],
 ]) {
   if (skip) {
     record(label, null, Date.now(), '--skip-host');
