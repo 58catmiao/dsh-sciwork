@@ -45,6 +45,7 @@ jobs:
           node --check scripts/selftest-host.mjs
           node --check scripts/selftest-actions.mjs
           node --check scripts/selftest-client.mjs
+          node --check scripts/selftest-live.mjs
           node --check scripts/install.mjs
 
       # 不配科研库也能跑：内容类检查自动记为 SKIP 或「未运行」，退出码仍为 0
@@ -57,6 +58,12 @@ jobs:
 
       - name: Client self-test
         run: node scripts/selftest-client.mjs
+
+      # 真联调：真面板 × 真端点 × 真动作层 × 真写盘（自己建临时库，跑完删掉，不碰任何真库）。
+      # 假夹具有一个算一个都抓不到「参数被事件污染 / 返回值形状不对 / 空流没人吭声」，
+      # 这条是唯一能抓到它们的 —— 所以让它也在干净机器上跑。
+      - name: Real wiring self-test
+        run: node scripts/selftest-live.mjs
 
       # PyYAML 不是标准库，GitHub 的 runner 默认没有（不装这一步，预检会以
       # ModuleNotFoundError 退出 1）。单独一步安装，是为了让「装不上」明确红在这一步，
