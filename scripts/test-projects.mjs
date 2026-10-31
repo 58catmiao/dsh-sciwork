@@ -147,6 +147,25 @@ console.log('\n[6] 备份 / 恢复');
   check('非空目录不覆盖（需 force）', refused && refused.code === 'conflict');
 }
 
+console.log('\n[7] 库快照：Origin 工程只认工程文件');
+{
+  const { snapshot } = await import('../lib/library.js');
+  const libRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sciwork-lib-'));
+  // origin/ 里混着工程、导出的 png、说明 txt；opju/ 里放一份旧版 .opj
+  write(path.join(libRoot, 'projects', 'origin-demo', 'origin', 'zt.opju'), 'X');
+  write(path.join(libRoot, 'projects', 'origin-demo', 'origin', 'export.png'), 'png');
+  write(path.join(libRoot, 'projects', 'origin-demo', 'origin', 'readme.txt'), 'txt');
+  write(path.join(libRoot, 'projects', 'origin-demo', 'opju', 'old.opj'), 'X');
+  const snapLib = await snapshot(libRoot);
+  const demo = (snapLib.projects || []).find((p) => p.slug === 'origin-demo');
+  check('快照：origin/ 里 .opju 与 .opj 都算工程（共 2 个）',
+    demo && demo.opju.length === 2
+    && demo.opju.some((o) => o.name === 'zt.opju') && demo.opju.some((o) => o.name === 'old.opj'));
+  check('快照：png / txt 等非工程文件不进 opju 列表',
+    demo && !demo.opju.some((o) => o.name === 'export.png' || o.name === 'readme.txt'));
+  fs.rmSync(libRoot, { recursive: true, force: true });
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 fs.rmSync(ckptDir, { recursive: true, force: true });
 

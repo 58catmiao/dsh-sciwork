@@ -569,6 +569,13 @@ check('筛选：按项目 slug 命中原样保留子条目', (() => {
 })());
 check('筛选：投稿按 x.project 命中（目录名里没有课题 slug）', T2.filterSnap(fakeSnap, 'demo-perovskite').submissions.length === 1);
 
+/* 0.3.16：库体检的「空课题」判定要把表格与 Origin 工程也算产物 */
+check('空课题：图/草稿/数据/表格/工程全无才算空', T2.isEmptyProject({ slug: 'p' }) === true);
+check('空课题：只放了一张表 → 不算空', T2.isEmptyProject({ tables: [{ name: 't.csv' }] }) === false);
+check('空课题：只放了一个 Origin 工程 → 不算空', T2.isEmptyProject({ opju: [{ name: 'x.opju' }] }) === false);
+check('空课题：字段缺省（null 项目）也按空处理', T2.isEmptyProject({ figures: null, drafts: undefined }) === true);
+check('空课题：有图就不空（原有行为不回归）', T2.isEmptyProject({ figures: [{ figureId: 'f1' }] }) === false);
+
 check('拖拽猜目标：.csv/.txt → 数据（.txt 也算数据）', T2.guessTarget([{ name: 'a.csv' }, { name: 'b.txt' }]) === 'data');
 check('拖拽猜目标：图片 → 图表（大小写不敏感）', T2.guessTarget([{ name: 'a.PNG' }]) === 'figures');
 check('拖拽猜目标：.md → 草稿', T2.guessTarget([{ name: 'a.md' }]) === 'drafts');

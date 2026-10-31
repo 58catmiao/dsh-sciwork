@@ -5,6 +5,14 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.16] - 2026-10-31
+
+### Fixed
+
+- **`origin/` 与 `opju/` 里的导出图、说明文件被当成 Origin 工程**：扫描这两处时 `walkFiles()` 没传扩展名白名单（同一个函数里数据表与表格都传了），于是 png / txt / 备份件全进了「工程」列表——概览的「N 个工程」虚高，资产页把导出的图当成工程件列出来。现在只认 `.opju` 与 `.opj`（Origin 2020 前后两种工程格式），新增 `ORIGIN_EXT` 常量。`test-projects.mjs` 加了临时库夹具（`origin/` 混着 `.opju` + png + txt，`opju/` 放一份旧版 `.opj`），断言「只数 2 个工程、非工程件不进列表」。
+- **扫描窗口里被删掉的文件会把整份库快照带崩**：`origin/opju/` 与 `submissions/` 两处循环直接 `stat()` 每个条目，文件在这几毫秒里被挪走或删掉就抛 ENOENT，`snapshot()` 整份失败——面板显示「科研库不可读」，其实只是有一个文件在动。现在两处都走 `statSafe()`，返回 `null` 就跳过这一条、其余照常返回。顺带给 `snapshot()` 加了可选的 `rootOverride`（只给自测传临时库用，其余 settings 照读）。
+- **只放表格或 Origin 工程的课题被库体检误报「还是空的」**：v2 工作台的「空课题」判定只看图 / 草稿 / 数据，`tables` / `opju` 已有产物的课题也报空。判定提成模块级纯函数 `isEmptyProject()`（并进 `__test` 导出），五个目录全空才算空课题。客户端自检 230 → 235 条。
+
 ## [0.3.15] - 2026-10-24
 
 ### Fixed
