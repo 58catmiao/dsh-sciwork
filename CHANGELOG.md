@@ -5,6 +5,23 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.4] - 2026-11-01
+
+一轮「用户报的两条没反应」+ 把它们钉进最缺的那层测试。
+
+### Fixed
+
+- **存笔记点了没反应（笔记页与图卡「存进笔记」两条路）**：计划弹层的「确认执行」按钮直接把 `onClick` 的鼠标事件当参数递给确认回调（`lib/client.js:2771` `onClick: props.onConfirm`），宿主按参数哈希校验，收到的是 `{type:'click',target:…}`，于是回一句 `未知参数：preventDefault`，笔记一个字节都没写进盘。现在按钮只传「点了」（`onClick: function () { props.onConfirm(); }`），图卡那条路同时把待存的 `{project, text}` 收进 ref，确认时按原样取用——参数哈希与计划一致，不再事后重拼。
+- **问完模型后没反应**：圈选问模型/画图对话的 `send()` 只认 `chunk.type === 'text-delta'`，一旦宿主一条 `text-delta` 都没有（模型不支持图片输入、回答被截断、只出了 reasoning），`acc` 停在空串，界面就是一片空白——没有回答也没有报错。现在空结果一定给人话（有模型清单的说明就用它，否则提示「可能是这个模型不支持图片输入，或回答被截断」），并把这条提示写进对话气泡。
+- **模型流不可迭代就整段失败**：DSH 客户端 `stream()` 的签名是 `Promise<AsyncIterable>`，以前不 await 直接 `for await` 会抛 `stream is not async iterable`，界面上表现为「点完没反应」。现在先 await，拿到的如果不是可迭代流但带 `text` 就整段当回答，两者都不是才如实报错；同步可迭代器（老夹具形状）照旧支持。
+- **等模型永远等下去**：整段流加了超时兜底（默认 120 秒，`window.__sciworkChatTimeoutMs` 可覆盖，测试用它把等待压到 120 毫秒），超时后提示「等模型超过 N 秒还没回：检查网络，或到「设置 → 模型」确认这个提供方还能用」，按钮回到「问模型」。
+
+### Tests
+
+- 新增 `scripts/selftest-live.mjs`——**真联调**：微缩 React 渲染真 `lib/client.js`，面板的 `rpc.call` 打到真 `lib/index.js` 的同一条路由，再经真 `lib/actions.js` / 真 dispatch / 真计划令牌 / 真回执写进临时库（只有 DSH 宿主的模型服务是假件）。九个场景：动作层计划+确认、笔记面板整条链路、图卡问模型（宿主 `llm.chat` / 同步流 / `Promise<AsyncIterable>` 三种）、图卡存进笔记、空流必须吭声、卡住的流必须超时收场、46 个动作冒烟（读动作直调、写动作只出计划）。实测 `31 通过 · 0 失败 · 6 跳过`；`--real <库根>` 只读巡检 `6 通过 · 0 失败`。
+- **回归证明**：把 `lib/client.js` 换回修复前那一版再跑同一脚本 → `24 通过 · 7 失败`，七条正好是这两个 bug 的面孔（`stream is not async iterable`、`未知参数：preventDefault` 两次、盘上没有新笔记、空流一片空白、超时后没提示、按钮一直「等模型…」）。
+- 门禁 `scripts/cycle.mjs` 21 → **22 项**。已有 `scripts/e2e-panel.mjs` 只判定「点了有没有发 RPC / 界面指纹变没变」，不校验参数与返回值——0.4.0 的「confirm 漏 actionId」、这次的「事件对象当参数」都是它全绿、用户那边没反应；这一项专门补这个缺口。
+
 ## [0.4.3] - 2026-11-01
 
 ### Fixed

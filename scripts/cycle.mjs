@@ -173,6 +173,10 @@ for (const [label, script, skip] of [
   // 端到端点击：把面板里每个可点元素都点一遍，死按钮与点击抛错都算失败。
   // 加新功能时只需 `node scripts/e2e-panel.mjs --only <页签>` 单测那一页，不必每次全量。
   ['面板端到端点击（每个按钮都试一遍）', 'scripts/e2e-panel.mjs', false],
+  // 真联调：面板 × 真端点 × 真动作层 × 真写盘。上一行是假夹具（只验「点下去有没有发 RPC」），
+  // 这一行才验参数与返回值 —— 0.4.0 的「confirm 漏 actionId」、0.4.3 的「存笔记把事件当参数」
+  // 与「空流一片空白」都是假夹具全绿、用户那边没反应的缺陷，靠这一条兜住。
+  ['真联调（面板 ↔ 真动作层 ↔ 真写盘）', 'scripts/selftest-live.mjs', false],
 ]) {
   if (skip) {
     record(label, null, Date.now(), '--skip-host');
