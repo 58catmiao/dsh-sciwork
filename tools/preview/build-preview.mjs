@@ -14,7 +14,7 @@
  *      对话区滚了多少）写进 out/summary.json，供后续审查对账。
  *
  * 常用参数：
- *   --out <目录>          截图输出目录（默认 E:\Temp\preview）
+ *   --out <目录>          截图输出目录（默认 <系统临时目录>/sciwork-preview）
  *   --only a,b,c          只跑指定场景
  *   --size 1440x1200      视口（默认 1440×1200）
  *   --no-shot             只生成 html，不截图
@@ -28,6 +28,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import net from 'node:net';
@@ -40,7 +41,7 @@ const CLIENT = join(REPO, 'lib', 'client.js');
 /* -------------------------------------------------------------- 命令行 */
 
 function parseArgs(argv) {
-  const opts = { out: 'E:\\Temp\\preview', only: null, size: [1440, 1200], shot: true, keepProfile: false, chrome: null };
+  const opts = { out: join(os.tmpdir(), 'sciwork-preview'), only: null, size: [1440, 1200], shot: true, keepProfile: false, chrome: null };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--out') opts.out = argv[++i];
@@ -60,7 +61,7 @@ function parseArgs(argv) {
 function printHelp() {
   console.log([
     '用法：node tools/preview/build-preview.mjs [选项]',
-    '  --out <目录>      截图输出目录（默认 E:\\Temp\\preview）',
+    '  --out <目录>      截图输出目录（默认 <系统临时目录>/sciwork-preview）',
     '  --only a,b,c      只跑指定场景（workbench/project/figures/drafts/notes/settings/chat/chat-confirm）',
     '  --size 1440x1200  视口大小',
     '  --no-shot         只生成 out/preview.html',
@@ -73,8 +74,9 @@ function printHelp() {
 
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
-  'C:\\Users\\ymy\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe',
-  'C:\\Users\\ymy\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win\\chrome.exe',
+  // Playwright 自带的那份 chromium：按用户目录推，别写死某台机器。
+  join(os.homedir(), 'AppData', 'Local', 'ms-playwright', 'chromium-1243', 'chrome-win64', 'chrome.exe'),
+  join(os.homedir(), 'AppData', 'Local', 'ms-playwright', 'chromium-1243', 'chrome-win', 'chrome.exe'),
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
