@@ -837,7 +837,7 @@ const blank = parseTable('x,y\n1,\n2,NA\n');
 check('空单元格 / NA 当缺失（null），不填充', blank.rows[0][1] === null && blank.rows[1][1] === null, JSON.stringify(blank.rows));
 
 /* 12. 笔记 / 实验日志：列、读、写（自建临时库，绝不碰真实库） ------------------ */
-console.log('\n[12] 笔记 / 实验日志（notes.list / notes.read / notes.save）');
+console.log('\n[12] 笔记 / 实验日志（notes.list / notes.read / notes.save / notes.delete）');
 {
   const { mkdtemp, mkdir, readFile, rm, stat } = await import('node:fs/promises');
   const osNotes = await import('node:os');
@@ -1014,6 +1014,47 @@ console.log('\n[12] 笔记 / 实验日志（notes.list / notes.read / notes.save
       ghost.ok === false && ghost.error.code === 'not-found'
       && (await nHas('projects/typo-project')) === false,
       JSON.stringify(ghost.error || ghost).slice(0, 200));
+    /* 12e. 删除 = 移进回收站（不做物理删除），同一分钟删同名也不许互相覆盖 */
+    const delA = resolveAction('notes.delete');
+    check('notes.delete 已登记：写动作、要确认、engine=node',
+      Boolean(delA) && delA.effects === 'write' && delA.confirm === 'write' && delA.engine === 'node',
+      JSON.stringify(delA && [delA.effects, delA.confirm, delA.engine]));
+    const planDel = planAction('notes.delete', { project: demoP, name: 'first-note.md' }, nctx);
+    check('notes.delete 的计划里写明「移进回收站」而不是「删掉」',
+      planDel.ok === true && planDel.value.confirmRequired === true
+      && String(planDel.value.summary || '').includes('回收站'),
+      JSON.stringify(planDel.value && planDel.value.summary).slice(0, 200));
+    const beforeDel = await nText(`projects/${demoP}/notes/first-note.md`);
+    const del1 = await nCall('notes.delete', { project: demoP, name: 'first-note.md' });
+    check('删除后 notes/ 里不再有这份笔记',
+      del1.ok === true && del1.value.moved === true
+      && (await nHas(`projects/${demoP}/notes/first-note.md`)) === false,
+      JSON.stringify(del1.value || del1.error).slice(0, 240));
+    check('删除只是移进 notes/.trash/，内容原样还在',
+      del1.ok === true && Boolean(del1.value.trash) && (await nText(del1.value.trash)) === beforeDel,
+      JSON.stringify(del1.value).slice(0, 240));
+    const afterDel = await nCall('notes.list', { project: demoP });
+    check('列表不再列出被删的笔记', afterDel.ok === true
+      && !((afterDel.value && afterDel.value.notes) || []).some((n) => n.name === 'first-note.md'),
+      JSON.stringify(((afterDel.value && afterDel.value.notes) || []).map((n) => n.name)));
+    // 撞名只测文件层（notesLib）：走 dispatch 会命中 10 分钟幂等窗，
+    // 第二次同参数删除直接返回上一次的回执、不再执行，测不到回收站里是不是留了两份。
+    await notesLib.saveNote(notesRoot, { project: demoP, name: 'dup.md', text: '# 一\n' });
+    const dup1 = await notesLib.deleteNote(notesRoot, { project: demoP, name: 'dup.md' });
+    await notesLib.saveNote(notesRoot, { project: demoP, name: 'dup.md', text: '# 二\n' });
+    const dup2 = await notesLib.deleteNote(notesRoot, { project: demoP, name: 'dup.md' });
+    check('同一分钟删同名笔记：回收站留两份，不互相覆盖',
+      Boolean(dup1 && dup2) && dup1.trash !== dup2.trash
+      && (await nHas(dup1.trash)) === true && (await nHas(dup2.trash)) === true,
+      JSON.stringify([dup1 && dup1.trash, dup2 && dup2.trash]));
+    const delMissing = await nCall('notes.delete', { project: demoP, name: 'no-such-note.md' });
+    check('删不存在的笔记 → not-found（不是 internal）',
+      delMissing.ok === false && delMissing.error.code === 'not-found',
+      JSON.stringify(delMissing.error || delMissing).slice(0, 200));
+    const delEscape = await nCall('notes.delete', { project: demoP, name: '../escape.md' });
+    check('删除时 .. 逃逸同样被拒',
+      delEscape.ok === false && /不合法|越界|相对路径/.test(delEscape.error.message),
+      JSON.stringify(delEscape.error || delEscape).slice(0, 200));
   } finally {
     if (prevEnvNew === undefined) delete process.env.SCIWORK_LIBRARY;
     else process.env.SCIWORK_LIBRARY = prevEnvNew;

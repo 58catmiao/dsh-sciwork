@@ -1199,7 +1199,11 @@ console.log('\n[12] v2 工作台');
   check('今日条目旁有「生成指令」', !!aiBtn);
   if (aiBtn) { aiBtn.props.onClick(); wt = await settle(T.Workbench, { call: fakeCall, onImport() {} }); }
   check('点了给出可复制的指令', allText(wt).includes('待发送指令') && allText(wt).includes('Ceramics International'));
-  check('跨课题待办总表列出下一步', allText(wt).includes('跨课题待办') && allText(wt).includes('journal.check'));
+  // 0.4.6：待办表不再把动作 id 摆在界面上（那是给 agent 的指令），改成悬浮提示里给。
+  const todoCell = findAll(wt, (n) => n.props && typeof n.props.title === 'string' && n.props.title.includes('journal.check'))[0];
+  check('跨课题待办总表列出下一步（动作 id 收进悬浮提示）',
+    allText(wt).includes('跨课题待办') && !!todoCell && allText(todoCell).includes('还没有图页'),
+    JSON.stringify(todoCell && allText(todoCell)).slice(0, 200));
 
   const row = findAll(wt, (n) => n.tag === 'button' && allText(n).includes('ZT 陶瓷'))[0];
   check('课题行可点', !!row);
@@ -1235,7 +1239,7 @@ console.log('\n[12] v2 工作台');
   const planned = calls.filter((c) => c.action === 'action.plan' && c.args && c.args.actionId === 'project.stage.set').slice(-1)[0];
   check('点推进只生成计划（不发写请求）', !!planned && planned.args.actionId === 'project.stage.set'
     && JSON.stringify(planned.args.params) === JSON.stringify(planParams), JSON.stringify(planned && planned.args));
-  check('计划弹窗显示会写的文件', allText(wt).includes('确认写动作') && allText(wt).includes('projects/zt/project.json'));
+  check('计划弹窗显示会写的文件', allText(wt).includes('确认执行') && allText(wt).includes('projects/zt/project.json'));
 
   const go = findAll(wt, (n) => n.tag === 'button' && allText(n).trim() === '确认执行')[0];
   check('弹窗有「确认执行」', !!go);

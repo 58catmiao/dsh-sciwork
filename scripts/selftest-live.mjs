@@ -185,9 +185,27 @@ define('window', {
   addEventListener() {}, removeEventListener() {},
 });
 define('document', {
-  createElement: () => ({ setAttribute() {}, textContent: '' }),
+  createElement: (tag) => {
+    // 面板把宿主不认的图片（SVG/TIFF）栅格化成 PNG 时会用 canvas，这里给个能出图的桩。
+    if (tag === 'canvas') {
+      return {
+        width: 0,
+        height: 0,
+        getContext: () => ({ fillStyle: '', fillRect() {}, drawImage() {} }),
+        toDataURL: () => 'data:image/png;base64,' + RASTER_B64,
+      };
+    }
+    return { setAttribute() {}, textContent: '' };
+  },
   head: { appendChild() {} },
   documentElement: { appendChild() {} },
+});
+// 栅格化的结果标记：断言最终递给宿主的确实是这张「转换后的 PNG」。
+const RASTER_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB';
+define('Image', class {
+  constructor() { this.naturalWidth = 800; this.naturalHeight = 600; }
+  set src(v) { this._src = v; if (typeof this.onload === 'function') setTimeout(() => this.onload(), 0); }
+  get src() { return this._src; }
 });
 define('navigator', { clipboard: { writeText: () => Promise.resolve() } });
 const lsStore = new Map();
@@ -337,7 +355,8 @@ const check = (name, cond, detail) => (cond ? ok(name) : bad(name, detail || '')
 const skip = (name, why) => { skips.push(name); console.log('  SKIP ' + name + ' —— ' + why); };
 const noteFiles = () => {
   const d = join(LIB, 'projects', 'demo', 'notes');
-  return existsSync(d) ? readdirSync(d).sort() : [];
+  // 只数 .md：notes/.trash 这种隐藏目录不能算成「一条笔记」（删除用例会建它）。
+  return existsSync(d) ? readdirSync(d).filter((n) => n.endsWith('.md')).sort() : [];
 };
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAwAB8gEDXwZ0yAAAAABJRU5ErkJggg==';
 const figOf = (id) => ({ figureId: id, graph: 'Graph' + id.slice(-1), caption: '测试图', file: 'a.png', sources: [], journal: '' });
@@ -422,8 +441,8 @@ console.log('\n[T2] 笔记面板：新建 → 输入 → 保存 → 计划 → �
   check('「保存」可点', !!(saveBtn && saveBtn.props.disabled !== true), JSON.stringify(saveBtn && saveBtn.props.disabled));
   if (saveBtn) click(saveBtn);
   tree = await settle(NotesPanel, props);
-  const hasModal = allText(tree).includes('确认写动作');
-  check('出现计划弹窗', hasModal, '界面里没有「确认写动作」：' + allText(tree).slice(0, 160));
+  const hasModal = allText(tree).includes('确认执行');
+  check('出现计划弹窗', hasModal, '界面里没有「确认执行」：' + allText(tree).slice(0, 160));
   if (hasModal) {
     const confirmBtn = byText(tree, '确认执行', 'button');
     check('弹窗里有「确认执行」', !!confirmBtn);
@@ -513,7 +532,7 @@ console.log('\n[T6] 图卡「存进笔记」→ 计划 → 确认（确认按钮
   check('有「存进笔记」按钮', !!btn, allText(tree).slice(0, 200));
   if (btn) click(btn);
   tree = await settle(FigureChat, props);
-  const hasModal = allText(tree).includes('确认写动作');
+  const hasModal = allText(tree).includes('确认执行');
   check('出现计划弹窗', hasModal, allText(tree).slice(0, 200));
   if (hasModal) click(byText(tree, '确认执行', 'button'));
   tree = await settle(FigureChat, props);
@@ -598,6 +617,90 @@ console.log('\n[T9] 全动作冒烟：每个动作都给出结构化回复（不
   check('每个动作都回了结构化结果（' + ran + ' 个）', ran > 30, '有效回复只有 ' + ran + ' 个');
   check('没有动作抛 internal', internal.length === 0, internal.join(' | '));
   check('写动作的计划形状一致', weird.length === 0, weird.join(' | '));
+}
+
+/* ================================================================ T10 SVG 整图 */
+console.log('\n[T10] 整图是 SVG：宿主的图片服务只收位图，面板得先自己转 PNG');
+{
+  hookStores.clear(); lsStore.clear();
+  llmMode = 'text'; llmCalls.length = 0;
+  const svg = 'data:image/svg+xml;base64,' + Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600"/></svg>', 'utf8',
+  ).toString('base64');
+  const props = { ctx: panelCtx, call: hostCall, project: 'demo', fig: figOf('figS'), img: svg, zoom: false, onToggleZoom() {} };
+  let tree = await settle(FigureChat, props);
+  const areas = byTag(tree, 'textarea');
+  const ta = areas[areas.length - 1];
+  if (ta) ta.props.onChange({ target: { value: '这张图的坐标轴对不对？' } });
+  tree = await settle(FigureChat, props);
+  const sendBtn = byText(tree, '问模型', 'button');
+  if (sendBtn) click(sendBtn);
+  tree = await settle(FigureChat, props, 16, 50);
+  const saves = imageSaves.slice(-1);
+  const sent = saves[0] || {};
+  check('整图转成 PNG 才交给宿主（不再是 image/svg+xml）',
+    saves.length === 1 && sent.mediaType === 'image/png', JSON.stringify({ mediaType: sent.mediaType }).slice(0, 220));
+  check('交给宿主的就是栅格化结果',
+    saves.length === 1 && Buffer.from(sent.data).toString('base64') === RASTER_B64,
+    '收到 ' + String(sent.data && sent.data.length) + ' 字节');
+  const txt = allText(tree);
+  check('没有「宿主不认识这个图片类型」这类报错', !/宿主不认识|image\/svg\+xml/i.test(txt), txt.slice(-240));
+  check('回答照常显示', txt.includes('这块的峰'), txt.slice(0, 240));
+}
+
+/* ================================================================ T11 长对话折叠 */
+console.log('\n[T11] 对话长了只摊开最近两条，其余收进一个按钮（确认弹层不被挤走）');
+{
+  hookStores.clear(); lsStore.clear();
+  const five = [1, 2, 3, 4, 5].map((i) => ({ q: '问' + i, a: '答' + i, at: new Date().toISOString() }));
+  lsStore.set('research-panel-chat:figL', JSON.stringify(five));
+  const props = { ctx: panelCtx, call: hostCall, project: 'demo', fig: figOf('figL'), img: PNG, zoom: false, onToggleZoom() {} };
+  const turns = (t) => {
+    let n = 0;
+    for (const x of nodes(t)) {
+      if (x.props && typeof x.props.className === 'string' && x.props.className.split(/\s+/).indexOf('rl-chat__turn') >= 0) n += 1;
+    }
+    return n;
+  };
+  let tree = await settle(FigureChat, props);
+  check('默认只渲染最近两条', turns(tree) === 2, '实际渲染了 ' + turns(tree) + ' 条');
+  const more = byText(tree, '查看全部 5 条', 'button');
+  check('有「查看全部 5 条」按钮', !!more, allText(tree).slice(0, 200));
+  if (more) click(more);
+  tree = await settle(FigureChat, props);
+  check('展开后五条都在', turns(tree) === 5, '展开后 ' + turns(tree) + ' 条');
+  const back = byText(tree, '收起旧对话', 'button');
+  check('有「收起旧对话」按钮', !!back, allText(tree).slice(0, 200));
+  if (back) click(back);
+  tree = await settle(FigureChat, props);
+  check('收起后又回到两条', turns(tree) === 2, '收起后 ' + turns(tree) + ' 条');
+}
+
+/* ================================================================ T12 笔记删除（移进回收站） */
+console.log('\n[T12] 笔记删除：面板上的「删除」→ 计划 → 确认 → 文件进 notes/.trash/');
+{
+  hookStores.clear(); lsStore.clear();
+  const props = { call: hostCall, ctx: panelCtx, snap: { projects: [{ slug: 'demo', title: 'Demo' }] }, q: 'demo' };
+  const before = noteFiles();
+  check('删除前笔记列表非空', before.length >= 1, JSON.stringify(before));
+  let tree = await settle(NotesPanel, props);
+  const del = byText(tree, '删除', 'button');
+  check('每条笔记都有「删除」按钮', !!del, allText(tree).slice(0, 200));
+  if (del) click(del);
+  tree = await settle(NotesPanel, props);
+  const modal = allText(tree);
+  check('弹出确认层，并说明是移进回收站', modal.includes('确认执行') && modal.includes('回收站'), modal.slice(-320));
+  const go = byText(tree, '确认执行', 'button');
+  if (go) click(go);
+  tree = await settle(NotesPanel, props);
+  const txt = allText(tree);
+  check('界面出现「已移进回收站」', txt.includes('已移进回收站'), txt.slice(0, 260));
+  check('没有「未知参数 / 参数被改过」这类拒收', !txt.includes('未知参数') && !txt.includes('参数被改过'), txt.slice(0, 260));
+  const after = noteFiles();
+  check('notes/ 里少了一条', after.length === before.length - 1, JSON.stringify(after));
+  const trashDir = join(LIB, 'projects', 'demo', 'notes', '.trash');
+  const trashed = existsSync(trashDir) ? readdirSync(trashDir) : [];
+  check('被删的那份躺在 notes/.trash/ 里（没物理删除）', trashed.length === 1, JSON.stringify(trashed));
 }
 
 finish();

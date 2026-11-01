@@ -31,7 +31,7 @@
 
 - **设置**（顶栏右侧）：左栏分栏——模型 / 习惯 / 本地数据 / 关于，加栏目只需往客户端 `SETTINGS_SECTIONS` 里加一项。模型清单不再读渲染进程里的 `ctx.get("llm")`（那里常常是空的），改由插件宿主侧动作 `llm.info` 汇总 DSH 已配置的提供方与模型，能看图的标 👁。
 - **圈选问模型**：图表页展开一张图，按 `Alt+Q` 或点顶栏「圈选问模型」调出悬浮窗，在图上拖框圈一块、问模型；回答只描述看得见的东西，要改只给改动计划。对话存浏览器本地，「存进笔记」走 `notes.save` 的计划 → 确认。
-- **笔记页签**：`projects/<课题>/notes/*.md` 的实验日志，三个动作 `notes.list` / `notes.read` / `notes.save`，写前留 `.bak`。
+- **笔记页签**：`projects/<课题>/notes/*.md` 的实验日志，四个动作 `notes.list` / `notes.read` / `notes.save` / `notes.delete`；写前留 `.bak`，删除是移进 `notes/.trash/`（不物理删，能拿回来）。
 - **数据血缘**：课题详情里列出「数据 → 图」（按侧车登记的源数据算）与「没被任何图引用的数据」；侧车登记不带扩展名、或登记成目录，都能对上。
 - **可复现性审计**：工作台页脚「检查一遍」调只读动作 `library.audit`，查图缺参数 / 缺源数据 / 源数据不在 / 图文件不在 / 数据没人引用 / 期刊档案缺字段 / 草稿引用了库里没有的文献键。
 - **重命名**：图表 / 草稿 / 数据 / 文献行上的「重命名」走 `library.rename`，图件连同同基名的兄弟文件与侧车一起改，普通文件改名后扫侧车里的 `sourceData` 跟着改，改前留 `.bak`。
@@ -205,7 +205,7 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 | **草稿** | `drafts/` 下的 Markdown 手稿 | 就地读；新建草稿；编辑保存；归档；删除 |
 | **文献** | `refs/refs.json` 里的条目与 `refs/pdf/` 下的本地 PDF 附件 | 导入（必须带 DOI 或 URL 才登记，PDF 可选）、看 PDF、归档、删除 |
 | **数据** | `data/` 下的数据文件（`.txt/.csv/.dat` 等）与按课题分组的分组头 | 预览行列、**数据变换**（6 个算子）、**重命名**、归档、删除 |
-| **笔记** | `projects/<课题>/notes/*.md` 实验日志（标题、大小、修改时间、首行摘要） | 读全文、新建、保存（覆盖前留 `.bak`）、重命名 |
+| **笔记** | `projects/<课题>/notes/*.md` 实验日志（标题、大小、修改时间、首行摘要） | 读全文、新建、保存（覆盖前留 `.bak`）、删除（移进 `notes/.trash/`） |
 | **期刊档案** | 12 份档案的 id、严格度（high / medium / low）与更新日期 | 读条款与数值要求；筛选；归档 |
 | **投稿** | `submissions/` 下的投稿记录（目标刊、状态、时间线） | 读记录；筛选；归档；**投稿闸门**：选期刊 → 合规体检 → 导出投稿包 |
 | **归档** | `.research/archive/<时间戳>/` 里的批次清单 + 真删记录 | 整批 / 单文件「恢复」搬回原位；真删记录只留名字 |
@@ -339,7 +339,7 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主半边：路由注册、路径守卫、快照形状
-node scripts/selftest-actions.mjs   # 46 个动作：读/守卫检查 + 隔离副本里的写动作
+node scripts/selftest-actions.mjs   # 47 个动作：读/守卫检查 + 隔离副本里的写动作
 node scripts/selftest-client.mjs    # 客户端：八个页签的渲染、弹层、按钮与请求形状
 node scripts/selftest-live.mjs      # 真联调：真面板 × 真端点 × 真动作层 × 真写盘（临时库）
 node scripts/test-install.mjs       # 安装面：随包技能、市场索引、包清单、apply 接线
@@ -367,7 +367,7 @@ python scripts/validate-patch.py    # ✓ 补丁预检通过
 **B. 指向一个真库（数字随库内容浮动，下面是夹具库实测）**
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 194 通过 · 0 失败 · 3 跳过
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 通过 · 0 失败 · 3 跳过
 SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 个元素 · 0 失败（--only <页签> 只测一页）
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 252 通过 · 0 失败
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 · 0 失败（只读巡检）
@@ -375,7 +375,7 @@ node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 �
 
 - `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
 - `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `252 通过 · 0 失败`，退出码 0。
-- `selftest-live.mjs` —— 唯一一条**真联调**：微缩 React 渲染真 `lib/client.js`，面板的 `rpc.call` 直接打到真 `lib/index.js` 的同一条路由，再经真 `lib/actions.js` / 真 dispatch / 真令牌 / 真回执写进临时库；只有 DSH 宿主的模型服务是假件。默认 `35 通过 · 0 失败 · 6 跳过`（临时库，跑完自动清掉）；`--real <库根>` 只读巡检真库的读动作（`6 通过 · 0 失败`）。它专门盯假夹具抓不到的那类缺陷：参数被事件对象污染、返回值形状不对、流式回答为空却没人吭声。
+- `selftest-live.mjs` —— 唯一一条**真联调**：微缩 React 渲染真 `lib/client.js`，面板的 `rpc.call` 直接打到真 `lib/index.js` 的同一条路由，再经真 `lib/actions.js` / 真 dispatch / 真令牌 / 真回执写进临时库；只有 DSH 宿主的模型服务是假件。默认 `51 通过 · 0 失败 · 6 跳过`（临时库，跑完自动清掉）；`--real <库根>` 只读巡检真库的读动作（`6 通过 · 0 失败`）。它专门盯假夹具抓不到的那类缺陷：参数被事件对象污染、返回值形状不对、流式回答为空却没人吭声。
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
 - `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。⚠️ 0.2.1 起 `SCIWORK_LIBRARY` **优先于**随包的 `library/config.json`（此前次序反了，导致本机把库指向真库时这道闸门永远拿真库当副本、写动作整节被跳过）。
 

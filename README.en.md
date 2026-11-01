@@ -311,7 +311,7 @@ The repository ships five self-test scripts and one patch preflight. None of the
 
 ```bash
 node scripts/selftest-host.mjs      # host half: route registration, path guards, snapshot shape
-node scripts/selftest-actions.mjs   # the 23 actions: read/guard checks + writes against an isolated copy
+node scripts/selftest-actions.mjs   # the 47 actions: read/guard checks + writes against an isolated copy
 node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlays, buttons and request shapes
 node scripts/selftest-live.mjs      # real wiring: real panel x real endpoint x real actions x real writes (temp library)
 node scripts/test-install.mjs       # install surface: bundled skills, market index, package files, apply wiring
@@ -337,14 +337,14 @@ Every **content** check (the ones that need real drafts / figures / data tables 
 **B. Pointing at a real library (measured baseline)**
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 127 passed · 0 failed · 3 skipped (fixture library; counts vary with library content)
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 235 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 passed · 0 failed · 3 skipped (fixture library; counts vary with library content)
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 252 passed · 0 failed
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 passed · 0 failed (read-only sweep)
 ```
 
 - `selftest-host.mjs` — tallies passes and failures only, exit code 0. The only check that can be recorded as "skipped" is one that depends on the real library actually containing a figure file (when there is none, it is not counted as a failure).
-- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `235 passed · 0 failed`, exit code 0.
-- `selftest-live.mjs` — the one **real** end-to-end script: a miniature React renders the real `lib/client.js`, the panel's `rpc.call` hits the real `lib/index.js` route, and execution goes through the real `lib/actions.js`, dispatch, plan token and receipt into a temporary library; only the DSH host's model service is faked. Default run: `35 passed · 0 failed · 6 skipped` (temp library, removed afterwards). `--real <library-root>` sweeps the real library's read actions (`6 passed · 0 failed`). It targets exactly what the fixture-based tests miss: parameters polluted by an event object, wrong return shapes, and an empty streamed answer that nobody reports.
+- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `252 passed · 0 failed`, exit code 0.
+- `selftest-live.mjs` — the one **real** end-to-end script: a miniature React renders the real `lib/client.js`, the panel's `rpc.call` hits the real `lib/index.js` route, and execution goes through the real `lib/actions.js`, dispatch, plan token and receipt into a temporary library; only the DSH host's model service is faked. Default run: `51 passed · 0 failed · 6 skipped` (temp library, removed afterwards). `--real <library-root>` sweeps the real library's read actions (`6 passed · 0 failed`). It targets exactly what the fixture-based tests miss: parameters polluted by an event object, wrong return shapes, and an empty streamed answer that nobody reports.
 - `validate-patch.py` — prints `✓ 补丁预检通过` (patch preflight passed), exit code 0. It reports the `preset-research` preset's top-level row count (19 rows, 29 leaf rows after recursion, 2 of them disabled by an `!!js` condition), its nested groups (planning / compaction / delegation), the persona length, and confirmation that the inserted `research-library` row belongs to the host plugin rather than to an agent preset.
 - `selftest-actions.mjs` — the write-action stage **requires the library root to point at the isolated copy the script creates**. If it finds the snapshot pointing somewhere else, it prints `FAIL 隔离闸门：snapshot 指向副本` and exits with code 2, having written **not a single byte**. That is by design, not a plugin defect: write actions always run inside the copy and never touch your real library.
 
