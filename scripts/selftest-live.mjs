@@ -565,7 +565,9 @@ function finish() {
   // 门禁（scripts/cycle.mjs）按这个口径数：`N 通过 · M 失败`
   console.log(pass + ' 通过 · ' + fail + ' 失败' + (skips.length ? ' · ' + skips.length + ' 跳过' : ''));
   if (!REAL_MODE && existsSync(LIB)) {
-    try { rmSync(LIB, { recursive: true, force: true }); } catch (e) { /* 临时目录删不掉不影响结论 */ }
+    // maxRetries/retryDelay：Windows 上刚写完的文件偶尔还被索引器占着，直接删会 EPERM，
+    // 少一次重试就在系统临时目录里留一个空壳（0.4.4 收尾时发现的历史遗留）。
+    try { rmSync(LIB, { recursive: true, force: true, maxRetries: 6, retryDelay: 80 }); } catch (e) { /* 临时目录删不掉不影响结论 */ }
   }
   process.exit(fail ? 1 : 0);
 }

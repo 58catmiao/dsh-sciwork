@@ -418,6 +418,15 @@ try {
   // 副本配置时 ENOENT（`...\lib\.research\config.json`），写动作整节红掉。
   // 临时根不再有共享状态，并发跑多份门禁互不影响。
   ownRoot = await mkdtemp(pathMod.join(os.tmpdir(), 'sciwork-actions-'));
+  // 收尾兜底：这一节里有些动作的收尾写入是异步的，可能在 finally 删完之后才落盘、
+  // 把临时目录又建出来（0.4.4 收尾发现每跑一次门禁就往系统临时目录里留一个空壳）。
+  // 退出时再同步删一次 —— 那时候不该还有写入在跑。
+  {
+    const { rmSync } = await import('node:fs');
+    process.on('exit', () => {
+      try { rmSync(ownRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 50 }); } catch (e) { /* 删不掉也不影响结论 */ }
+    });
+  }
   check('隔离副本落在本次运行专属临时目录（并发跑门禁不互删）',
     /^sciwork-actions-[A-Za-z0-9]{6}$/.test(pathMod.basename(ownRoot))
     && ownRoot !== pathMod.join(os.tmpdir(), 'research-selftest'),
@@ -801,7 +810,9 @@ try {
   // 只删自己这次的临时根：固定路径共享根会让并发跑的另一次门禁把自己的副本删掉。
   if (ownRoot && !process.argv.includes('--keep-copy')) {
     const { rm } = await import('node:fs/promises');
-    await rm(ownRoot, { recursive: true, force: true }).catch(() => {});
+    // Windows 上偶尔 EBUSY/EPERM（收尾写入刚落盘、索引器刚扫过）。这里先尽力删，
+    // 删不干净的交给出处那个 `process.on('exit')` 钩子兜底。
+    await rm(ownRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 80 }).catch(() => {});
   } else if (ownRoot) {
     console.log('  （副本保留：' + ownRoot + '）');
   }
@@ -838,6 +849,10 @@ console.log('\n[12] 笔记 / 实验日志（notes.list / notes.read / notes.save
   ensureRegistered();
 
   const notesRoot = await mkdtemp(pathNotes.join(osNotes.tmpdir(), 'sciwork-notes-'));
+  {
+    const { rmSync } = await import('node:fs');
+    process.on('exit', () => { try { rmSync(notesRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 50 }); } catch (e) { /* 忽略 */ } });
+  }
   const prevEnvNew = process.env.SCIWORK_LIBRARY;
   const prevEnvLegacy = process.env.RESEARCH_LIBRARY;
   process.env.SCIWORK_LIBRARY = notesRoot;
@@ -1004,7 +1019,7 @@ console.log('\n[12] 笔记 / 实验日志（notes.list / notes.read / notes.save
     else process.env.SCIWORK_LIBRARY = prevEnvNew;
     if (prevEnvLegacy === undefined) delete process.env.RESEARCH_LIBRARY;
     else process.env.RESEARCH_LIBRARY = prevEnvLegacy;
-    await rm(notesRoot, { recursive: true, force: true });
+    await rm(notesRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 80 });
   }
 }
 
@@ -1021,6 +1036,10 @@ console.log('[13] 可复现性与一致性审计（library.audit）');
   ensureRegistered();
 
   const auditRoot = await mkdtemp(pathAudit.join(osAudit.tmpdir(), 'sciwork-audit-'));
+  {
+    const { rmSync } = await import('node:fs');
+    process.on('exit', () => { try { rmSync(auditRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 50 }); } catch (e) { /* 忽略 */ } });
+  }
   const prevEnvNew = process.env.SCIWORK_LIBRARY;
   const prevEnvLegacy = process.env.RESEARCH_LIBRARY;
   process.env.SCIWORK_LIBRARY = auditRoot;
@@ -1256,7 +1275,7 @@ console.log('[13] 可复现性与一致性审计（library.audit）');
     else process.env.SCIWORK_LIBRARY = prevEnvNew;
     if (prevEnvLegacy === undefined) delete process.env.RESEARCH_LIBRARY;
     else process.env.RESEARCH_LIBRARY = prevEnvLegacy;
-    await rm(auditRoot, { recursive: true, force: true });
+    await rm(auditRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 80 });
   }
 }
 

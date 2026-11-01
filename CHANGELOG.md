@@ -20,6 +20,7 @@
 
 - 新增 `scripts/selftest-live.mjs`——**真联调**：微缩 React 渲染真 `lib/client.js`，面板的 `rpc.call` 打到真 `lib/index.js` 的同一条路由，再经真 `lib/actions.js` / 真 dispatch / 真计划令牌 / 真回执写进临时库（只有 DSH 宿主的模型服务是假件）。九个场景：动作层计划+确认、笔记面板整条链路、图卡问模型（宿主 `llm.chat` / 同步流 / `Promise<AsyncIterable>` 三种）、图卡存进笔记、空流必须吭声、卡住的流必须超时收场、46 个动作冒烟（读动作直调、写动作只出计划）。实测 `31 通过 · 0 失败 · 6 跳过`；`--real <库根>` 只读巡检 `6 通过 · 0 失败`。
 - **回归证明**：把 `lib/client.js` 换回修复前那一版再跑同一脚本 → `24 通过 · 7 失败`，七条正好是这两个 bug 的面孔（`stream is not async iterable`、`未知参数：preventDefault` 两次、盘上没有新笔记、空流一片空白、超时后没提示、按钮一直「等模型…」）。
+- 自检收尾不再往系统临时目录里留空壳：`selftest-actions` 里有个动作的收尾写入是异步的，会在 `finally` 删掉临时根之后才落盘、把目录又建出来（每跑一次门禁丢一个）。现在 `ownRoot` / `notesRoot` / `auditRoot` 都挂了 `process.on('exit')` 钩子，退出时同步再删一次（退出时不该还有写入在跑）；`selftest-live` 的 `rmSync` 也加了重试。
 - 门禁 `scripts/cycle.mjs` 21 → **22 项**；CI（`selftest` 矩阵）也加了一步「Real wiring self-test」，干净机器上同样跑这条真联调（它自己建临时库，不碰任何真库）。已有 `scripts/e2e-panel.mjs` 只判定「点了有没有发 RPC / 界面指纹变没变」，不校验参数与返回值——0.4.0 的「confirm 漏 actionId」、这次的「事件对象当参数」都是它全绿、用户那边没反应；这一项专门补这个缺口。
 
 ## [0.4.3] - 2026-11-01
