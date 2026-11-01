@@ -347,9 +347,9 @@ python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 In
 python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
 ```
 
-想一条命令跑完全部（两周一轮的周期自检就是这么跑的），用 `node scripts/cycle.mjs`（0.4.4 起 22 项）：它把上面这些按 CI 的顺序跑一遍，附一段只读的 git 状态，输出汇总表与退出码，并把完整报告落到 `out/cycle/<日期>/`（`out/` 已 gitignore）。
+想一条命令跑完全部（两周一轮的周期自检就是这么跑的），用 `node scripts/cycle.mjs`（0.4.5 起 22 项）：它把上面这些按 CI 的顺序跑一遍，附一段只读的 git 状态，输出汇总表与退出码，并把完整报告落到 `out/cycle/<日期>/`（`out/` 已 gitignore）。
 
-推送到公开仓库前另有一条门禁：`node scripts/check-local-info.mjs`（`cycle.mjs` 也会跑它）。它拿这台机器的家目录、用户名、主机名、临时目录、库根等标记，去扫全部跟踪文件与全部提交信息，命中就说明仓库里带了本机信息——换成 `<仓库根>` / `<库根>` / `<系统临时目录>` 这类占位符再提交。
+推送到公开仓库前另有一条门禁：`node scripts/check-local-info.mjs`（`cycle.mjs` 也会跑它）。它拿这台机器的家目录、用户名、主机名、临时目录、库根等标记，去扫全部跟踪文件与还没推出去的提交信息，命中就说明仓库里带了本机信息——换成 `<仓库根>` / `<库根>` / `<系统临时目录>` 这类占位符再提交。
 
 自检分两种跑法，**新克隆的仓库不配库也能跑**：
 
@@ -375,7 +375,7 @@ node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 �
 
 - `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
 - `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `252 通过 · 0 失败`，退出码 0。
-- `selftest-live.mjs` —— 唯一一条**真联调**：微缩 React 渲染真 `lib/client.js`，面板的 `rpc.call` 直接打到真 `lib/index.js` 的同一条路由，再经真 `lib/actions.js` / 真 dispatch / 真令牌 / 真回执写进临时库；只有 DSH 宿主的模型服务是假件。默认 `31 通过 · 0 失败 · 6 跳过`（临时库，跑完自动清掉）；`--real <库根>` 只读巡检真库的读动作（`6 通过 · 0 失败`）。它专门盯假夹具抓不到的那类缺陷：参数被事件对象污染、返回值形状不对、流式回答为空却没人吭声。
+- `selftest-live.mjs` —— 唯一一条**真联调**：微缩 React 渲染真 `lib/client.js`，面板的 `rpc.call` 直接打到真 `lib/index.js` 的同一条路由，再经真 `lib/actions.js` / 真 dispatch / 真令牌 / 真回执写进临时库；只有 DSH 宿主的模型服务是假件。默认 `35 通过 · 0 失败 · 6 跳过`（临时库，跑完自动清掉）；`--real <库根>` 只读巡检真库的读动作（`6 通过 · 0 失败`）。它专门盯假夹具抓不到的那类缺陷：参数被事件对象污染、返回值形状不对、流式回答为空却没人吭声。
 - `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
 - `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。⚠️ 0.2.1 起 `SCIWORK_LIBRARY` **优先于**随包的 `library/config.json`（此前次序反了，导致本机把库指向真库时这道闸门永远拿真库当副本、写动作整节被跳过）。
 

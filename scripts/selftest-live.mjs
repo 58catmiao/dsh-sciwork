@@ -202,38 +202,73 @@ define('localStorage', {
 lsStore.set('research-panel-setup:welcome:local', '1');
 lsStore.set('research-panel-setup:ui.version:local', 'v2');
 
-/* ---------------------------------------------------------------- 假 llm 服务 */
-/* 病态都造在这里：整段返回（宿主 llm.chat 用它）、正常流、空流、卡死、异步流（DSH 客户端签名）。 */
+/* ---------------------------------------------------------------- 假 llm 服务（照 DSH 真实契约） */
+/*
+ * 契约来自 cordis_inspect_query 的 host/Service `llm`：
+ *   stream(options: GenerateOptions): AsyncIterable<StreamChunk>   ← 同步返回可迭代对象
+ *   StreamChunk = block-start | text-delta | reasoning-delta | tool-call-delta | block-end | usage | finish
+ * 关键：**没有 `{ type:'error' }`**。适配器失败会变成终态 `finish{ reason:{ kind:'error', failure } }`，
+ * 一条 text-delta 都不给。0.4.4 只认 text-delta，于是「失败」被当成「空回答」——用户看到的就是
+ * 「问完模型没反应」。这里的病态模式就是照这个形状造的。
+ */
 const llmCalls = [];
 let llmMode = 'text';
 const fakeLlm = {
   listConfigurableProviders: () => [{ id: 'deepseek', name: 'DeepSeek' }],
-  listModels: () => [{ provider: 'deepseek', id: 'deepseek-flash', name: 'Flash', vision: false }],
+  listModels: () => [{ provider: 'deepseek', id: 'deepseek-flash', name: 'Flash', vision: true }],
   async *gen() {
-    if (llmMode === 'text' || llmMode === 'promise') {
-      yield { type: 'text-delta', text: '这块的峰' };
-      yield { type: 'text-delta', text: '和标尺对不上。' };
+    yield { type: 'block-start', index: 0, blockType: 'text' };
+    if (llmMode === 'text') {
+      yield { type: 'text-delta', index: 0, text: '这块的峰' };
+      yield { type: 'text-delta', index: 0, text: '和标尺对不上。' };
+      yield { type: 'block-end', index: 0, block: { type: 'text', text: '这块的峰和标尺对不上。' } };
+      yield { type: 'finish', reason: { kind: 'stop' } };
     } else if (llmMode === 'empty') {
-      /* 流开了，一条 text-delta 都没有 —— 0.4.3 用户看到的「问完没反应」 */
+      /* 流开了，一条 text-delta 都没有，但正常结束 */
+      yield { type: 'finish', reason: { kind: 'stop' } };
+    } else if (llmMode === 'error') {
+      /* DSH 的失败形态：没有 text-delta，只有终态 finish */
+      yield { type: 'finish', reason: { kind: 'error', failure: { message: 'invalid api key', code: 'auth', status: 401 } } };
     } else if (llmMode === 'hang') {
       await new Promise(() => {});
     } else if (llmMode === 'reasoning-only') {
-      yield { type: 'reasoning-delta', text: '想了很久' };
+      yield { type: 'reasoning-delta', index: 0, text: '想了很久' };
+      yield { type: 'finish', reason: { kind: 'stop' } };
     }
-    yield { type: 'done' };
   },
   stream(req) {
     llmCalls.push(req);
-    // DSH 客户端服务的真实签名是 `stream(...): Promise<AsyncIterable<unknown>>`：
-    // 渲染进程里拿到的 stream() 是异步的，直接 for-await 会拿到一个 Promise（0.4.3 的坑）。
-    if (llmMode === 'promise') return Promise.resolve(fakeLlm.gen());
     return fakeLlm.gen();
+  },
+};
+
+/* 假附件服务：图片内容块只能引用 saveImage() 生成的 ImageAttachmentRef。 */
+const imageSaves = [];
+const fakeAttachments = {
+  imageLimits: {
+    maxImageBytes: 2 * 1024 * 1024,
+    maxImagesPerMessage: 4,
+    maxMessageImageBytes: 8 * 1024 * 1024,
+    maxImagePixels: 40000000,
+    maxImageDimension: 8000,
+    mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
+  },
+  async saveImage(input) {
+    imageSaves.push(input);
+    return {
+      attachmentId: 'att_' + imageSaves.length,
+      mediaType: input.mediaType,
+      bytes: input.data.length,
+      width: 1,
+      height: 1,
+      name: input.name,
+    };
   },
 };
 
 /* ---------------------------------------------------------------- 真宿主：lib/index.js */
 const routes = [];
-const services = { llm: fakeLlm };
+const services = { llm: fakeLlm, attachments: fakeAttachments };
 function makeHostCtx() {
   return {
     logger: { info() {}, warn() {}, error() {} },
@@ -421,40 +456,49 @@ console.log('\n[T3] 图卡问模型：面板拿不到渲染进程 llm → 走宿
   check('宿主 llm.chat 真被调用', llmCalls.length >= 1, 'llmCalls=' + llmCalls.length);
 }
 
-/* ================================================================ T4 图卡流式（同步迭代器） */
-console.log('\n[T4] 图卡问模型：渲染进程 llm.stream 直接给可迭代对象');
+/* ================================================================ T4 宿主报错必须露出来 */
+console.log('[T4] 模型调用失败：只有 finish(error)、没有 text-delta，界面必须露出真实原因');
 {
   hookStores.clear(); lsStore.clear();
-  llmMode = 'text'; llmCalls.length = 0;
+  llmMode = 'error'; llmCalls.length = 0;
   const props = { ctx: panelCtx, call: hostCall, project: 'demo', fig: figOf('figY'), img: PNG, zoom: false, onToggleZoom() {} };
   let tree = await settle(FigureChat, props);
   const areas = byTag(tree, 'textarea');
   const ta = areas[areas.length - 1];
-  if (ta) ta.props.onChange({ target: { value: '流式问一句' } });
+  if (ta) ta.props.onChange({ target: { value: '失败问一句' } });
   tree = await settle(FigureChat, props);
   const sendBtn = byText(tree, '问模型', 'button');
   if (sendBtn) click(sendBtn);
   tree = await settle(FigureChat, props, 12, 40);
-  check('流式回答出现在对话里', allText(tree).includes('这块的峰'), allText(tree).slice(0, 240));
+  const txt = allText(tree);
+  check('失败原因出现在界面（invalid api key / 401）', txt.includes('invalid api key') || txt.includes('401'), txt.slice(0, 320));
+  check('不是「一个字都没返回」这种笼统话', !txt.includes('一个字都没返回'), txt.slice(0, 320));
+  check('明确写了「模型出错」', txt.includes('模型出错'), txt.slice(0, 320));
 }
 
-/* ================================================================ T5 图卡流式（异步 Promise，DSH 真实签名） */
-console.log('\n[T5] 图卡问模型：stream() 返回 Promise<AsyncIterable>（DSH 客户端签名）');
+/* ================================================================ T5 带图提问（附件 + 内容块形状） */
+console.log('[T5] 带图提问：图片先 saveImage() 登记，内容块是 {type:image, attachment}');
 {
   hookStores.clear(); lsStore.clear();
-  llmMode = 'promise'; llmCalls.length = 0;
+  llmMode = 'text'; llmCalls.length = 0; imageSaves.length = 0;
   const props = { ctx: panelCtx, call: hostCall, project: 'demo', fig: figOf('figP'), img: PNG, zoom: false, onToggleZoom() {} };
   let tree = await settle(FigureChat, props);
   const areas = byTag(tree, 'textarea');
   const ta = areas[areas.length - 1];
-  if (ta) ta.props.onChange({ target: { value: '异步流问一句' } });
+  if (ta) ta.props.onChange({ target: { value: '带图问一句' } });
   tree = await settle(FigureChat, props);
   const sendBtn = byText(tree, '问模型', 'button');
   if (sendBtn) click(sendBtn);
   tree = await settle(FigureChat, props, 14, 40);
   const txt = allText(tree);
-  check('异步流也收得到回答', txt.includes('这块的峰'), '界面：' + txt.slice(0, 300));
-  check('没有「不可迭代」这类报错', !txt.includes('不可迭代'), txt.slice(0, 240));
+  check('带图提问也有回答', txt.includes('这块的峰'), txt.slice(0, 300));
+  check('宿主 attachments.saveImage 被调用（整图 1 次）', imageSaves.length === 1, 'imageSaves=' + imageSaves.length);
+  const last = llmCalls[llmCalls.length - 1];
+  const content = last && last.messages && last.messages[0] && last.messages[0].content;
+  const blocks = Array.isArray(content) ? content : [];
+  const imgBlock = blocks.find((b) => b && b.type === 'image');
+  check('内容块里有 image 块', Boolean(imgBlock), JSON.stringify(blocks).slice(0, 300));
+  check('image 块用 attachment 引用（不是 base64 source）', Boolean(imgBlock && imgBlock.attachment && imgBlock.attachment.attachmentId) && !/source/.test(JSON.stringify(blocks)), JSON.stringify(imgBlock).slice(0, 300));
 }
 
 /* ================================================================ T6 图卡存进笔记 */

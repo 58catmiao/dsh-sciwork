@@ -5,6 +5,24 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.5] - 2026-11-01
+
+0.4.4 让「没反应」变成「吭一声」。这一版顺着那声吭继续往下查：真宿主里到底为什么一个字都没回来。
+
+### Fixed
+
+- **问模型只剩「模型这次没有返回任何文字」**：0.4.4 只认 `chunk.type === 'text-delta'`，可 DSH 的 `StreamChunk` 里**根本没有** `{ type: 'error' }` 这一种——按宿主契约，适配器选择、派发、迭代失败都会变成终态 `finish{ reason: { kind: 'error' | 'aborted', failure } }`，一条 text-delta 都不给。于是 401、限流、模型不支持图片全被当成「空回答」，真实原因（`invalid api key` / `401`）被吞掉。现在逐个读 `finish.reason`：`error` / `aborted` 一律翻成人话抛出（`模型出错：invalid api key（auth / 401）`），`max-tokens` 追加「回答到长度上限被截断」，真的空流才说「一个字都没返回」；`block-end` 里的整块文本也当兜底收下。
+- **带图提问必然失败（图片内容块的形状是错的）**：DSH 的图片块是 `{ type: 'image', attachment: ImageAttachmentRef }`，引用只能由 `ctx.attachments.saveImage({ data: Uint8Array, mediaType, name })` 生成。0.4.4 在渲染进程里直接拼 `{ type: 'image', source: { type: 'base64', … } }`——那是别的 SDK 的形状。图一进适配器整次调用就断，再被上一条吞掉原因，于是「问完模型没反应」。现在 `llm.chat` 自己登记附件（新增 `lib/host/host-services.js` 的 attachments 桥 + `lib/index.js` 的 `mountAttachments`），逐张校验类型与 `imageLimits.maxImageBytes`，拿不到附件服务就明说「这次带着图，但宿主没给图片服务：重启 DSH 再试，或者先把问题写成文字」。
+- **面板不再去敲渲染进程的 `llm` 服务**：client 侧的 Service 目录里只有 layout / locale / sessions / slots / theme / timer / uiWorkspace / workspaces，**没有 llm**（`cordis_inspect_query` 实测「no catalogued Service named "llm"」）。0.4.2–0.4.4 里那条 `ctx.get('llm').stream()` 优先分支是死路，现在删掉：一律经宿主 `llm.chat`，图片交给宿主登记，失败原因由宿主翻译。
+- **门禁自己会随机红（`重开后直接进库`）**：`selftest-client` 那条断言用固定 8 轮渲染等库索引，门禁并行时机器忙，偶尔还停在「正在载入库索引…」就判红。现在最多再等 6 轮，等得到才判——放宽的是等待，不是断言。
+- **`check-local-info` 永久红**：它连**已经推上去**的提交信息一起扫，而推出去的提交信息改不动（只能强推重写历史）。0.4.4 发布的 `c7e9663` 提交信息里写了本机临时目录，于是之后每次门禁都红。现在提交信息只扫 `--not --remotes`（还没推出去的那些），文件内容照旧全扫；输出里把「已推送 N 条不再扫」写清楚。
+
+### Tests
+
+- `selftest-live` 的假 llm 换成**真契约**：`stream()` 同步返回 `AsyncIterable`，chunk 是 `block-start` / `text-delta` / `block-end` / `finish`，失败形态是「只有 `finish(reason.kind='error', failure)`」；另加假 `attachments` 服务（记录 `saveImage` 调用与 `imageLimits`）。用例 `35 通过 · 0 失败 · 6 跳过`（0.4.4 是 31 条）：新增「失败原因必须露在界面上（invalid api key / 401）」「带图提问 → `saveImage` 被调用、内容块是 `{type:'image',attachment}` 且没有 `source`」。
+- **回归证明**：把 `lib/actions/llm.js` 换回 0.4.4 那一版再跑 → `7 失败`（`未知参数：images` 五条 + 回答没出现 + `saveImage` 没被调用）；随后还原，md5 一致。
+- 门禁仍是 22 项（没有新增项，只是把真联调那项加厚）。
+
 ## [0.4.4] - 2026-11-01
 
 一轮「用户报的两条没反应」+ 把它们钉进最缺的那层测试。

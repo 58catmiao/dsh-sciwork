@@ -543,7 +543,17 @@ if (T && Array.isArray(T.TOUR_STEPS)) {
 
 /* 7g. 卸载重挂（清掉 hook 状态）→ 欢迎卡不再自动出现，直接进库 */
 hookStores.clear();
-const remount = await settle(Panel, {}, 8, 400);
+let remount = await settle(Panel, {}, 8, 400);
+/*
+ * 库索引是异步载入的：门禁并行跑时机器忙，固定 8 轮可能还停在「正在载入库索引…」，
+ * 这一条就会在红绿之间随机跳（2026-11-01 全量门禁里红过一次、单独跑是绿的）。
+ * 与其放宽断言，不如等索引真回来——等不到再判红，那红的就是真的坏了。
+ */
+for (let i = 0; i < 6; i += 1) {
+  const now = allText(remount);
+  if (!liveSlug || now.includes(liveSlug) || now.includes(liveTitle)) break;
+  remount = await settle(Panel, {}, 8, 200);
+}
 const remountText = allText(remount);
 check('看过一次后重开不再自动弹欢迎卡', !remountText.includes('欢迎使用科研库面板'), remountText.slice(0, 60));
 check('重开后直接进库', !liveSlug || remountText.includes(liveSlug) || remountText.includes(liveTitle), remountText.slice(0, 80));

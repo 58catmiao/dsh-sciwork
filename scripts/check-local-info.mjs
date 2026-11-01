@@ -9,7 +9,8 @@
  *
  * 扫什么（默认）：
  *   1) git 跟踪的全部文本文件（`git ls-files`；含 NUL 的二进制跳过）
- *   2) 全部提交信息（`git log`，提交信息同样公开）
+ *   2) 提交信息（`git log --all --not --remotes`：只扫还没推出去的；推上去的改不动，
+ *      每次报红只会训练人忽略红点——2026-11-01 的真实教训）
  *   加 `--history` 再扫历史 diff（能看出「曾经泄漏、后来删掉」的痕迹）。
  *
  * 什么算「本机信息」——运行时从环境读，不写死：
@@ -199,7 +200,8 @@ for (const f of files) {
  */
 // 注意：--exclude 必须排在 --all 之前，顺序反了 git 会静默忽略（实测）。
 const CKPT_EXCLUDE = '--exclude=refs/dsh-ckpt/*';
-const log = git(['log', CKPT_EXCLUDE, '--all', '--format=%H%x00%B%x00']);
+const log = git(['log', CKPT_EXCLUDE, '--all', '--not', '--remotes', '--format=%H%x00%B%x00']);
+let pushedCommits = 0;
 let commits = 0;
 if (log.ok) {
   const parts = log.out.split('\0');
@@ -210,6 +212,12 @@ if (log.ok) {
     commits += 1;
     scanLines(body.split('\n'), `commit ${sha.slice(0, 7)}`);
   }
+}
+
+{
+  const all = git(['log', CKPT_EXCLUDE, '--all', '--format=%H']);
+  const total = all.ok ? all.out.split('\n').filter(Boolean).length : 0;
+  pushedCommits = Math.max(0, total - commits);
 }
 
 if (HISTORY) {
@@ -223,7 +231,7 @@ if (HISTORY) {
 
 if (!QUIET) {
   console.log(`${C.bold}dsh-sciwork 本机信息扫描${C.off}  ${C.dim}（推送前门禁）${C.off}`);
-  console.log(`  跟踪文件 ${scannedFiles} 个 · 提交信息 ${commits} 条${HISTORY ? ' · 含历史 diff' : ''} · 本机标记 ${needles.size} 个`);
+  console.log(`  跟踪文件 ${scannedFiles} 个 · 待推送提交信息 ${commits} 条（已推送 ${pushedCommits} 条不再扫：改不动，只能强推）${HISTORY ? ' · 含历史 diff' : ''} · 本机标记 ${needles.size} 个`);
   console.log(`  ${C.dim}标记来源：家目录 / 用户名 / 主机名 / 临时目录 / 仓库与工作区名 / 库根 / 解释器 / 启动器 / Origin 路径${C.off}\n`);
 }
 
