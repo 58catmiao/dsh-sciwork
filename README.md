@@ -342,7 +342,7 @@ node scripts/selftest-host.mjs      # 宿主半边：路由注册、路径守卫
 node scripts/selftest-actions.mjs   # 47 个动作：读/守卫检查 + 隔离副本里的写动作
 node scripts/selftest-client.mjs    # 客户端：八个页签的渲染、弹层、按钮与请求形状
 node scripts/selftest-live.mjs      # 真联调：真面板 × 真端点 × 真动作层 × 真写盘（临时库）
-node scripts/test-install.mjs       # 安装面：随包技能、市场索引、包清单、apply 接线
+node scripts/test-install.mjs       # 安装面：随包技能、库脚本种子、脚本选用、包清单、apply 接线
 python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 Install PyYAML 步骤）
 python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
 ```

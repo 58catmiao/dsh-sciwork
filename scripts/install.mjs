@@ -221,6 +221,9 @@ if (skipLibrary) {
     { src: path.join(libraryTemplate, 'scripts', 'research.py'), dest: path.join(research, 'scripts', 'research.py'), data: false },
     // 0.4.0：峰分析引擎（`research.py analyze` 用）。不 seed 的话装完的库会报「找不到峰分析引擎」。
     { src: path.join(libraryTemplate, 'scripts', 'analysis.py'), dest: path.join(research, 'scripts', 'analysis.py'), data: false },
+    // 0.4.0：矢量标注引擎（`research.py annot` 用）。同理——这一行 0.4.0 发版时漏了，
+    // 所以就算用户跑了 install，库里也永远没有 annot.py，`annot` 子命令一律「找不到标注引擎」。
+    { src: path.join(libraryTemplate, 'scripts', 'annot.py'), dest: path.join(research, 'scripts', 'annot.py'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'journal-index.py'), dest: path.join(research, 'scripts', 'journal-index.py'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'pdf-text.mjs'), dest: path.join(research, 'scripts', 'pdf-text.mjs'), data: false },
     { src: path.join(libraryTemplate, 'scripts', 'cdp-text.mjs'), dest: path.join(research, 'scripts', 'cdp-text.mjs'), data: false },

@@ -180,5 +180,92 @@ console.log('\n[4] 宿主接线（apply 不炸、技能真的挂上去）');
   check('完全没有服务时 apply 也不抛', bareThrew === null, bareThrew ? String(bareThrew.message || bareThrew) : '');
 }
 
+/* ------------------------------------------------------- 5. 库脚本种子 / 选用 */
+
+console.log('\n[5] 库脚本种子（临时库真装一次）');
+{
+  const tempLib = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-sciwork-lib-'));
+  const tempSkills = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-sciwork-skills-'));
+  try {
+    let installOk = true;
+    let installErr = '';
+    try {
+      execFileSync(process.execPath, [
+        path.join(ROOT, 'scripts', 'install.mjs'),
+        '--library-root', tempLib,
+        '--skills-root', tempSkills,
+      ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120_000 });
+    } catch (error) {
+      installOk = false;
+      installErr = String((error && (error.stderr || error.message)) || error).slice(0, 400);
+    }
+    check('临时库安装退出码 0', installOk, installErr);
+
+    // 这几个必须一起到位：新版 research.py 会懒加载同目录的 analysis.py / annot.py，
+    // 少任何一个，`analyze` / `annot` 在库里就是「找不到引擎」。
+    // 0.4.0 发版时 seeds 漏了 annot.py —— 门禁当时只跑 bundle 里的脚本，安装面没人测，所以一直绿。
+    const scriptsDir = path.join(tempLib, '.research', 'scripts');
+    for (const name of ['research.py', 'analysis.py', 'annot.py', 'journal-index.py', 'pdf-text.mjs', 'cdp-text.mjs']) {
+      check(`安装后 scripts/${name} 在位`, fs.existsSync(path.join(scriptsDir, name)));
+    }
+    const libResearch = path.join(scriptsDir, 'research.py');
+    check(
+      '装进库的 research.py 与随包模板字节一致',
+      fs.existsSync(libResearch) && fs.readFileSync(libResearch).equals(fs.readFileSync(path.join(ROOT, 'library', 'scripts', 'research.py')))
+    );
+    let cfgRoot = null;
+    try { cfgRoot = JSON.parse(fs.readFileSync(path.join(tempLib, '.research', 'config.json'), 'utf8')).libraryRoot || null; } catch { /* 没写就是没写 */ }
+    check('安装后 config.json 的 libraryRoot 校正到临时库', cfgRoot !== null && path.resolve(cfgRoot) === path.resolve(tempLib), String(cfgRoot));
+
+    // pickScript：库内那份与 bundle 一致时用库内；落后时回退 bundle ——
+    // 否则「库里脚本停在旧版」会让面板的 analyze / annot 直接不可用。
+    console.log('\n[6] 脚本选用（库内 vs bundle）');
+    const { pickScript } = await import('../lib/import.js');
+    const settings = { root: tempLib, bundleDir: ROOT };
+    check('库内与 bundle 一致时用库内那份', path.resolve(pickScript(settings) || '') === path.resolve(libResearch));
+    // 造一份「更旧且内容不同」的库内脚本（模拟真库停在 10 月旧版的状态）。
+    const stale = path.join(scriptsDir, 'research.py.stale');
+    fs.writeFileSync(stale, '# stale stub\n');
+    const bundleMtime = fs.statSync(path.join(ROOT, 'library', 'scripts', 'research.py')).mtimeMs;
+    fs.utimesSync(stale, new Date(bundleMtime - 86_400_000), new Date(bundleMtime - 86_400_000));
+    fs.renameSync(stale, libResearch);
+    check(
+      '库内脚本落后时回退到 bundle',
+      path.resolve(pickScript(settings) || '') === path.resolve(path.join(ROOT, 'library', 'scripts', 'research.py'))
+    );
+
+    // 「同版但引擎不齐」也是坏状态：早期安装只 seed 了 research.py，库里没有
+    // analysis.py / annot.py；同版判断拦不住它，得单独看引擎在不在位。
+    fs.copyFileSync(path.join(ROOT, 'library', 'scripts', 'research.py'), libResearch);
+    for (const name of ['analysis.py', 'annot.py']) {
+      fs.rmSync(path.join(scriptsDir, name), { force: true });
+    }
+    check(
+      '库内同版但缺引擎时回退到 bundle',
+      path.resolve(pickScript(settings) || '') === path.resolve(path.join(ROOT, 'library', 'scripts', 'research.py'))
+    );
+
+    // 反向兜底：bundle 也被拷成半份（缺引擎）时，别把库里仅有的能跑组合换掉。
+    const fakeBundle = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-sciwork-bundle-'));
+    try {
+      fs.mkdirSync(path.join(fakeBundle, 'library', 'scripts'), { recursive: true });
+      fs.copyFileSync(
+        path.join(ROOT, 'library', 'scripts', 'research.py'),
+        path.join(fakeBundle, 'library', 'scripts', 'research.py')
+      );
+      check(
+        'bundle 也缺引擎时保留库内那份',
+        path.resolve(pickScript({ root: tempLib, bundleDir: fakeBundle }) || '') === path.resolve(libResearch)
+      );
+    } finally {
+      try { fs.rmSync(fakeBundle, { recursive: true, force: true }); } catch { /* 删不掉不影响结论 */ }
+    }
+  } finally {
+    for (const dir of [tempLib, tempSkills]) {
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* 删不掉不影响结论 */ }
+    }
+  }
+}
+
 console.log(`\n${pass} 通过 · ${fail} 失败`);
 process.exit(fail ? 1 : 0);

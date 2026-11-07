@@ -5,6 +5,22 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.7] - 2026-11-07
+
+三条「装了却用不了」的安装面缺陷。备份/恢复在当前这台机器上是整条断的，另外两条让库里的 `analyze` / `annot` 静默失效——都是门禁照绿、用户那边直接不可用的那类。
+
+### Fixed
+
+- **备份/恢复整条不可用（`tar` 从 stdin 读 zip 解出空目录）**：`extractInto` 以前把 zip 从 stdin 喂给 `tar -x -f -`，本机 `C:\Windows\system32\tar.exe`（bsdtar 3.8.9）回 `tar: (null)` + `Error exit delayed from previous errors`、退出码 1，解出来是个空目录；于是每次备份都停在 `createBackup → verifyArchive → extractInto`，报 `bad-request`。现在改成把归档路径交给 `tar`、`cwd` 设为目标目录；跨盘（相对路径带盘符）时先 `copyFile` 到目标目录的 `.sciwork-extract-<pid>-<ts>.zip` 再解、`finally` 删副本——不再依赖 stdin，也不再依赖临时目录可写。
+- **库里脚本停在旧版时 `analyze` / `annot` 直接不可用**：`pickScript` 以前无条件优先库内 `.research/scripts/research.py`，而新版脚本是按**自己所在目录**懒加载 `analysis.py` / `annot.py` 的；库里那份只要停在旧版，两个子命令就根本不存在。现在三条都满足才用库内那份：文件存在、不比 bundle 旧（先比内容，字节一致即同版；不同再比 mtime）、引擎也在位（`missingEngines()`）。任一不满足回退 bundle 的整套；bundle 自己缺引擎（拷一半的安装）时保留库内那份，别把仅有的能跑组合换掉。
+- **安装漏 seed `annot.py`**：0.4.0 发版时 `scripts/install.mjs` 的 seeds 里少了 `annot.py`，装完面板的 `annot` 永久「找不到标注引擎」，而门禁只跑 bundle 里的脚本、安装面没人测，所以一直绿。现在 7 条 seed 与 `library/scripts/` 的 7 个脚本一一对应。
+
+### Tests
+
+- `test-install` 44 → **61 通过 · 0 失败**：新增 `[5] 库脚本种子（临时库真装一次）`（真装一次、断言 6 个脚本都在位、装进去的 `research.py` 与随包模板字节一致、`config.json` 的 `libraryRoot` 校正到临时库）与 `[6] 脚本选用（库内 vs bundle）`（一致时用库内 / 落后回退 bundle / 同版但缺引擎回退 bundle / bundle 也缺引擎时保留库内）。
+- **回归证明**：把 HEAD 版 `lib/backup.js` 换回去跑 `test-projects`，`[6] 备份/恢复` 整节崩在 `at tar (lib/backup.js:75)`；换回修复版 `36 通过 · 0 失败`。
+- 门禁仍是 22 项（没有新增项，`test-install` 那条本来就在）。
+
 ## [0.4.6] - 2026-11-01
 
 三条用户实测反馈（SVG 图问不了、笔记删不掉、对话多了存笔记的确认层被挤乱）+ 一轮照 `DESIGN.md` 做的界面收拾。

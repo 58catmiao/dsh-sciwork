@@ -314,7 +314,7 @@ node scripts/selftest-host.mjs      # host half: route registration, path guards
 node scripts/selftest-actions.mjs   # the 47 actions: read/guard checks + writes against an isolated copy
 node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlays, buttons and request shapes
 node scripts/selftest-live.mjs      # real wiring: real panel x real endpoint x real actions x real writes (temp library)
-node scripts/test-install.mjs       # install surface: bundled skills, market index, package files, apply wiring
+node scripts/test-install.mjs       # install surface: bundled skills, library script seeds, script picking, package files, apply wiring
 python -m pip install pyyaml        # only for the next line (CI installs it in its own step)
 python scripts/validate-patch.py    # cordis.patch.yml preflight: preset rows, persona, inserted row
 ```
