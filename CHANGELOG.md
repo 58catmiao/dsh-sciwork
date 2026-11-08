@@ -5,6 +5,18 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.9] - 2026-11-08
+
+修掉切到 npm 包名后桌面重启崩溃的问题。
+
+### Fixed
+
+- **桌面重启崩溃（`web boot: 1 entry did not activate`）**：客户端 bundle 的注册 id 还停在旧包名 `dsh-sciwork`，与包名 `@58catmiao/dsh-sciwork` 不一致，DSH 的 client-modules 把同一模块注册两次并抛 `duplicate factory registration for "dsh-sciwork"`。现在 `lib/client.js` 的注册 id 与包名一致，`cordis.patch.yml` 的插件行名也恢复为 scope 包名。
+
+### Tests
+
+- cycle 22 项全绿；本机 desktop 以 npm 包安装后重启验证。
+
 ## [0.4.8] - 2026-11-08
 
 发布到 npm，包名改为 `@58catmiao/dsh-sciwork`。

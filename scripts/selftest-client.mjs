@@ -169,7 +169,7 @@ console.log('\n[1] AMD 包封');
 await import(pathToFileURL(CLIENT).href);
 const spec = globalThis.__captured;
 check('通过 __ModuleLoader__.load 注册', !!spec, spec ? `id=${spec.id}` : '没有捕获到 load 调用');
-check('bundle id 正确', spec && spec.id === 'dsh-sciwork', spec && spec.id);
+check('bundle id 正确', spec && spec.id === '@58catmiao/dsh-sciwork', spec && spec.id);
 check('factory 是函数', spec && typeof spec.factory === 'function');
 
 const requested = [];
