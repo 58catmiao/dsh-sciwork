@@ -5,10 +5,10 @@
  * 给「这台机器上没有 npm / pnpm，或者 `dsh plugin add` 报找不到 npm」的人用。
  * 做的事跟 `dsh plugin add` 等价，但只用 Node 内置模块：
  *
- *   1. 在 profile 里加依赖行 `"dsh-sciwork": "link:<本地目录>"`；
- *   2. 把 <profile>/node_modules/dsh-sciwork 指到本地目录（Windows 用 junction，
- *      不需要管理员权限；Linux/macOS 用 symlink）；
- *   3. 把 `dsh-sciwork` 加进 profile package.json 的 dsh.profile.bundles；
+ *   1. 在 profile 里加依赖行 `"@58catmiao/dsh-sciwork": "link:<本地目录>"`；
+ *   2. 把 <profile>/node_modules/@58catmiao/dsh-sciwork 指到本地目录（Windows 用
+ *      junction，不需要管理员权限；Linux/macOS 用 symlink）；
+ *   3. 把 `@58catmiao/dsh-sciwork` 加进 profile package.json 的 dsh.profile.bundles；
  *   4. 改之前先备份 package.json（.bak-<时间戳>）。
  *
  * 用法：
@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SOURCE = path.resolve(HERE, '..');
-const PKG_NAME = 'dsh-sciwork';
+const PKG_NAME = '@58catmiao/dsh-sciwork';
 
 function parseArgs(argv) {
   const out = { profile: 'desktop', source: DEFAULT_SOURCE, dryRun: false, force: false, help: false };
@@ -61,7 +61,7 @@ function main() {
   const dshHome = process.env.DSH_HOME || path.join(os.homedir(), '.dsh');
   const profileDir = path.join(dshHome, 'profiles', args.profile);
   const pkgFile = path.join(profileDir, 'package.json');
-  const linkPath = path.join(profileDir, 'node_modules', PKG_NAME);
+  const linkPath = path.join(profileDir, 'node_modules', ...PKG_NAME.split('/'));
   const sourceDir = path.resolve(args.source);
 
   log('科研库插件 · 无包管理器安装');
@@ -134,7 +134,7 @@ function main() {
     log('\n备份 → ' + bak + '\n已写 ' + pkgFile);
   }
 
-  mkdirSync(path.join(profileDir, 'node_modules'), { recursive: true });
+  mkdirSync(path.dirname(linkPath), { recursive: true });
   if (!linkReady && existsSync(linkPath)) {
     const st = lstatSync(linkPath);
     if (st.isSymbolicLink() || st.isDirectory()) {

@@ -5,6 +5,21 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.8] - 2026-11-08
+
+发布到 npm，包名改为 `@58catmiao/dsh-sciwork`。
+
+### Changed
+
+- **npm 可安装**：包名从 `dsh-sciwork` 改为 `@58catmiao/dsh-sciwork`。插件页或终端写包名即可，不必再带 `github:` 前缀；想跟最新 `main` 仍可用 `github:58catmiao/dsh-sciwork`。
+- **npm 包只带两份公开文档**：`docs/INSTALL.md`、`docs/ARCHITECTURE.md`。RELEASE、CYCLE-14D 等内部规划只留在仓库，不进 tarball。
+- 市场索引、安装脚本与门禁断言同步到新包名；`scripts/install-plugin.mjs` 会创建 `node_modules/@58catmiao/dsh-sciwork` 的链接。
+- `cordis.patch.yml` 里的插件行名与 `market/plugins.json` 的插件名同步为新包名。
+
+### Tests
+
+- `test-install` 新增包名与 docs 排除断言；cycle 22 项全绿。
+
 ## [0.4.7] - 2026-11-07
 
 三条「装了却用不了」的安装面缺陷。备份/恢复在当前这台机器上是整条断的，另外两条让库里的 `analyze` / `annot` 静默失效——都是门禁照绿、用户那边直接不可用的那类。

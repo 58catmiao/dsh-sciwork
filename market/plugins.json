@@ -28,7 +28,7 @@
   },
   "plugins": [
     {
-      "name": "dsh-sciwork",
+      "name": "@58catmiao/dsh-sciwork",
       "title": {
         "en": "Research mode (dsh-sciwork)",
         "zh": "科研模式"

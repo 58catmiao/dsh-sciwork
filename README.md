@@ -1,117 +1,87 @@
-# dsh-sciwork · DSH 科研模式
+# dsh-sciwork
 
-> 给 [DSH](https://github.com/deepseek-ai)（DeepSeek Harness）装上一整套「做科研」的工作台：一个叫**科研模式**的 agent 预设，加上一个本机的实体科研库。
+> DSH（DeepSeek Harness）的科研模式：一个 agent 预设，一个放在硬盘上的科研库，一块面板，几份技能。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.3.14 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.4.8 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
 ---
 
-## 这是什么
+## 它是什么
 
-`dsh-sciwork` 不是一个"帮你查文献"的对话框，而是一套**落在你硬盘上、可被别的工具打开**的科研工作台。装上它，你会同时得到四样东西：
+装好之后你会多出一个叫「科研模式」的 agent 预设。它把绘图、写作、文献、期刊规范放在同一条工作流里：先找证据再动手，出图走 Origin 真机，稿子里引用的每条文献都要有 DOI 或 URL。
 
-1. **一个 agent 预设「科研模式」**——它把绘图、写作、文献、期刊规范四条线收进同一个工作流：先找证据，再动手；出图走 Origin 真机，稿子里引用的每一条文献都必须带 DOI 或 URL。
-2. **一个本机实体科研库**——一棵普通目录（课题 / 图表 / 数据 / 草稿 / 文献 / 期刊档案 / 投稿），配套一个 Python 引擎 `research.py` 和一个登记索引。
-3. **12 份期刊投稿档案**——Nature、Science、Cell、IEEE Trans、ACS、Elsevier 通用、MDPI、PLOS ONE、中文核心、CNKI 学位论文、GB/T 7714、通用学位论文，各自的数值要求、条款与出处摘要。
-4. **一个「科研库」可视面板 + 一组技能**——默认是工作台，旧面板七个页签一键可回，只读为主、能筛能导入能归档；技能负责把"该怎么画、该怎么写、该怎么引"固化成纪律。
+预设底下是一个真实的科研库，就是一棵普通目录：课题、图表、数据、草稿、文献、期刊档案、投稿。配套一个 Python 引擎 `research.py` 和一份登记索引。文件系统是权威，索引只是缓存；索引坏了可以重建，库也可以整目录打包带走，或者直接用资源管理器、Git、别的编辑器打开。
 
-**权威来源永远是文件系统。** 索引只是缓存，面板的写入永远走库脚本，不直接改索引。所以科研库随时可以整目录打包带迁移，也可以直接用资源管理器、Git、别的编辑器去碰。
+另外还有 12 份期刊投稿档案（Nature、Science、Cell、IEEE Trans、ACS、Elsevier、MDPI、PLOS ONE、中文核心、CNKI 学位论文、GB/T 7714、通用学位论文），每个都记了数值要求和条款出处；一块「科研库」面板；以及六份技能，把画图、写作、引用这些事写成纪律。
 
-- 宿主半边是纯 Node ESM，**零 npm 依赖**。
-- 客户端是手写的单文件 Web 客户端，**没有构建步骤**。
-- 出图能力依赖上游开源插件 [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin)（MIT，作者 Fantasality）。**本仓库不包含它**，只带适配技能。详见〈与 dsh-origin-plugin 的关系〉。
-
-## 0.4 有什么
-
-- **设置**（顶栏右侧）：左栏分栏——模型 / 习惯 / 本地数据 / 关于，加栏目只需往客户端 `SETTINGS_SECTIONS` 里加一项。模型清单不再读渲染进程里的 `ctx.get("llm")`（那里常常是空的），改由插件宿主侧动作 `llm.info` 汇总 DSH 已配置的提供方与模型，能看图的标 👁。
-- **圈选问模型**：图表页展开一张图，按 `Alt+Q` 或点顶栏「圈选问模型」调出悬浮窗，在图上拖框圈一块、问模型；回答只描述看得见的东西，要改只给改动计划。对话存浏览器本地，「存进笔记」走 `notes.save` 的计划 → 确认。
-- **笔记页签**：`projects/<课题>/notes/*.md` 的实验日志，四个动作 `notes.list` / `notes.read` / `notes.save` / `notes.delete`；写前留 `.bak`，删除是移进 `notes/.trash/`（不物理删，能拿回来）。
-- **数据血缘**：课题详情里列出「数据 → 图」（按侧车登记的源数据算）与「没被任何图引用的数据」；侧车登记不带扩展名、或登记成目录，都能对上。
-- **可复现性审计**：工作台页脚「检查一遍」调只读动作 `library.audit`，查图缺参数 / 缺源数据 / 源数据不在 / 图文件不在 / 数据没人引用 / 期刊档案缺字段 / 草稿引用了库里没有的文献键。
-- **重命名**：图表 / 草稿 / 数据 / 文献行上的「重命名」走 `library.rename`，图件连同同基名的兄弟文件与侧车一起改，普通文件改名后扫侧车里的 `sourceData` 跟着改，改前留 `.bak`。
-- **两条命令行能力**（不占面板按钮，交给 agent 调）：`research.py analyze` 找峰 + 高斯/洛伦兹拟合出峰表；`research.py annot` 矢量标注（`add` 追加、`render` 烘成 `<基名>.annot.svg`）。
-- **端到端巡检**：`scripts/e2e-panel.mjs` 遍历每个页签的可点元素逐个点，看有没有死按钮；`--only <页签>` 只测一页，适合新功能上线前跑。
-- **真联调**：`scripts/selftest-live.mjs` 把真面板接真动作层跑一遍（临时库真写盘），验的是「点下去之后参数对不对、返回值用得上不上、答不出来会不会吭声」。
-
-## 0.3 有什么不同
-
-- **一条能力清单**：动作登记表驱动面板、agent 工具与命令行三个入口，新能力只写一份。
-- **写动作要确认**：先计划（会写哪些文件、有什么 warning），再确认（一次性令牌），最后留回执；读动作不写库。
-- **课题是一等公民**：七阶段机 + 产物 sha256；旧库课题第一次写之前会提示迁移（先备份、幂等、可回滚）。
-- **工作台默认**：默认进「工作台」（v2），页头右上角一个按钮可切回旧「列表面板」（v1），选择会被记住，切换时不再丢页签。工作台按「页头（标题 + 一行计数 + 中文主入口）→ 跨课题待办表格（投稿截止并入，按到期日靠前）→ 课题两栏 → 最近回执 / 库级提示 / 版本行」排布；待办行可一键复制「生成指令」；页头「快速登记」按命令清单生成中文表单（文献入库 / 登记图溯源 / 记一条投稿），提交仍走「计划 → 确认 → 回执」。
-- **七阶段可点选**：课题详情里的阶段条改成按钮，点任一阶段即走 `project.stage.set`（跳阶段自动带 `force`，回退会把后续阶段重置为待办）。
-- **面板配色跟宿主的形，不自己造形**：0.4.0 起改成 DSH 的中性灰阶 + 单一蓝（明 `#3a68d4` / 暗 `#5b8cf0`），成功 / 警告 / 错误只表状态；全页三档字号（12 / 14 / 16）、圆角 6 / 8 / 12、间距 4 的倍数。取舍与理由写在 [DESIGN.md](./DESIGN.md)。
-- **图表页能看见真实出图目录**：`_` 前缀的出图文件夹（如 `figures/_ZT-1100-2h_v4/`）不再被当成内部目录过滤；只排除 `_history` / `_archive` / `_templates` / `_fetched` 这类明确的内部目录。
-
+宿主半边是纯 Node ESM，零 npm 依赖。客户端是单文件 Web 客户端，没有构建步骤。出图依赖上游的 [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin)（MIT，作者 Fantasality），本仓库不包含它，只带适配技能。
 
 ## 安装
 
-三条通道，装的是同一个东西；按你手边的界面选一条。
+三条通道装的是同一个东西，按你手边的界面选一条。
 
 | 通道 | 怎么装 | 说明 |
 | --- | --- | --- |
-| **官方插件页**（侧栏「插件」→ 添加插件） | 填 `github:58catmiao/dsh-sciwork` | 也可以填 ZIP 解压后的**绝对路径**；装完点「立即启用」 |
-| **终端** | `dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork` | `dsh plugin` 把参数转给 profile 里的 pnpm 执行 |
-| **插件市场**（「插件 → 发现」） | 先加索引 URL（见通道 3），再从「发现」页装 | 市场只读你给的索引，不自动抓 GitHub |
+| 官方插件页（侧栏「插件」→ 添加插件） | 填 `@58catmiao/dsh-sciwork` | 从 npm 装；也可以填 ZIP 解压后的绝对路径；装完点「立即启用」 |
+| 终端 | `dsh plugin --profile <profile> add @58catmiao/dsh-sciwork` | 参数会转给 profile 里的 pnpm |
+| 插件市场（「插件 → 发现」） | 先加索引 URL，再从「发现」页装 | 市场只读你给的索引，索引钉在 GitHub commit 上 |
 
-### 通道 1：官方插件页
+### 官方插件页
 
-侧栏「插件」→ 添加插件，输入框里填：
+侧栏「插件」→ 添加插件，输入框填：
 
 ```
-github:58catmiao/dsh-sciwork
+@58catmiao/dsh-sciwork
 ```
 
-装完对话框给一个「立即启用」；新组合包默认启用。**重启 Harness** 面板才出现。
+装完点「立即启用」，然后重启 Harness，面板才会出现。
 
-### 通道 2：终端
+### 终端
 
 ```bash
-dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
+dsh plugin --profile <profile> add @58catmiao/dsh-sciwork
 ```
 
-> **为什么带 `github:` 前缀**：这个包**没有发布到 npm 仓库**，直接写 `add dsh-sciwork` 会让包管理器去 npm 找、回一个 404（或“npm 找不到这个包”）。`github:58catmiao/dsh-sciwork` 是从 GitHub 装，装完 profile 里会多一条 `"dsh-sciwork": "github:58catmiao/dsh-sciwork"`。
+包已发布到 npm。想直接跟仓库最新 `main`，把上面两处的包名换成 `github:58catmiao/dsh-sciwork`。装完同样要重启 Harness。
 
-装完**重启 Harness**。
+### 插件市场
 
-### 通道 3：插件市场（加索引）
-
-DSH 的市场（`插件 → 发现`）不抓 GitHub、也不猜仓库名：它只读**你手动填进去的索引 URL**。本仓库自带一份索引（`market/plugins.json`，git 源、钉死到发布 commit），把这条 URL 加进市场索引即可：
+「插件 → 发现」不抓 GitHub，只读你手动填进去的索引 URL。本仓库自带一份索引，钉在发布 commit 上：
 
 ```
 https://raw.githubusercontent.com/58catmiao/dsh-sciwork/main/market/plugins.json
 ```
 
-前提：这个市场由可选组合包 `@deepseek-ai/dsh-experimental-plugin-market-bundle` 提供；本机没装的话「发现」页不会出现，那就走通道 1 / 2（等价）。
+这个市场由可选组合包 `@deepseek-ai/dsh-experimental-plugin-market-bundle` 提供。本机没装的话「发现」页不会出现，走插件页或终端也一样。
 
-> 第三方市场 `dshmarket` 用的是它自己的精选目录，**读不到这份索引**；想在它里面装得等它收录，或者直接走通道 1 / 2。
+第三方市场 `dshmarket` 用的是它自己的目录，读不到这份索引。想在里面装，得等它收录。
 
-索引在每次发版后由 `node scripts/make-market-index.mjs --commit v<版本>` 重写（把版本钉到该 tag 的 commit），所以市场装到的版本是确定、可复现的。`node scripts/test-install.mjs` 会核对这份索引的 format 与 commit。
+索引在每次发版后由 `node scripts/make-market-index.mjs --commit v<版本>` 重写，所以从市场装到的版本是确定的。`node scripts/test-install.mjs` 会核对索引的 format 和 commit。
 
-### 没有 npm / pnpm，或者上面那条命令报 npm 找不到
+### 没有 pnpm，或者命令报找不到包
 
-`dsh plugin` 是把参数转给 profile 里的包管理器（PNPM）执行的，所以它要求本机能跑 pnpm——有些机器上 DSH 的运行时里没有带，就会报“npm/pnpm 找不到”。这种情况**不需要任何包管理器**，两条退路：
+`dsh plugin` 最终还是让 pnpm 干活。机器上没带 pnpm 的话，可以不依赖任何包管理器，走这两条退路。
 
-**退路 A（推荐）：解压 ZIP + 一句话接线**
+**退路 A：解压 ZIP 再接线**
 
-1. 在 GitHub 页面点 `Code → Download ZIP`，解压到一个固定目录（例如 `D:/apps/dsh-sciwork`）；
+1. 在 GitHub 上点 `Code → Download ZIP`，解压到一个固定目录，比如 `D:/apps/dsh-sciwork`。
 2. 在该目录里跑：
 
 ```bash
 node scripts/install-plugin.mjs --profile <profile> --source .
 ```
 
-它会做三件事：给 profile 的 `package.json` 加依赖行（`link:` 到该目录）、把 `<profile>/node_modules/dsh-sciwork` 链接过去、把 `dsh-sciwork` 加进 `dsh.profile.bundles`；改之前自动备份 `package.json.bak-<时间戳>`。加 `--dry-run` 可以先看会改什么。
+它会往 profile 的 `package.json` 里加一条 `link:` 依赖，把 `<profile>/node_modules/@58catmiao/dsh-sciwork` 链接过去，再把 `@58catmiao/dsh-sciwork` 加进 `dsh.profile.bundles`。改之前会备份一份 `package.json.bak-<时间戳>`。加 `--dry-run` 可以先看它会改什么。
 
-（插件页的「添加插件」也能直接填这个解压目录的**绝对路径**，效果相同。）
+插件页的「添加插件」也可以直接填这个解压目录的绝对路径，效果一样。
 
-**退路 B：有 git 但没包管理器**
+**退路 B：有 git，有 Node，没有包管理器**
 
 ```bash
 git clone https://github.com/58catmiao/dsh-sciwork.git
@@ -119,184 +89,179 @@ cd dsh-sciwork
 node scripts/install-plugin.mjs --profile <profile> --source .
 ```
 
-装完同样要重启 Harness；验证方式是 `dsh --profile <profile> --dump-config | grep -c dsh-sciwork`（应大于 0）。
+装完重启 Harness，用 `dsh --profile <profile> --dump-config | grep -c dsh-sciwork` 确认（结果应大于 0）。
 
-### 装完没变化 / 面板报错怎么查
+### 装完没反应
 
 | 现象 | 先查什么 |
 | --- | --- |
-| 命令回 404 或“找不到这个包” | 安装源写了吗？要写 `github:58catmiao/dsh-sciwork`（npm 上没有这个包） |
-| 报 npm / pnpm 找不到 | 走上文的「退路 A」，不依赖包管理器 |
-| 重启后面板还是旧的 | 面板是客户端 bundle：**关掉 Harness 再打开**，只刷新页面不算 |
-| 面板里点「检查更新」说不是 git 工作树 | 这份安装是拷贝/链接到 ZIP 目录的，不是 git 仓库；更新要重新解压 ZIP 再跑一遍 `install-plugin.mjs`（从市场装的也是拷贝，同理） |
-| 装了但侧栏没有「科研库」 | `dsh --profile <profile> --dump-config` 看有没有 `name: dsh-sciwork` 这一段；没有就是 bundle 没进 `dsh.profile.bundles` |
-| 市场「发现」页里搜不到本插件 | 索引 URL 加了吗（见通道 3）；市场组合包装了吗 |
-| 技能没出现 | 0.3.13 起随包注册；若 `~/.dsh/skills/<名字>/SKILL.md` 已存在，插件会跳过（有意为之：删掉旧目录重启即可换成包内版本） |
+| 命令回 404 或找不到包 | 安装源写了吗，现在写 `@58catmiao/dsh-sciwork`；0.4.8 之前只有 git 源，要写 `github:58catmiao/dsh-sciwork` |
+| 报 npm / pnpm 找不到 | 走退路 A，不需要包管理器 |
+| 重启后面板还是旧的 | 面板是客户端 bundle，要关掉 Harness 再打开，刷新页面不算 |
+| 点「检查更新」说不是 git 工作树 | 这份安装是拷贝或链接到 ZIP 目录的，不是 git 仓库；更新要重新解压再跑一遍 `install-plugin.mjs` |
+| 侧栏没有「科研库」 | `dsh --profile <profile> --dump-config` 里找 `name: '@58catmiao/dsh-sciwork'`，没有就是 bundle 没进 `dsh.profile.bundles` |
+| 市场「发现」页搜不到 | 索引 URL 加了吗，市场组合包装了吗 |
+| 技能没出现 | 0.3.13 起技能随包注册；`~/.dsh/skills/<名字>/SKILL.md` 已存在时插件会跳过，删掉旧目录重启即可 |
 
-装完后你会多出：
+装好之后会有这些东西：
 
-- 一个 ID 为 `research` 的 agent 预设「科研模式」（可直接在会话里选）——**科研只有一个模式**：课题的七阶段
-  （选题 → 设计 → 数据 → 分析 → 成图 → 写作 → 投稿）都在这个模式里推进，阶段只是课题 `project.json` 里的一个字段，
-  不再单设阶段预设；
-- 侧栏多一个面板入口「科研库」（默认进工作台，页头报插件版本、可点「检查更新」）；
-- 一条精确注册的只读路由 `/api/research/call`（面板靠它取快照与执行动作）；
-- 六个技能：`research-studio` 总控、`research-stages` 七阶段路线、`origin-plot`、`paper-writing`、
-  `literature-refs`、`journal-profile`。**0.3.13 起由插件激活时注册**（runtime 技能），不必再手动跑
-  `scripts/install.mjs`；你自己往 `~/.dsh/skills` 装过同名的，插件会跳过、不覆盖。
+- 一个 ID 为 `research` 的 agent 预设「科研模式」。课题的七个阶段（选题 → 设计 → 数据 → 分析 → 成图 → 写作 → 投稿）都在这一个模式里推进，阶段只是 `project.json` 里的字段。
+- 侧栏面板「科研库」，默认进工作台，页头显示插件版本，可以点「检查更新」。
+- 一条只读路由 `/api/research/call`，面板靠它取快照、执行动作。
+- 六个技能：`research-studio`、`research-stages`、`origin-plot`、`paper-writing`、`literature-refs`、`journal-profile`。插件激活时注册，不用再手动跑 `scripts/install.mjs`；`~/.dsh/skills` 里已有的同名技能会跳过，不覆盖。
 
-
-> 前置：本机有 Node（宿主半边与自检脚本用它）与一个可用的 Python 3 解释器（科研库引擎 `research.py` 用它）。**不要求 `python` 出现在 PATH 上**——启动器会按「显式配置 → `SCIWORK_PYTHON` → 库自己的 venv → Origin 插件目录的 venv → PATH」逐个探测。出图另需 Origin，见下文。
+前置条件：本机要有 Node，以及一个能用的 Python 3（`research.py` 用它）。不要求 `python` 在 PATH 上，启动器会按「显式配置 → `SCIWORK_PYTHON` → 库自己的 venv → Origin 插件目录的 venv → PATH」的顺序找。出图另需 Origin。
 
 ## 快速开始
 
-### 1. 建库
+### 建库
 
 ```bash
-# 先预检：不写任何文件，只报告缺什么
+# 先预检，不写任何文件
 node scripts/install.mjs --verify-only
 
-# 预检通过后建库
+# 预检通过后再建
 node scripts/install.mjs
 ```
 
-安装脚本会建出库根目录、`.research/` 引擎与索引、`journals/` 期刊档案、`refs/` 文献库。库根默认是 `<用户目录>/Research`（Windows 即 `%USERPROFILE%\Research`），可用环境变量 `SCIWORK_LIBRARY` 改。
+安装脚本会建出库根、`.research/` 引擎与索引、`journals/` 期刊档案、`refs/` 文献库。库根默认是 `<用户目录>/Research`（Windows 上是 `%USERPROFILE%\Research`），用环境变量 `SCIWORK_LIBRARY` 可以改。
 
-安装脚本的可用开关：
+可用开关：
 
 | 开关 | 说明 |
 | --- | --- |
-| `--verify-only` | 只检查，不写任何文件。 |
-| `--library-root <dir>` | 指定库根，覆盖配置里的 `libraryRoot`。 |
-| `--skip-library` | 不铺科研库骨架（只装插件半边）。 |
-| `--force-skills` | 目标已存在且没有 `SKILL.md` 时也覆盖安装技能目录。 |
+| `--verify-only` | 只检查，不写文件 |
+| `--library-root <dir>` | 指定库根，覆盖配置里的 `libraryRoot` |
+| `--skip-library` | 不铺科研库骨架，只装插件半边 |
+| `--force-skills` | 目标已存在且没有 `SKILL.md` 时也覆盖技能目录 |
 
-> 库根解析顺序：`--library-root` / 环境变量 `SCIWORK_LIBRARY`（旧名 `RESEARCH_LIBRARY` 兼容）→ 内核 `library/config.json` 的 `libraryRoot` → `<用户目录>/Research`。注意库内已有的 `.research/config.json` 里的 `libraryRoot` 也会覆盖环境变量——面板与引擎优先听库自己的配置。
+库根解析顺序：`--library-root` 或 `SCIWORK_LIBRARY`（旧名 `RESEARCH_LIBRARY` 兼容）→ `library/config.json` 的 `libraryRoot` → `<用户目录>/Research`。库内 `.research/config.json` 里的 `libraryRoot` 会覆盖环境变量，面板和引擎优先听库自己的配置。
 
-### 2. 打开面板
+### 打开面板
 
-在 DSH 侧栏点「科研库」。默认进工作台：页头右上角写着当前库根与实时计数（课题 / 图 / 草稿 / 数据 / 文献 / 期刊档案 / 投稿 / 索引时间），下面是待办与概览；点右上角按钮可切到列表面板的七个页签。
+在 DSH 侧栏点「科研库」。默认进工作台，页头右上角显示当前库根和实时计数，下面是待办和概览。点右上角按钮可以切到列表面板的七个页签。
 
-### 3. 让 agent 建课题
+### 让 agent 建课题
 
-在会话里选「科研模式」预设，然后直接说：
+在会话里选「科研模式」，然后直接说：
 
 > 建一个课题，叫 `zt-ceremic`，研究 ZrB₂-SiC 陶瓷的氧化行为。
 
-agent 会走 `research.py new-project` 落目录，之后它画的每一张图、写的每一段结果，都会各自归位到该课题的 `figures/`、`origin/`、`data/`、`drafts/` 下。你也可以在面板里点「新建课题」自己建。
+agent 会走 `research.py new-project` 落目录。之后画的图、写的结果分别进这个课题的 `figures/`、`origin/`、`data/`、`drafts/`。也可以在面板里点「新建课题」自己建。
 
-### 4. 出图
+### 出图
 
-**面板自己不出图**（2026-10-13 起移除）。要出图，直接跟 agent 说：
+面板不出图。要出图就直接跟 agent 说：
 
 > 把 `projects/zt-ceremic/data/` 里那组 XRD 数据画成对比图，按 MDPI 的排版要求。
 
-agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登记回库。
+agent 会走 Origin 真机绘图、核验、导出，再把溯源信息登记回库。
 
-## 面板：工作台与七个页签
+## 面板
 
-侧栏「科研库」。默认是**工作台**（v2），页头右上角可切到**列表面板**（v1）。列表面板有八个页签（图表 / 草稿 / 笔记 / 文献 / 数据 / 期刊档案 / 投稿 / 归档），另有顶部的**计数行**与「命令台」弹层（两者都不是页签）：
+侧栏「科研库」。默认是工作台，页头右上角可以切到列表面板。列表面板有八个页签：图表、草稿、笔记、文献、数据、期刊档案、投稿、归档。顶部还有一行计数，和一个「命令台」弹层。
 
-**工作台（v2）**一屏看全库：页头（标题 + 一行计数：课题 / 图 / 文献 / 在投 / 就绪 + 快速登记 / 新建课题 / 导入数据 / 刷新 / 检查更新）、**跨课题待办表**（每个课题的下一步，投稿的截止日也排在同一张表里、按到期日靠前）、**课题两栏**（左列表右详情，详情含阶段条、本课题产物速览、待办与阻塞、这个课题的近期变动）。页签行现在是「主标页签 + 更多」：主标是工作台 / 图表 / 数据 / 草稿 / 文献 / 笔记，其余（期刊档案 / 投稿 / 归档 / 列表面板 / 命令台 / 引导）收进「更多」下拉；右侧依次是「设置」「圈选问模型」与搜索框。搜索框在 v2 里筛的是**课题与待办**：课题列表、跨课题待办、库体检一起过滤，顶部给命中数与「清空筛选」，空结果按种类给明确空状态（页头计数始终按全库算，不随筛选变）。选中课题后，详情里那条**本课题产物速览**（图 / 草稿 / 数据 / 表 / 工程 / 文献 / 在投）点数字跳到列表页签并自动带上这个课题当筛选词，只留它的条目（数量为 0 的按钮置灰）。页脚报最近回执、上次备份与插件当前版本：首屏只读本地 `package.json`，点「检查更新」才去 GitHub 比对，有新版本时给「更新到 vX.Y.Z」——更新做到 `git pull --ff-only`，只对干净的 git 工作树生效，完成后提示重启 Harness。库级提示（快照告警 + 体检项）合成一处摆在页脚上方，干净时一行都不占。
+工作台一屏看全库：页头一行计数（课题 / 图 / 文献 / 在投 / 就绪），一张跨课题待办表（投稿截止日也排在里面，按到期日靠前），下面分两栏，左边课题列表、右边课题详情。详情里有阶段条、本课题产物速览、待办与阻塞、近期变动。页脚是最近回执、上次备份和插件版本。首屏只读本地 `package.json`，点「检查更新」才去 GitHub 比对，有新版本时给「更新到 vX.Y.Z」，更新走 `git pull --ff-only`，只对干净的 git 工作树生效。
 
 | 页签 | 看什么 | 能做什么 |
 | --- | --- | --- |
-| **计数行**（面板顶部，不是页签） | 库根路径、课题/图/草稿/数据/文献/期刊档案/投稿七项实时计数、索引时间、采集警告 | 点「刷新」重取快照；点「引导」走一遍带高亮的界面导览 |
-| **图表** | 已登记的图，含每条图的登记溯源（数据源、脚本、生成时间）；按课题分组 | 看图、看 PDF 附带件、复制路径、归档、删除 |
-| **草稿** | `drafts/` 下的 Markdown 手稿 | 就地读；新建草稿；编辑保存；归档；删除 |
-| **文献** | `refs/refs.json` 里的条目与 `refs/pdf/` 下的本地 PDF 附件 | 导入（必须带 DOI 或 URL 才登记，PDF 可选）、看 PDF、归档、删除 |
-| **数据** | `data/` 下的数据文件（`.txt/.csv/.dat` 等）与按课题分组的分组头 | 预览行列、**数据变换**（6 个算子）、**重命名**、归档、删除 |
-| **笔记** | `projects/<课题>/notes/*.md` 实验日志（标题、大小、修改时间、首行摘要） | 读全文、新建、保存（覆盖前留 `.bak`）、删除（移进 `notes/.trash/`） |
-| **期刊档案** | 12 份档案的 id、严格度（high / medium / low）与更新日期 | 读条款与数值要求；筛选；归档 |
-| **投稿** | `submissions/` 下的投稿记录（目标刊、状态、时间线） | 读记录；筛选；归档；**投稿闸门**：选期刊 → 合规体检 → 导出投稿包 |
-| **归档** | `.research/archive/<时间戳>/` 里的批次清单 + 真删记录 | 整批 / 单文件「恢复」搬回原位；真删记录只留名字 |
-| **命令台**（弹层，不是页签） | `research.py` 的子命令清单与参数表单 | 选命令 → 填参 → 执行 → 看 stdout / stderr / JSON 结果 |
+| 计数行（不是页签） | 库根路径、课题/图/草稿/数据/文献/期刊档案/投稿计数、索引时间、采集警告 | 点「刷新」重取快照，点「引导」走一遍界面导览 |
+| 图表 | 已登记的图，含数据源、脚本、生成时间，按课题分组 | 看图、看 PDF 附带件、复制路径、归档、删除 |
+| 草稿 | `drafts/` 下的 Markdown | 读、新建、编辑保存、归档、删除 |
+| 文献 | `refs/refs.json` 的条目和 `refs/pdf/` 下的本地 PDF | 导入（必须带 DOI 或 URL）、看 PDF、归档、删除 |
+| 数据 | `data/` 下的数据文件，按课题分组 | 预览行列、数据变换、重命名、归档、删除 |
+| 笔记 | `projects/<课题>/notes/*.md` 实验日志 | 读全文、新建、保存（覆盖前留 `.bak`）、删除（移进 `notes/.trash/`） |
+| 期刊档案 | 12 份档案的 id、严格度和更新日期 | 读条款与数值要求、筛选、归档 |
+| 投稿 | `submissions/` 下的投稿记录（目标刊、状态、时间线） | 读记录、筛选、归档、投稿闸门 |
+| 归档 | `.research/archive/<时间戳>/` 里的批次和真删记录 | 恢复搬回原位；真删记录只留名字 |
+| 命令台（弹层） | `research.py` 的子命令和参数表单 | 选命令、填参、执行、看 stdout / stderr / JSON |
 
-**数据变换的 6 个算子**：`normalize`（归一化）、`baseline`（扣基线）、`smooth`（平滑）、`peaks`（找峰）、`integrate`（积分）、`linear`（线性变换）。每次变换都会在新表旁落一份溯源记录（`.research/transforms/<课题>/<表名>.json`），并把产物写进课题的 `tables/`。
+数据变换有 6 个算子：`normalize`、`baseline`、`smooth`、`peaks`、`integrate`、`linear`。每次变换会在新表旁边落一份溯源记录（`.research/transforms/<课题>/<表名>.json`），产物写进课题的 `tables/`。
 
-**投稿闸门（0.2 新增）**：在「投稿」页签选一个课题与期刊档案，点「体检」得到逐条结论——图宽是否够单/双栏、分辨率够不够、格式该不该矢量、图注有没有、标题与摘要字数、参考文献与 DOI 覆盖、草稿里的引用键是否都在库里。每条标 `pass` / `warn` / `fail` / `na`，并写明依据（`source`）与置信度；**档案没写的项一律 `na`，不拿默认值冒充期刊要求**。点「导出投稿包」把稿件、图、数据、`refs.bib` 收进一个 zip（含逐文件 sha256 的 manifest 与 checklist），路径落在 `submissions/packages/`。体检结果与期刊档案一样，最终以刊方现行要求为准。
+投稿闸门在「投稿」页签里。选一个课题和期刊档案，点「体检」，会逐条检查图宽够不够单栏或双栏、分辨率、格式是否该用矢量、图注、标题和摘要字数、参考文献与 DOI 覆盖、草稿里的引用键是否都在库里。每条标 `pass` / `warn` / `fail` / `na`，并写明依据。档案里没写的项一律 `na`，不拿默认值冒充期刊要求。点「导出投稿包」可以把稿件、图、数据、`refs.bib` 收进一个 zip，里面带逐文件 sha256 的 manifest 和 checklist，落在 `submissions/packages/`。体检结果最终还是要以刊方现行要求为准。
 
-**面板的边界，一句话说清**：能看、能筛、能导入、能归档、能删、能对表格做数据变换、能做投稿前体检和打包；**不出图**。所有写入都经库脚本落文件并登记，**面板自身不碰登记索引**。
+面板能看、能筛、能导入、能归档、能删、能对表格做变换、能做投稿前体检和打包。它不出图。所有写入都经库脚本落文件并登记，面板不直接改索引。
 
 ## 配置
 
-配置有两层，**库内 `<库根>/.research/config.json` 是权威**；环境变量用来告诉 DSH 去哪找库、用哪个 Python。
+配置分两层。库内 `<库根>/.research/config.json` 是权威，环境变量负责告诉 DSH 去哪找库、用哪个 Python。
 
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `SCIWORK_LIBRARY` | `<用户目录>/Research` | 科研库根目录。改这里等于换库。 |
-| `RESEARCH_LIBRARY` | 未设置 | 旧名，兼容保留；`SCIWORK_LIBRARY` 优先。 |
-| `SCIWORK_PYTHON` | 依平台探测 | 跑 `research.py` 用的 Python 解释器。推荐显式指向 venv 里的 python。 |
-| `SCIWORK_ORIGIN_PLUGIN` | 未设置 | `dsh-origin-plugin` 所在目录，供适配技能定位它。 |
+| `SCIWORK_LIBRARY` | `<用户目录>/Research` | 科研库根目录，改这里等于换库 |
+| `RESEARCH_LIBRARY` | 未设置 | 旧名，兼容保留，`SCIWORK_LIBRARY` 优先 |
+| `SCIWORK_PYTHON` | 依平台探测 | 跑 `research.py` 的 Python 解释器，推荐显式指向 venv |
+| `SCIWORK_ORIGIN_PLUGIN` | 未设置 | `dsh-origin-plugin` 所在目录，给适配技能用 |
 
-库内权威配置：
+库内文件：
 
 | 路径 | 说明 |
 | --- | --- |
-| `<库根>/.research/config.json` | 权威配置：库根、语言、期刊档案严格度偏好、索引设置等。 |
-| `<库根>/.research/index.json` | 登记索引（**只是缓存**，可由 `research.py reindex` 从文件系统重建）。 |
-| `<库根>/.research/archive/` | 归档区。面板上的「归档」是移动到此处，可恢复。 |
-| `<库根>/.research/lock` | 库写锁，防止并发写入互相踩。 |
+| `<库根>/.research/config.json` | 权威配置：库根、语言、期刊档案严格度偏好、索引设置 |
+| `<库根>/.research/index.json` | 登记索引，只是缓存，可以用 `reindex` 重建 |
+| `<库根>/.research/archive/` | 归档区，面板上的「归档」就是移到这里，可恢复 |
+| `<库根>/.research/lock` | 写锁，防止并发写入互相踩 |
 
 ## 目录结构
 
 ```text
-<库根>/                          # 默认 <用户目录>/Research，可用 SCIWORK_LIBRARY 改
+<库根>/                          # 默认 <用户目录>/Research
 ├── projects/
 │   └── <课题>/
-│       ├── figures/             # 成图（导出的 png / svg / pdf / tif）
-│       ├── origin/              # Origin 工程文件（.opju），可在 Origin 里继续编辑
+│       ├── figures/             # 成图（png / svg / pdf / tif）
+│       ├── origin/              # Origin 工程（.opju）
 │       ├── data/                # 原始数据
-│       ├── tables/              # 由数据变换派生的表
+│       ├── tables/              # 数据变换派生的表
 │       └── drafts/              # 该课题的手稿片段
 ├── refs/
 │   ├── refs.json                # 文献条目（必须带 DOI 或 URL）
-│   └── pdf/                     # 本地 PDF 附件（可选）
+│   └── pdf/                     # 本地 PDF 附件
 ├── journals/                    # 期刊投稿档案
-├── submissions/                  # 投稿记录与时间线
+├── submissions/                 # 投稿记录与时间线
 └── .research/                   # 引擎与元数据
-    ├── research.py              # 库操作的唯一权威入口
+    ├── research.py              # 库操作的唯一入口
     ├── config.json              # 权威配置
     ├── index.json               # 登记索引（缓存，可重建）
-    ├── archive/                 # 归档区（可恢复）
-    ├── transforms/<课题>/       # 数据变换的溯源记录
+    ├── archive/                 # 归档区
+    ├── transforms/<课题>/       # 数据变换溯源
     └── lock                     # 写锁
 ```
 
-**登记（加文献、登记出图溯源、重建索引）永远由 `research.py` 做**，面板不代劳。常用子命令：`new-project`、`add-ref`、`register-figure`、`add-submission`、`reindex`。
+加文献、登记出图溯源、重建索引这些事，都交给 `research.py` 做，面板不代劳。常用子命令：`new-project`、`add-ref`、`register-figure`、`add-submission`、`reindex`。
 
-## 科研库的权威入口：`research.py`
+## research.py
 
-库的一切结构化写入都由它完成（面板的「命令台」弹层就是它的可视化前端）。
+库的结构化写入都由它完成，面板里的「命令台」就是它的可视化前端。
 
-**读**：
-
-| 子命令 | 说明 |
-| --- | --- |
-| `status` | 库概况：课题数、文献数、已登记图数、期刊档案数。 |
-| `search <关键词>` | 跨课题检索（课题 / 图 / 稿 / 数据 / 文献 / 期刊 / 投稿），可加 `--kind`、`--project`、`--limit`。 |
-| `list-projects` / `list-figures` / `list-refs` / `list-submissions` | 分别列课题、已登记图、文献、投稿记录，各自支持筛选参数。 |
-| `check-citations --draft <路径>` | **引用核查闸门**：非零退出即代表稿子里有缺失或未核实的引用。加 `--require-doi` 要求每条都必须有 DOI。 |
-| `check-journal --project <slug> [--journal <id>]` | **期刊合规体检**：按期刊档案逐条比对图件尺寸/分辨率/格式、图注、标题与摘要字数、参考文献与 DOI、引用键；每条 `pass`/`warn`/`fail`/`na`，有 `fail` 时退出码 1。 |
-
-**写**：
+读：
 
 | 子命令 | 说明 |
 | --- | --- |
-| `init` | 建 / 修复库骨架（幂等）。 |
-| `new-project <slug>` | 新建课题，可带 `--title`、`--journal`。 |
-| `add-ref` | 文献入库。**必须带 DOI 或 URL**（引用零编造）；`--verified-by` 记录核实方式。 |
-| `register-figure` | 登记一张图的溯源侧车：源数据、Origin 图页、所用期刊档案、图注。 |
-| `add-submission` / `update-submission` | 登记一次投稿 / 推进投稿状态与事件时间线。 |
-| `export-package --project <slug> [--journal <id>]` | **投稿包**：稿件 + 图 + 数据 + `refs.bib` 打 zip 到 `submissions/packages/`，附逐文件 sha256 的 `manifest.json` 与 `checklist.md`。 |
-| `reindex` / `export-bib` | 重建库索引（递归子目录、收录正文）/ 重建 `refs.bib`。 |
+| `status` | 库概况：课题数、文献数、已登记图数、期刊档案数 |
+| `search <关键词>` | 跨课题检索，可加 `--kind`、`--project`、`--limit` |
+| `list-projects` / `list-figures` / `list-refs` / `list-submissions` | 分别列课题、图、文献、投稿 |
+| `check-citations --draft <路径>` | 引用核查闸门，非零退出即代表稿子里有缺失或未核实的引用；加 `--require-doi` 要求每条都有 DOI |
+| `check-journal --project <slug> [--journal <id>]` | 期刊合规体检，按档案逐条比对，有 `fail` 时退出码 1 |
 
-**不可逆**：`remove-ref` 删掉一条文献登记（会先备份 `refs.json`）。
+写：
 
-> Windows 上库内附了一个 Python 包装器 `.research/bin/py.cmd`，它会按库配置挑解释器；agent 文档里给的调用示例走的就是它。想自己指定解释器，用环境变量 `SCIWORK_PYTHON`。
+| 子命令 | 说明 |
+| --- | --- |
+| `init` | 建或修复库骨架（幂等） |
+| `new-project <slug>` | 新建课题，可带 `--title`、`--journal` |
+| `add-ref` | 文献入库，必须带 DOI 或 URL；`--verified-by` 记录核实方式 |
+| `register-figure` | 登记图的溯源侧车：源数据、Origin 图页、所用期刊档案、图注 |
+| `add-submission` / `update-submission` | 登记投稿、推进状态与事件时间线 |
+| `export-package --project <slug> [--journal <id>]` | 投稿包：稿件 + 图 + 数据 + `refs.bib` 打 zip，附 manifest 与 checklist |
+| `reindex` / `export-bib` | 重建库索引 / 重建 `refs.bib` |
 
-### 期刊档案一览
+`remove-ref` 会删掉一条文献登记，删之前先备份 `refs.json`。
 
-| 档案 id | 是什么 | 严格度 |
+Windows 上库内附了 Python 包装器 `.research/bin/py.cmd`，会按库配置挑解释器。想自己指定，用 `SCIWORK_PYTHON`。
+
+### 期刊档案
+
+| id | 是什么 | 严格度 |
 | --- | --- | --- |
 | `nature` | Nature 系列 | high |
 | `science` | Science 系列 | medium |
@@ -311,108 +276,88 @@ agent 会走 Origin 真机绘图、核验、导出，并把图的溯源信息登
 | `gbt-7714` | GB/T 7714 参考文献格式规范 | low |
 | `thesis-generic` | 通用学位论文 | medium |
 
-严格度影响默认排版与校验口径；每份档案里还有具体数值与出处摘要。回看哪份档案、怎么用，见技能 `journal-profile`。
+严格度影响默认排版和校验口径，每份档案里还有具体数值与出处摘要。怎么读、怎么用，见技能 `journal-profile`。
 
 ## 技能
 
 | 技能 | 管什么 |
 | --- | --- |
-| `research-studio` | 总入口。路由表 + 三条硬纪律 + 开工前 30 秒例行检查 + 交付前自检清单 + 如实报告（能证明什么、不能证明什么）。 |
-| `origin-plot` | Origin 绘图纪律。数据进 Origin、四条画图路径、改图前先看现状、**两个核验步骤都要做**、导出交付与登记、绝不抢占用户正在使用的 Origin 会话，以及一份实测坑清单。内含 74 个 `origin_*` MCP 工具的用法。 |
-| `paper-writing` | 动笔前的证据纪律、图注、Results、Discussion 结构与框架、中→英与润色、回复审稿意见（Response Letter）、交稿前自检。 |
-| `literature-refs` | 四条硬规则、入库、检索（先有证据再入库）、稿子里怎么引用、列出与导出、与写作技能配合、常见坑。 |
-| `journal-profile` | 期刊档案怎么读、怎么用。档案字段、给绘图/写作供参数、选刊（用户问"投哪本"）、新建或更新档案、与库脚本配合、冲突与变更。 |
+| `research-studio` | 总入口：路由表、三条硬纪律、开工前 30 秒例行检查、交付前自检清单 |
+| `research-stages` | 七个阶段各自该做什么、交付什么、什么时候可以进下一阶段 |
+| `origin-plot` | Origin 绘图纪律：数据进 Origin、四条画图路径、改图前先看现状、两个核验步骤、导出与登记、不抢占用户的 Origin 会话，附 74 个 `origin_*` 工具的用法 |
+| `paper-writing` | 动笔前的证据纪律、图注、Results、Discussion、中译英与润色、回复审稿意见、交稿前自检 |
+| `literature-refs` | 四条硬规则、入库、检索、引用、列出与导出 |
+| `journal-profile` | 期刊档案的字段、怎么给绘图和写作供参数、怎么选刊、怎么新建或更新档案 |
 
-技能是纪律文本，不是代码：它们约束 agent 的行为，不额外引入依赖。
+技能是纪律文本，不是代码。它们约束 agent 的行为，不引入依赖。
 
 ## 与 dsh-origin-plugin 的关系
 
-- **出图能力来自 [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin)**（MIT，作者 [Fantasality](https://github.com/Fantasality)），它提供 74 个 `origin_*` MCP 工具，负责与本机 Origin 通信。
-- **本仓库不包含 dsh-origin-plugin**，也不复制它的代码；`dsh-sciwork` 只带一份**适配技能** `skills/origin-plot`，教 agent 按科研交付的要求去用那 74 个工具。
-- `skills/origin-plot/references/origin-tools.json` 是**派生文件**：由 dsh-origin-plugin 的工具清单生成，用于离线查表（工具名 / 参数 / 用途）。
-- 两者可以独立安装。不装 Origin 与 dsh-origin-plugin，`dsh-sciwork` 的建库、面板、写作、文献、期刊档案部分照常可用，只是「出图」这一步走不通。
-- 环境变量 `SCIWORK_ORIGIN_PLUGIN` 用来告诉适配技能：dsh-origin-plugin 装在哪。
+出图能力来自 [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin)（MIT，作者 Fantasality），它提供 74 个 `origin_*` MCP 工具，负责和本机 Origin 通信。
+
+本仓库不包含 dsh-origin-plugin，也不复制它的代码。`dsh-sciwork` 只带一份适配技能 `skills/origin-plot`，教 agent 按科研交付的要求用那 74 个工具。`skills/origin-plot/references/origin-tools.json` 是从它的工具清单生成的派生文件，用于离线查表。
+
+两者可以独立安装。不装 Origin 和 dsh-origin-plugin，建库、面板、写作、文献、期刊档案照常可用，只是出图走不通。环境变量 `SCIWORK_ORIGIN_PLUGIN` 用来告诉适配技能它装在哪。
 
 ## 自检
 
-仓库自带五个自检脚本与一个补丁预检，都不写你的正式库（写动作在隔离副本里跑，并有一道硬闸门）。前五个只要 Node；补丁预检是 Python 写的，需要一个非标准库的依赖 PyYAML：
+仓库里有五个自检脚本和一个补丁预检。它们都不写你的正式库，写动作在隔离副本里跑。前五个只要 Node，补丁预检需要 PyYAML。
 
 ```bash
 node scripts/selftest-host.mjs      # 宿主半边：路由注册、路径守卫、快照形状
 node scripts/selftest-actions.mjs   # 47 个动作：读/守卫检查 + 隔离副本里的写动作
-node scripts/selftest-client.mjs    # 客户端：八个页签的渲染、弹层、按钮与请求形状
+node scripts/selftest-client.mjs    # 客户端：八个页签的渲染、弹层、按钮、请求形状
 node scripts/selftest-live.mjs      # 真联调：真面板 × 真端点 × 真动作层 × 真写盘（临时库）
-node scripts/test-install.mjs       # 安装面：随包技能、库脚本种子、脚本选用、包清单、apply 接线
-python -m pip install pyyaml        # 只给下一步用（CI 里有独立的 Install PyYAML 步骤）
-python scripts/validate-patch.py    # cordis.patch.yml 预检：预设行数、persona、插入行
+node scripts/test-install.mjs       # 安装面：随包技能、库脚本种子、包清单、apply 接线
+python -m pip install pyyaml
+python scripts/validate-patch.py    # cordis.patch.yml 预检
 ```
 
-想一条命令跑完全部（两周一轮的周期自检就是这么跑的），用 `node scripts/cycle.mjs`（0.4.5 起 22 项）：它把上面这些按 CI 的顺序跑一遍，附一段只读的 git 状态，输出汇总表与退出码，并把完整报告落到 `out/cycle/<日期>/`（`out/` 已 gitignore）。
+想一条命令跑完全部，用 `node scripts/cycle.mjs`。0.4.5 起一共 22 项，按 CI 的顺序跑，附一段只读的 git 状态，输出汇总表和退出码，完整报告落在 `out/cycle/<日期>/`（`out/` 已 gitignore）。
 
-推送到公开仓库前另有一条门禁：`node scripts/check-local-info.mjs`（`cycle.mjs` 也会跑它）。它拿这台机器的家目录、用户名、主机名、临时目录、库根等标记，去扫全部跟踪文件与还没推出去的提交信息，命中就说明仓库里带了本机信息——换成 `<仓库根>` / `<库根>` / `<系统临时目录>` 这类占位符再提交。
+推送到公开仓库前还有一条门禁：`node scripts/check-local-info.mjs`（`cycle.mjs` 也会跑）。它拿本机的家目录、用户名、主机名、临时目录、库根等标记，去扫所有跟踪文件和还没推出去的提交信息。命中就说明仓库里带了本机信息，换成 `<仓库根>`、`<库根>`、`<系统临时目录>` 之类的占位符再提交。
 
-自检分两种跑法，**新克隆的仓库不配库也能跑**：
-
-**A. 不指向任何科研库（CI / 刚克隆的机器）**
+不指向科研库也能跑（CI 或刚克隆的机器）：
 
 ```bash
 node scripts/selftest-host.mjs      # 全部通过，退出码 0
-node scripts/selftest-actions.mjs   # 全部通过 · 0 失败 · 内容类检查自动跳过
-node scripts/selftest-client.mjs    # 全部通过 · 0 失败 · 内容类检查自动跳过
-python scripts/validate-patch.py    # ✓ 补丁预检通过
+node scripts/selftest-actions.mjs   # 全部通过，内容类检查自动跳过
+node scripts/selftest-client.mjs    # 全部通过，内容类检查自动跳过
+python scripts/validate-patch.py    # 补丁预检通过
 ```
 
-此时所有**内容类**检查（依赖库里真有草稿 / 图 / 数据表的部分）自动记为 `SKIP` 或「未运行」，脚本会打印一行说明（`未运行：内容类检查需要一个可用的科研库（当前库根 …）`）并**以退出码 0 结束**——不配库不算失败。
+依赖真库的内容类检查会记为跳过，并以退出码 0 结束，不配库不算失败。
 
-**B. 指向一个真库（数字随库内容浮动，下面是夹具库实测）**
+指向真库时（数字随库内容浮动，下面是夹具库实测）：
 
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 通过 · 0 失败 · 3 跳过
-SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 个元素 · 0 失败（--only <页签> 只测一页）
+SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 个元素 · 0 失败
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 252 通过 · 0 失败
-node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 · 0 失败（只读巡检）
+node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 · 0 失败
 ```
 
-- `selftest-host.mjs` —— 只统计通过/失败，退出码 0。唯一可能被记为「跳过」的是「图文件还在」这类依赖真实库里确实有图的检查（没有图时不判失败）。
-- `selftest-client.mjs` —— 汇总行只有通过/失败两项；B 模式下实测 `252 通过 · 0 失败`，退出码 0。
-- `selftest-live.mjs` —— 唯一一条**真联调**：微缩 React 渲染真 `lib/client.js`，面板的 `rpc.call` 直接打到真 `lib/index.js` 的同一条路由，再经真 `lib/actions.js` / 真 dispatch / 真令牌 / 真回执写进临时库；只有 DSH 宿主的模型服务是假件。默认 `51 通过 · 0 失败 · 6 跳过`（临时库，跑完自动清掉）；`--real <库根>` 只读巡检真库的读动作（`6 通过 · 0 失败`）。它专门盯假夹具抓不到的那类缺陷：参数被事件对象污染、返回值形状不对、流式回答为空却没人吭声。
-- `validate-patch.py` —— 输出 `✓ 补丁预检通过`，退出码 0。它会报预设 `preset-research` 的顶层行数（19 条，递归后叶子 29 条，其中 2 条按 `!!js` 条件禁用）、嵌套组（planning / compaction / delegation）、persona 长度，以及确认插入的 `research-library` 行属于宿主插件而非 agent 预设。
-- `selftest-actions.mjs` —— 写动作段要求**库根指向脚本自己新建的隔离副本**（用 `SCIWORK_LIBRARY` 指过去即可）。若它发现 snapshot 指向的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本` 并以退出码 2 结束，同时**一个字节都不写**。这是设计行为，不是插件缺陷：写动作永远在副本里跑，绝不碰你的正式库。⚠️ 0.2.1 起 `SCIWORK_LIBRARY` **优先于**随包的 `library/config.json`（此前次序反了，导致本机把库指向真库时这道闸门永远拿真库当副本、写动作整节被跳过）。
+`selftest-live.mjs` 是唯一一条真联调：微缩 React 渲染真的 `lib/client.js`，面板的 `rpc.call` 打到真的 `lib/index.js` 路由，再经真的动作层、dispatch、令牌、回执写进临时库，只有 DSH 宿主的模型服务是假的。默认 `51 通过 · 0 失败 · 6 跳过`，跑完自动清掉临时库。
 
-## 文档地图
+`selftest-actions.mjs` 的写动作段要求库根指向脚本自己新建的隔离副本。如果它发现 snapshot 指的不是那个副本，会打印 `FAIL 隔离闸门：snapshot 指向副本`，以退出码 2 结束，一个字节都不写。这是设计行为。
+
+## 文档
 
 | 文件 | 内容 |
 | --- | --- |
-| [README.md](./README.md) / [README.en.md](./README.en.md) | 这是什么、装什么、怎么用 |
-| [docs/INSTALL.md](./docs/INSTALL.md) | 安装与首次建库（含排错） |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 工程结构与契约：宿主动作、HTTP 端点、面板边界、路径解析、自检口径 |
-| [docs/RELEASE.md](./docs/RELEASE.md) | 维护者手册：发版、上架插件市场、截图、干净机器验证 |
-| [docs/CYCLE-14D.md](./docs/CYCLE-14D.md) | 维护者手册：14 天周期的 debug / 功能更新 / 同步 GitHub（`cycle.mjs`、护栏、候选功能池） |
+| [docs/INSTALL.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/INSTALL.md) | 安装与首次建库，含排错 |
+| [docs/ARCHITECTURE.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/ARCHITECTURE.md) | 工程结构与契约：宿主动作、HTTP 端点、面板边界、路径解析、自检口径 |
+| [docs/RELEASE.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/RELEASE.md) | 维护者手册：发版、上架市场、截图、干净机器验证 |
+| [docs/CYCLE-14D.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/CYCLE-14D.md) | 维护者手册：14 天周期的 debug、功能更新、同步 GitHub |
 | [CHANGELOG.md](./CHANGELOG.md) | 版本变更 |
 | [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) | 第三方组件与致谢 |
 
-## 许可证与致谢
+## License 与致谢
 
-**License: MIT**，版权归 58catmiao。许可证原文见 [LICENSE](./LICENSE)。
+MIT，版权归 58catmiao。许可证原文见 [LICENSE](./LICENSE)。
 
-### Credits / 致谢
+Origin 绘图能力来自 [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin)（MIT，作者 Fantasality）。本仓库不包含它，`skills/origin-plot/references/origin-tools.json` 派生自它的工具清单，用于离线查表。
 
-- **Origin 绘图能力**来自 [**dsh-origin-plugin**](https://github.com/Fantasality/dsh-origin-plugin)（MIT，作者 **Fantasality**）。本仓库不包含它；`skills/origin-plot/references/origin-tools.json` 派生自它的工具清单，用于离线查表。感谢作者把这套本机 Origin 自动化开源出来。
-- **DSH（DeepSeek Harness）** 提供了插件机制、agent 预设与工具路由，本插件是其上的扩展。
-- **期刊档案**是本项目自己整理的**数值、条款与出处摘要**，不是期刊官方文件。
+DSH 提供了插件机制、agent 预设和工具路由，这个插件是它的扩展。
 
-### 关于内容版权
-
-本仓库**不包含任何受版权保护的论文原文或期刊 PDF**。
-
-- `journals/` 下的 12 份期刊档案，内容是投稿要求的**数值、条款与出处摘要**（例如字数上限、图表要求、参考文献格式），每条尽量标注出处；遇到具体条款请以期刊官网的最新作者指南为准。
-- `refs/` 里登记的是**你自己的**文献元数据（标题、DOI、URL 等）与你自己放进 `refs/pdf/` 的附件，仓库不预置任何文献全文。
-- 期刊档案是**辅助**，不构成法律或投稿建议；因以档案替代官方指南而产生的后果，由使用者自负。
-
----
-
-<div align="center">
-
-**dsh-sciwork** · 让科研的每一步都落在你自己的硬盘上
-
-</div>
+期刊档案是本项目自己整理的数值、条款与出处摘要，不是期刊官方文件。本仓库不包含任何论文原文或期刊 PDF。档案是辅助，不构成法律或投稿建议，具体条款以期刊官网的最新作者指南为准。

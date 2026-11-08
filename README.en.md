@@ -1,274 +1,265 @@
-# dsh-sciwork · Research Mode for DSH
+# dsh-sciwork
 
-> A complete "doing research" workbench for [DSH](https://github.com/deepseek-ai) (DeepSeek Harness): an agent preset called **Research Mode**, plus a real, on-disk research library.
+> Research mode for DSH (DeepSeek Harness): an agent preset, a research library that lives on your disk, a panel, and a handful of skills.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.3.14 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.4.8 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
 ---
 
-## What this is
+## What it is
 
-`dsh-sciwork` is not another "chat with your papers" box. It is a research workbench that **lives on your disk** and can be opened by other tools. Install it and you get four things at once:
+Installing it adds an agent preset called "Research Mode". The preset keeps plotting, writing, references and journal rules in one workflow: find the evidence before acting, plot on a real Origin install, and give every cited reference a DOI or a URL.
 
-1. **An agent preset, "Research Mode"** — it folds plotting, writing, references and journal rules into one workflow: find the evidence first, then act. Figures are made on a real Origin install, and every reference cited in a manuscript must carry a DOI or a URL.
-2. **A real, on-disk research library** — an ordinary directory tree (projects / figures / data / drafts / references / journal profiles / submissions), a Python engine `research.py`, and a registration index.
-3. **12 journal submission profiles** — Nature, Science, Cell, IEEE Trans, ACS, a generic Elsevier profile, MDPI, PLOS ONE, Chinese core journals, CNKI theses, GB/T 7714, and a generic thesis profile, each with its numeric requirements, clauses and citations to their sources.
-4. **A visual "Research Library" panel plus a set of skills** — a workbench by default (v2), a seven-tab classic panel one click away, read-only by and large, with filtering, import and archive; the skills pin down *how* to plot, write and cite.
+Under the preset sits a real research library, just an ordinary directory tree: projects, figures, data, drafts, references, journal profiles, submissions. It comes with a Python engine `research.py` and a registration index. The filesystem is the authority; the index is only a cache. A broken index can be rebuilt, and the whole library can be zipped up and moved, or opened with a file manager, Git, or any other editor.
 
-**The filesystem is always the authority.** The index is only a cache, and the panel never writes to it — every panel write goes through the library scripts. That means you can zip up the whole library and move it, or touch it directly with a file manager, Git, or any other editor.
+You also get 12 journal submission profiles (Nature, Science, Cell, IEEE Trans, ACS, Elsevier, MDPI, PLOS ONE, Chinese core journals, CNKI theses, GB/T 7714, generic theses), each with numeric requirements and citations to its sources; a "Research Library" panel; and six skills that turn plotting, writing and citing into rules the agent has to follow.
 
-- The host half is plain Node ESM with **zero npm dependencies**.
-- The client is a hand-written single-file web client with **no build step**.
-- Plotting depends on the upstream open-source plugin [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin) (MIT, by Fantasality). **This repository does not include it** — it ships only an adaptor skill. See "Relationship to dsh-origin-plugin" below.
-
-## What is new in 0.3
-
-- **One action registry** drives the panel, the agent tools, and the CLI — new capabilities are written once.
-- **Writes need confirmation**: plan first (which files, which warnings), then a single-use token, then a receipt.
-  Reads never write receipts.
-- **Projects are first-class**: seven-stage state machine plus artifact hashes; legacy projects are migrated
-  explicitly (backup first, idempotent, per-project rollback).
-- **Workbench by default**: the workbench (v2) opens first; one button in the page header switches back to the classic list panel (v1), the choice is remembered, and switching keeps the last tab. Layout: page header (title, stats, Chinese primary actions) → KPI strip (projects / figures / references / open submissions) → cross-project todo table → dashboard → two-column project detail. The dashboard carries today, submission countdown, library health, recent changes and backup status; every todo row copies a ready-to-paste "生成指令" instruction. The header's 快速登记 builds a Chinese form from the CLI command table (references / figure provenance / submission) and still goes through plan → confirm → receipt.
-- **Clickable seven-stage bar**: every stage in a project is a button that runs `project.stage.set` (jumping forward passes `force`, stepping back resets later stages to todo).
-- **The panel ships its own palette and type**: twelve `--rl-*` variables in a "graphite blue" palette (light and dark via `light-dark()`), no host colour tokens, body/secondary/primary contrast ≥ 4.5:1; Noto Sans SC with Microsoft YaHei / system-ui fallbacks and tabular numerals.
-- **Real figure folders are visible again**: `_`-prefixed figure folders such as `figures/_ZT-1100-2h_v4/` are no longer filtered out as internal; only `_history` / `_archive` / `_templates` / `_fetched` and the like are excluded.
-
+The host half is plain Node ESM with zero npm dependencies. The client is a single-file web client with no build step. Plotting depends on the upstream [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin) (MIT, by Fantasality). This repository does not include it; only an adaptor skill is bundled.
 
 ## Install
 
-Three channels; each installs the same thing. Pick the one your UI offers.
+All three channels install the same thing. Pick whichever one your UI offers.
 
 | Channel | How | Notes |
 | --- | --- | --- |
-| **Official plugin page** (sidebar "Plugins" → add plugin) | enter `github:58catmiao/dsh-sciwork` | an unpacked ZIP's **absolute path** works too; click "enable now" afterwards |
-| **Terminal** | `dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork` | `dsh plugin` forwards the arguments to the profile's pnpm |
-| **Plugin marketplace** ("Plugins → Discover") | add the index URL below first, then install from Discover | the market only reads the indexes you give it; it never crawls GitHub |
+| Official plugin page (sidebar "Plugins" → add plugin) | enter `@58catmiao/dsh-sciwork` | installs from npm; an unpacked ZIP's absolute path also works; click "enable now" afterwards |
+| Terminal | `dsh plugin --profile <profile> add @58catmiao/dsh-sciwork` | arguments are forwarded to the profile's pnpm |
+| Plugin marketplace ("Plugins → Discover") | add the index URL first, then install from Discover | the market only reads the indexes you give it; the index is pinned to a GitHub commit |
 
-### Channel 1: official plugin page
+### Official plugin page
 
 Sidebar "Plugins" → add plugin, then enter:
 
 ```
-github:58catmiao/dsh-sciwork
+@58catmiao/dsh-sciwork
 ```
 
-**Restart Harness** afterwards — the panel is a client bundle, so reloading the page is not enough.
+Click "enable now" and restart Harness. The panel is a client bundle, so reloading the page is not enough.
 
-### Channel 2: terminal
+### Terminal
 
 ```bash
-dsh plugin --profile <profile> add github:58catmiao/dsh-sciwork
+dsh plugin --profile <profile> add @58catmiao/dsh-sciwork
 ```
 
-> **Why the `github:` prefix**: this package is **not published to npm**, so `add dsh-sciwork` sends the package manager to npm and gets a 404 (or "package not found"). The `github:` form installs straight from GitHub and records `"dsh-sciwork": "github:58catmiao/dsh-sciwork"` in the profile.
+The package is published to npm. To track the latest `main`, replace the name with `github:58catmiao/dsh-sciwork`. Restart Harness afterwards.
 
-### Channel 3: plugin marketplace (add the index)
+### Plugin marketplace
 
-DSH's marketplace does not crawl GitHub and does not guess repository names: it only reads **index URLs you add yourself**. This repository ships one (`market/plugins.json`, git source pinned to the release commit):
+"Plugins → Discover" does not crawl GitHub. It reads only the index URLs you add yourself. This repository ships one, pinned to the release commit:
 
 ```
 https://raw.githubusercontent.com/58catmiao/dsh-sciwork/main/market/plugins.json
 ```
 
-It requires the optional bundle `@deepseek-ai/dsh-experimental-plugin-market-bundle`; without it the Discover tab does not exist, so use channel 1 or 2 instead (they are equivalent).
+The market itself comes from the optional bundle `@deepseek-ai/dsh-experimental-plugin-market-bundle`. If that is not installed on your machine, the Discover tab will not appear; the plugin page or the terminal installs the same thing.
 
-> The third-party `dshmarket` reads its own curated catalog, **not this index**; it has to list the plugin first. Until then use channel 1 or 2.
+The third-party market `dshmarket` uses its own catalog and cannot read this index. It has to list the plugin first.
 
-The index is rewritten after every release with `node scripts/make-market-index.mjs --commit v<version>`, which pins the version to that tag's commit — marketplace installs are therefore reproducible. `node scripts/test-install.mjs` checks its format and commit.
+After each release the index is rewritten by `node scripts/make-market-index.mjs --commit v<version>`, which pins the version to that tag's commit. `node scripts/test-install.mjs` checks the index format and commit.
 
-### No npm / pnpm, or the command above says npm cannot be found
+### No pnpm, or the command says the package cannot be found
 
-`dsh plugin` forwards its arguments to the profile's package manager (pnpm), so it needs a working pnpm. On machines where the DSH runtime does not ship one, use the package-manager-free path instead:
+`dsh plugin` ultimately hands the work to pnpm. If the machine does not ship one, you can install without any package manager.
 
-1. On GitHub click `Code → Download ZIP` and unpack it to a fixed directory (for example `D:/apps/dsh-sciwork`), or `git clone https://github.com/58catmiao/dsh-sciwork.git`.
+**Option A: unpack the ZIP and wire it up**
+
+1. On GitHub click `Code → Download ZIP` and unpack it to a fixed directory, for example `D:/apps/dsh-sciwork`.
 2. From that directory run:
 
 ```bash
 node scripts/install-plugin.mjs --profile <profile> --source .
 ```
 
-It adds a `link:` dependency line to the profile's `package.json`, links `<profile>/node_modules/dsh-sciwork` to that directory, and appends `dsh-sciwork` to `dsh.profile.bundles`. The existing `package.json` is backed up as `package.json.bak-<timestamp>` first; `--dry-run` shows the changes without writing.
+It adds a `link:` dependency to the profile's `package.json`, links `<profile>/node_modules/@58catmiao/dsh-sciwork` to that directory, and appends `@58catmiao/dsh-sciwork` to `dsh.profile.bundles`. The existing `package.json` is backed up as `package.json.bak-<timestamp>`. `--dry-run` shows what it would change.
 
-(The plugin page's "add plugin" also accepts that unpacked directory's **absolute path** — same result.)
+The plugin page's "add plugin" also accepts that directory's absolute path, with the same result.
 
-Verify with `dsh --profile <profile> --dump-config | grep -c dsh-sciwork` (should be greater than 0).
+**Option B: git, Node, no package manager**
 
-### After installing, nothing changed
+```bash
+git clone https://github.com/58catmiao/dsh-sciwork.git
+cd dsh-sciwork
+node scripts/install-plugin.mjs --profile <profile> --source .
+```
+
+Restart Harness, then check with `dsh --profile <profile> --dump-config | grep -c dsh-sciwork` (the result should be greater than 0).
+
+### Nothing changed after installing
 
 | Symptom | Check first |
 | --- | --- |
-| 404 or "package not found" | the source must be `github:58catmiao/dsh-sciwork` (the package is not on npm) |
-| "npm / pnpm not found" | use the package-manager-free path above |
-| the panel still looks old | restart Harness (client bundle); a page reload is not enough |
-| "check for updates" says it is not a git work tree | that install is a copy or a link to an unpacked ZIP; update by unpacking the new ZIP and re-running `install-plugin.mjs` (marketplace installs are copies too) |
-| no "Research Library" entry in the sidebar | `dsh --profile <profile> --dump-config` should contain a `name: dsh-sciwork` section |
-| the plugin is missing from Discover | add the index URL (channel 3); is the marketplace bundle installed |
-| skills are missing | since 0.3.13 the plugin registers them on activation; if `~/.dsh/skills/<name>/SKILL.md` already exists it is skipped on purpose — remove that directory and restart to switch to the bundled copy |
+| 404 or "package not found" | is the source written as `@58catmiao/dsh-sciwork` (before 0.4.8: `github:58catmiao/dsh-sciwork`) |
+| "npm / pnpm not found" | use Option A, no package manager needed |
+| the panel still looks old | restart Harness; a page reload does not reload the client bundle |
+| "check for updates" says it is not a git work tree | that install is a copy or a link to an unpacked ZIP; update by unpacking the new ZIP and re-running `install-plugin.mjs` |
+| no "Research Library" entry in the sidebar | `dsh --profile <profile> --dump-config` should contain a `name: '@58catmiao/dsh-sciwork'` section; if not, the bundle never made it into `dsh.profile.bundles` |
+| the plugin is missing from Discover | add the index URL; is the marketplace bundle installed |
+| skills are missing | since 0.3.13 skills are registered by the plugin on activation; if `~/.dsh/skills/<name>/SKILL.md` already exists it is skipped on purpose, so remove that directory and restart to switch to the bundled copy |
 
-What you get after installing:
+After installing you get:
 
-- an agent preset "Research Mode" with id `research` (selectable in a session);
-- a new sidebar panel entry, "Research Library" (科研库), opening on the workbench; the header reports the plugin version and offers "check for updates";
-- one precisely registered read-only route, `/api/research/call`, which the panel uses for snapshots and actions;
-- six skills registered by the plugin on activation (runtime skills), so no manual `scripts/install.mjs` run is needed; your own copies under `~/.dsh/skills` win and are never overwritten.
+- an agent preset "Research Mode" with id `research`. The seven stages (topic → design → data → analysis → figure → draft → submission) all happen inside this one preset; a stage is just a field in `project.json`.
+- a sidebar panel "Research Library", opening on the workbench, with the plugin version in the header and a "check for updates" button.
+- one read-only route, `/api/research/call`, used by the panel for snapshots and actions.
+- six skills: `research-studio`, `research-stages`, `origin-plot`, `paper-writing`, `literature-refs`, `journal-profile`. They are registered when the plugin activates, so no manual `scripts/install.mjs` run is needed. Copies already under `~/.dsh/skills` are left alone and never overwritten.
 
-> Prerequisites: Node on the machine (the host half and the self-test scripts use it) and a working Python 3 interpreter (the library engine `research.py` uses it). **`python` is not required to be on `PATH`** — the launcher probes candidates in order: explicit configuration → `SCIWORK_PYTHON` → the library's own venv → the Origin plugin directory's venv → `PATH`. Plotting additionally needs Origin — see below.
+Prerequisites: Node, and a working Python 3 for `research.py`. `python` does not have to be on `PATH`; the launcher probes, in order, explicit configuration → `SCIWORK_PYTHON` → the library's own venv → the Origin plugin directory's venv → `PATH`. Plotting also needs Origin.
 
 ## Quick start
 
-### 1. Create the library
+### Create the library
 
 ```bash
-# Preflight first: writes nothing, just reports what is missing
+# Preflight: writes nothing, only reports what is missing
 node scripts/install.mjs --verify-only
 
-# Once the preflight passes, create the library
+# Once it passes, create the library
 node scripts/install.mjs
 ```
 
-The installer creates the library root, the `.research/` engine and index, `journals/` profiles and the `refs/` store. The root defaults to `<home>/Research` (`%USERPROFILE%\Research` on Windows) and can be changed with the `SCIWORK_LIBRARY` environment variable.
-
-Installer flags:
+The installer creates the library root, the `.research/` engine and index, `journals/` profiles and the `refs/` store. The root defaults to `<home>/Research` (`%USERPROFILE%\Research` on Windows) and can be changed with `SCIWORK_LIBRARY`.
 
 | Flag | Meaning |
 | --- | --- |
-| `--verify-only` | Check only; write nothing. |
-| `--library-root <dir>` | Set the library root, overriding the configured `libraryRoot`. |
-| `--skip-library` | Do not lay down the library skeleton (install the plugin half only). |
-| `--force-skills` | Overwrite a skill directory that already exists and has no `SKILL.md`. |
+| `--verify-only` | Check only, write nothing |
+| `--library-root <dir>` | Set the library root, overriding the configured `libraryRoot` |
+| `--skip-library` | Do not lay down the library skeleton; install the plugin half only |
+| `--force-skills` | Overwrite a skill directory that exists but has no `SKILL.md` |
 
-> Library-root resolution order: `--library-root` / the `SCIWORK_LIBRARY` environment variable (the former name `RESEARCH_LIBRARY` is still accepted) → `libraryRoot` in the package's `library/config.json` → `<home>/Research`. Note that an existing library's own `.research/config.json` `libraryRoot` also overrides the environment variable — the panel and the engine prefer the library's own configuration.
+Library root resolution order: `--library-root` or `SCIWORK_LIBRARY` (the old name `RESEARCH_LIBRARY` still works) → `libraryRoot` in `library/config.json` → `<home>/Research`. An existing library's `.research/config.json` also overrides the environment variable; the panel and the engine prefer the library's own configuration.
 
-### 2. Open the panel
+### Open the panel
 
-Click "Research Library" (科研库) in the DSH sidebar. The header row shows the current library root and live counts (projects / figures / drafts / datasets / references / journal profiles / submissions / index time); the seven tabs sit underneath.
+Click "Research Library" in the DSH sidebar. It opens on the workbench, with the library root and live counts in the header and the to-dos and overview below. The button in the top right switches to the classic list panel with its seven tabs.
 
-### 3. Let the agent create a project
+### Let the agent create a project
 
-Select the "Research Mode" preset in a session, then just say:
+Select "Research Mode" in a session and say:
 
 > Create a project called `zt-ceremic` on the oxidation behaviour of ZrB₂-SiC ceramics.
 
-The agent runs `research.py new-project` to lay down the directories, and every figure it plots and every results section it writes afterwards lands in that project's `figures/`, `origin/`, `data/` and `drafts/`. You can also click "New project" in the panel and do it yourself.
+The agent runs `research.py new-project` to lay down the directories. Every figure it plots and every results section it writes afterwards lands in that project's `figures/`, `origin/`, `data/` and `drafts/`. You can also click "New project" in the panel.
 
-### 4. Make a figure
+### Make a figure
 
-**The panel does not plot** (that capability was removed on 2026-10-13). To make a figure, tell the agent:
+The panel does not plot. Tell the agent:
 
 > Plot the XRD data in `projects/zt-ceremic/data/` as a comparison figure, using MDPI's layout requirements.
 
-The agent plots on a real Origin install, verifies the result, exports it, and registers the figure's provenance back into the library.
+The agent plots on a real Origin install, verifies and exports the figure, then registers its provenance back into the library.
 
-## The panel: the workbench and the seven tabs
+## The panel
 
-Sidebar → "Research Library". The **workbench** (v2) opens by default; the page header switches to the classic **list panel** (v1), which has seven tabs (Figures / Drafts / References / Data / Journal profiles / Submissions / Archive), plus a **counts header row** and a "Command console" overlay — neither of the latter two is a tab:
+Sidebar "Research Library". The workbench opens by default; the page header switches to the classic list panel. The list panel has eight tabs: Figures, Drafts, Notes, References, Data, Journal profiles, Submissions, Archive. A counts row sits at the top, and a "Command console" is a separate overlay.
 
-**The workbench (v2)** shows the whole library on one screen: page header (title, counts, Quick entry / New project / Import data / Refresh), a KPI row (projects / figures / references / active submissions), a cross-project to-do table, an overview (Due today / Submission countdown / Library health / Recent activity / Backup), and a two-column project area. The search box on the right of the tab row filters **projects and to-dos** in v2: the project list, the cross-project to-do table, Due today, Library health and Recent activity are all filtered together, a strip reports the hit counts with a "Clear filter" button, and each empty section says why it is empty (the KPI row always counts the whole library). With a project selected, its detail pane also carries a **per-project artifact strip** (figures / drafts / datasets / tables / projects / references / active submissions): the numbers are that project's registered artifacts plus its references and active submissions; clicking a number jumps to the matching list tab with the project slug pre-filled as the filter, so only its entries remain (buttons showing 0 are disabled).
+The workbench shows the whole library on one screen: a header with counts (projects / figures / references / open submissions), a cross-project to-do table (submission deadlines are in the same table, earliest first), then a two-column area with the project list on the left and project detail on the right. The detail pane has the stage bar, a per-project artifact strip, open items and blockers, and recent changes. The footer shows the latest receipt, the last backup and the plugin version. It reads the local `package.json` on first paint; "check for updates" is the only thing that goes to GitHub. When a newer version exists it offers "update to vX.Y.Z", which runs `git pull --ff-only` and only works on a clean git work tree.
 
 | Tab | What you see | What you can do |
 | --- | --- | --- |
-| **Counts header row** (not a tab) | Library root, live counts for the seven categories (projects / figures / drafts / datasets / references / journal profiles / submissions), index time, collection warnings | Click "Refresh" to re-read the snapshot; click "Tour" for a highlighted walkthrough of the UI |
-| **Figures** | Registered figures, each with its registered provenance (source data, script, generated-at); grouped by project | View the figure, view a PDF attachment, copy the path, archive, delete |
-| **Drafts** | Markdown manuscripts under `drafts/` | Read in place, create a draft, edit and save, archive, delete |
-| **References** | Entries in `refs/refs.json` plus local PDF attachments under `refs/pdf/` | Import (a DOI or URL is mandatory to register; a PDF is optional), view PDFs, archive, delete |
-| **Data** | Data files under `data/` (`.txt/.csv/.dat` …) and project group headers | Preview rows and columns, run a **data transform** (6 operators), archive, delete |
-| **Journal profiles** | The 12 profiles with id, strictness (high / medium / low) and update date | Read clauses and numeric requirements, filter, archive |
-| **Submissions** | Submission records under `submissions/` (target journal, status, timeline) | Read records, filter, archive; **submission gate**: pick a journal → run the compliance check → export a submission package |
-| **Archive** | Batch manifests under `.research/archive/<timestamp>/` plus hard-delete records | Restore a whole batch or a single file; hard-delete records keep the name only |
-| **Command console** (overlay, not a tab) | The `research.py` subcommand list and a parameter form per command | Pick a command → fill the arguments → run → read stdout / stderr / the JSON result |
+| Counts row (not a tab) | Library root, live counts for projects / figures / drafts / datasets / references / journal profiles / submissions, index time, collection warnings | Refresh the snapshot; start the guided tour |
+| Figures | Registered figures with data source, script and generated-at, grouped by project | View the figure or a PDF attachment, copy its path, archive, delete |
+| Drafts | Markdown under `drafts/` | Read, create, edit and save, archive, delete |
+| Notes | `projects/<project>/notes/*.md` experiment logs | Read the full note, create, save (a `.bak` is kept), delete (moved to `notes/.trash/`) |
+| References | Entries in `refs/refs.json` and local PDFs under `refs/pdf/` | Import (a DOI or URL is mandatory), view PDFs, archive, delete |
+| Data | Data files under `data/`, grouped by project | Preview rows and columns, run a data transform, rename, archive, delete |
+| Journal profiles | The 12 profiles with id, strictness and update date | Read clauses and numeric requirements, filter, archive |
+| Submissions | Submission records under `submissions/` (target journal, status, timeline) | Read, filter, archive, run the submission gate |
+| Archive | Batches under `.research/archive/<timestamp>/` plus hard-delete records | Restore a batch or a single file; hard-delete records keep only the name |
+| Command console (overlay) | `research.py` subcommands and an argument form | Pick a command, fill in the arguments, run it, read stdout / stderr / JSON |
 
-**The 6 data-transform operators**: `normalize`, `baseline` (baseline subtraction), `smooth`, `peaks` (peak finding), `integrate`, `linear`. Every transform leaves a provenance record next to the derived table (`.research/transforms/<project>/<table>.json`) and writes its output into the project's `tables/`.
+The six data-transform operators are `normalize`, `baseline`, `smooth`, `peaks`, `integrate` and `linear`. Every transform leaves a provenance record next to the derived table (`.research/transforms/<project>/<table>.json`) and writes its output into the project's `tables/`.
 
-**The submission gate (new in 0.2)**: in the Submissions tab, pick a project and a journal profile, then run the compliance check for per-item verdicts — figure width against the single/double-column spec, effective resolution, raster-vs-vector preference, caption presence, title and abstract length, reference and DOI coverage, and whether every citation key in the draft exists in the library. Each item is `pass` / `warn` / `fail` / `na` and carries its `source` and `confidence`; **anything the profile does not state is `na`, never a generic default posing as a journal requirement**. "Export submission package" zips the manuscript, figures, data and `refs.bib` (with a per-file sha256 manifest and a checklist) into `submissions/packages/`. As with the profiles themselves, the journal's current requirements win.
+The submission gate lives in the Submissions tab. Pick a project and a journal profile, then run the check: figure width against the single- or double-column spec, effective resolution, raster versus vector, caption presence, title and abstract length, reference and DOI coverage, and whether every citation key in the draft exists in the library. Each item is `pass`, `warn`, `fail` or `na`, with its source and confidence. Anything the profile does not state is `na`; a generic default never poses as a journal requirement. "Export submission package" zips the manuscript, figures, data and `refs.bib` into `submissions/packages/`, with a per-file sha256 manifest and a checklist. The journal's current requirements still win over the profile.
 
-**The panel's boundary, in one sentence**: it can view, filter, import, archive, delete, run data transforms on tables, and do the pre-submission check and packaging — it does **not** plot. Every write lands a file and registers it through the library scripts, and **the panel itself never touches the registration index**.
+The panel can view, filter, import, archive, delete, run table transforms, and do the pre-submission check and packaging. It does not plot. Every write lands a file and is registered through the library scripts; the panel never touches the index directly.
 
 ## Configuration
 
-Configuration has two layers. **`<root>/.research/config.json` inside the library is authoritative**; the environment variables tell DSH where the library is and which Python to use.
+Two layers. `<root>/.research/config.json` inside the library is authoritative; environment variables tell DSH where the library is and which Python to use.
 
 | Environment variable | Default | Meaning |
 | --- | --- | --- |
-| `SCIWORK_LIBRARY` | `<home>/Research` | The research library root. Pointing this elsewhere switches libraries. |
-| `RESEARCH_LIBRARY` | unset | Former name, kept for compatibility; `SCIWORK_LIBRARY` wins. |
-| `SCIWORK_PYTHON` | probed per platform | The Python interpreter used to run `research.py`. Pointing it at a venv interpreter explicitly is recommended. |
-| `SCIWORK_ORIGIN_PLUGIN` | unset | The directory where `dsh-origin-plugin` lives, so the adaptor skill can find it. |
+| `SCIWORK_LIBRARY` | `<home>/Research` | Library root. Pointing it elsewhere switches libraries |
+| `RESEARCH_LIBRARY` | unset | Former name, kept for compatibility; `SCIWORK_LIBRARY` wins |
+| `SCIWORK_PYTHON` | probed per platform | Interpreter used to run `research.py`; a venv interpreter is recommended |
+| `SCIWORK_ORIGIN_PLUGIN` | unset | Where `dsh-origin-plugin` lives, for the adaptor skill |
 
-Authoritative in-library configuration:
+Files inside the library:
 
 | Path | Meaning |
 | --- | --- |
-| `<root>/.research/config.json` | The authoritative config: library root, language, journal-profile strictness preference, index settings. |
-| `<root>/.research/index.json` | The registration index (**a cache only**; `research.py reindex` rebuilds it from the filesystem). |
-| `<root>/.research/archive/` | The archive area. "Archive" in the panel moves things here, and it is reversible. |
-| `<root>/.research/lock` | The library write lock, so concurrent writes do not step on each other. |
+| `<root>/.research/config.json` | Authoritative config: library root, language, journal-profile strictness, index settings |
+| `<root>/.research/index.json` | Registration index, a cache only; `reindex` rebuilds it |
+| `<root>/.research/archive/` | Archive area; "Archive" in the panel moves things here, and it is reversible |
+| `<root>/.research/lock` | Write lock, so concurrent writes do not collide |
 
 ## Directory layout
 
 ```text
-<root>/                          # default <home>/Research, changeable via SCIWORK_LIBRARY
+<root>/                          # default <home>/Research
 ├── projects/
 │   └── <project>/
-│       ├── figures/             # finished figures (exported png / svg / pdf / tif)
-│       ├── origin/              # Origin project files (.opju), still editable in Origin
+│       ├── figures/             # finished figures (png / svg / pdf / tif)
+│       ├── origin/              # Origin projects (.opju)
 │       ├── data/                # raw data
 │       ├── tables/              # tables derived by data transforms
 │       └── drafts/              # manuscript sections for this project
 ├── refs/
-│   ├── refs.json                # reference entries (a DOI or URL is mandatory)
-│   └── pdf/                     # local PDF attachments (optional)
+│   ├── refs.json                # reference entries (DOI or URL mandatory)
+│   └── pdf/                     # local PDF attachments
 ├── journals/                    # journal submission profiles
-├── submissions/                  # submission records and timelines
+├── submissions/                 # submission records and timelines
 └── .research/                   # engine and metadata
-    ├── research.py              # the single authoritative entry point for library operations
+    ├── research.py              # the single entry point for library operations
     ├── config.json              # authoritative config
-    ├── index.json               # registration index (a cache; rebuildable)
-    ├── archive/                 # archive area (reversible)
-    ├── transforms/<project>/    # provenance records for data transforms
+    ├── index.json               # registration index (cache, rebuildable)
+    ├── archive/                 # archive area
+    ├── transforms/<project>/    # provenance for data transforms
     └── lock                     # write lock
 ```
 
-**Registration (adding references, registering figure provenance, rebuilding the index) is always done by `research.py`**, never by the panel on its own.
+Adding references, registering figure provenance and rebuilding the index are done by `research.py`, never by the panel on its own. Common subcommands: `new-project`, `add-ref`, `register-figure`, `add-submission`, `reindex`.
 
-## The library's authoritative entry point: `research.py`
+## research.py
 
-Every structured write to the library goes through it (the panel's "Command console" overlay is just a visual front end for it).
+Every structured write to the library goes through it. The panel's Command console is just a visual front end for it.
 
-**Reads**:
-
-| Subcommand | Meaning |
-| --- | --- |
-| `status` | Library overview: project count, reference count, registered figure count, journal-profile count. |
-| `search <query>` | Cross-project search (projects / figures / drafts / data / references / journal profiles / submissions), with `--kind`, `--project`, `--limit`. |
-| `list-projects` / `list-figures` / `list-refs` / `list-submissions` | List projects, registered figures, references, submission records; each takes its own filters. |
-| `check-citations --draft <path>` | **The citation gate**: a non-zero exit means the manuscript has missing or unverified citations. Add `--require-doi` to require a DOI on every entry. |
-| `check-journal --project <slug> [--journal <id>]` | **Journal compliance check**: compares figures (size / effective DPI / format), captions, title and abstract length, references and DOI coverage, and citation keys against the profile; each item is `pass`/`warn`/`fail`/`na`, and any `fail` exits 1. |
-
-**Writes**:
+Reads:
 
 | Subcommand | Meaning |
 | --- | --- |
-| `init` | Create or repair the library skeleton (idempotent). |
-| `new-project <slug>` | Create a project, optionally with `--title` and `--journal`. |
-| `add-ref` | Register a reference. **A DOI or URL is mandatory** (zero fabricated citations); `--verified-by` records how it was verified. |
-| `register-figure` | Register a figure's provenance sidecar: source data, Origin graph page, journal profile used, caption. |
-| `add-submission` / `update-submission` | Record a submission / advance its status and event timeline. |
-| `export-package --project <slug> [--journal <id>]` | **Submission package**: manuscript + figures + data + `refs.bib` zipped into `submissions/packages/`, with a per-file sha256 `manifest.json` and a `checklist.md`. |
-| `reindex` / `export-bib` | Rebuild the index (recursive through subdirectories, full text included) / rebuild `refs.bib`. |
+| `status` | Library overview: project, reference, registered figure and journal-profile counts |
+| `search <query>` | Cross-project search with `--kind`, `--project`, `--limit` |
+| `list-projects` / `list-figures` / `list-refs` / `list-submissions` | List projects, figures, references or submissions, each with its own filters |
+| `check-citations --draft <path>` | Citation gate; a non-zero exit means the manuscript has missing or unverified citations. `--require-doi` demands a DOI on every entry |
+| `check-journal --project <slug> [--journal <id>]` | Journal compliance check against a profile; any `fail` exits 1 |
 
-**Irreversible**: `remove-ref` deletes one reference registration (it backs up `refs.json` first).
+Writes:
 
-> On Windows the library ships a Python wrapper, `.research/bin/py.cmd`, which picks an interpreter according to the library config; the invocation examples in the agent documentation go through it. To choose the interpreter yourself, use `SCIWORK_PYTHON`.
+| Subcommand | Meaning |
+| --- | --- |
+| `init` | Create or repair the library skeleton (idempotent) |
+| `new-project <slug>` | Create a project, optionally with `--title` and `--journal` |
+| `add-ref` | Register a reference; a DOI or URL is mandatory. `--verified-by` records how it was verified |
+| `register-figure` | Register a figure's provenance sidecar: source data, Origin graph page, journal profile, caption |
+| `add-submission` / `update-submission` | Record a submission or advance its status and timeline |
+| `export-package --project <slug> [--journal <id>]` | Submission package: manuscript, figures, data and `refs.bib` zipped, with a manifest and a checklist |
+| `reindex` / `export-bib` | Rebuild the library index or `refs.bib` |
 
-### The journal profiles at a glance
+`remove-ref` deletes one reference registration, after backing up `refs.json`.
 
-| Profile id | What it covers | Strictness |
+On Windows the library ships a Python wrapper, `.research/bin/py.cmd`, which picks an interpreter from the library config. To choose one yourself, use `SCIWORK_PYTHON`.
+
+### The journal profiles
+
+| id | Covers | Strictness |
 | --- | --- | --- |
 | `nature` | Nature family | high |
 | `science` | Science family | medium |
@@ -280,107 +271,91 @@ Every structured write to the library goes through it (the panel's "Command cons
 | `plos-one` | PLOS ONE | high |
 | `chinese-core-journal` | Chinese core journals | medium |
 | `cnki-thesis` | CNKI theses | low |
-| `gbt-7714` | The GB/T 7714 reference-format standard | low |
+| `gbt-7714` | GB/T 7714 reference format | low |
 | `thesis-generic` | Generic theses | medium |
 
-Strictness drives the default layout and the strictness of validation; each profile also carries concrete numbers and citations to its source. For how to read and apply a profile, see the `journal-profile` skill.
+Strictness drives the default layout and how strictly the check applies. Each profile also carries concrete numbers and sources. See the `journal-profile` skill for how to read and apply one.
 
 ## Skills
 
-| Skill | What it governs |
+| Skill | What it covers |
 | --- | --- |
-| `research-studio` | The main entry point. Routing table + three hard rules + a 30-second pre-flight check + a pre-delivery checklist + honest reporting (what can and cannot be proven). |
-| `origin-plot` | Origin plotting discipline. Getting data into Origin, four plotting paths, inspecting the current state before editing anything, **both verification steps**, export / delivery / registration, never hijacking the Origin session the user is working in, and a list of pitfalls actually hit in practice. It includes usage of all 74 `origin_*` MCP tools. |
-| `paper-writing` | Evidence discipline before writing, figure captions, Results, the structure and framing of Discussion, Chinese→English and polishing, replying to reviewers (response letters), and the pre-submission checklist. |
-| `literature-refs` | Four hard rules, registering references, searching (evidence before registration), citing in a manuscript, listing and exporting, working with the writing skill, and common pitfalls. |
-| `journal-profile` | How to read and apply journal profiles: profile fields, feeding parameters to plotting/writing, choosing a journal ("which one should I submit to?"), creating or updating a profile, working with the library scripts, and conflicts and changes. |
+| `research-studio` | Main entry: routing table, three hard rules, a 30-second pre-flight check, a pre-delivery checklist |
+| `research-stages` | What each of the seven stages should produce and when to move on |
+| `origin-plot` | Origin discipline: getting data in, four plotting paths, inspecting state before editing, the two verification steps, export and registration, never hijacking the user's Origin session, plus usage of the 74 `origin_*` tools |
+| `paper-writing` | Evidence before writing, captions, Results, Discussion, Chinese→English, polishing, replying to reviewers, pre-submission checks |
+| `literature-refs` | Four hard rules, registering references, searching, citing, listing and exporting |
+| `journal-profile` | Profile fields, feeding parameters to plotting and writing, choosing a journal, creating or updating a profile |
 
-Skills are discipline documents, not code: they constrain the agent's behaviour and add no dependencies.
+Skills are discipline text, not code. They constrain the agent and add no dependencies.
 
 ## Relationship to dsh-origin-plugin
 
-- **The plotting capability comes from [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin)** (MIT, by Fantasality). It provides the 74 `origin_*` MCP tools that talk to Origin on your machine.
-- **This repository does not include dsh-origin-plugin**, and does not copy its code; `dsh-sciwork` ships only an **adaptor skill**, `skills/origin-plot`, that teaches the agent to use those 74 tools to research-delivery standards.
-- `skills/origin-plot/references/origin-tools.json` is a **derived file**: generated from dsh-origin-plugin's tool list so the agent can look tools up offline (name / arguments / purpose).
-- The two can be installed independently. Without Origin and dsh-origin-plugin, everything else in `dsh-sciwork` — the library, the panel, writing, references, journal profiles — still works; only the "make a figure" step is unavailable.
-- The `SCIWORK_ORIGIN_PLUGIN` environment variable tells the adaptor skill where dsh-origin-plugin is installed.
+Plotting comes from [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin) (MIT, by Fantasality). It provides the 74 `origin_*` MCP tools that talk to Origin on your machine.
+
+This repository does not include dsh-origin-plugin and does not copy its code. It ships only an adaptor skill, `skills/origin-plot`, that teaches the agent to use those 74 tools to research-delivery standards. `skills/origin-plot/references/origin-tools.json` is a derived file generated from its tool list, for offline lookup.
+
+The two install independently. Without Origin and dsh-origin-plugin, the library, panel, writing, references and journal profiles all still work; only plotting is unavailable. `SCIWORK_ORIGIN_PLUGIN` tells the adaptor skill where the plugin is installed.
 
 ## Self-tests
 
-The repository ships five self-test scripts and one patch preflight. None of them writes to your real library (write actions run against an isolated copy behind a hard gate). The first five need Node only; the patch preflight is written in Python and needs one non-stdlib dependency, PyYAML:
+The repository ships five self-test scripts and one patch preflight. None of them writes to your real library; write actions run against an isolated copy. The first five need Node only; the preflight needs PyYAML.
 
 ```bash
 node scripts/selftest-host.mjs      # host half: route registration, path guards, snapshot shape
 node scripts/selftest-actions.mjs   # the 47 actions: read/guard checks + writes against an isolated copy
-node scripts/selftest-client.mjs    # client: the seven tabs' rendering, overlays, buttons and request shapes
+node scripts/selftest-client.mjs    # client: eight tabs, overlays, buttons, request shapes
 node scripts/selftest-live.mjs      # real wiring: real panel x real endpoint x real actions x real writes (temp library)
-node scripts/test-install.mjs       # install surface: bundled skills, library script seeds, script picking, package files, apply wiring
-python -m pip install pyyaml        # only for the next line (CI installs it in its own step)
-python scripts/validate-patch.py    # cordis.patch.yml preflight: preset rows, persona, inserted row
+node scripts/test-install.mjs       # install surface: bundled skills, library script seeds, package files, apply wiring
+python -m pip install pyyaml
+python scripts/validate-patch.py    # cordis.patch.yml preflight
 ```
 
-Before pushing to a public repository there is one more gate: `node scripts/check-local-info.mjs` (also run by `cycle.mjs`). It takes this machine's home directory, user name, host name, temp directory and library root as markers, scans every tracked file and every not-yet-pushed commit message, and fails on any hit — replace those with placeholders such as `<repo-root>` / `<library-root>` / `<system-temp>` before committing.
+To run everything in one go, use `node scripts/cycle.mjs`. Since 0.4.5 it runs 22 checks in CI order, adds a read-only git status, prints a summary table and exit code, and writes the full report to `out/cycle/<date>/` (`out/` is gitignored).
 
-The self-tests run in two modes, and **a fresh clone with no library configured can still run them**:
+Before pushing to a public repository there is one more gate: `node scripts/check-local-info.mjs` (also run by `cycle.mjs`). It takes the machine's home directory, user name, host name, temp directory and library root as markers and scans every tracked file plus any unpushed commit messages. A hit means machine information is in the repository; replace it with placeholders such as `<repo-root>`, `<library-root>` or `<system-temp>` before committing.
 
-**A. Without pointing at any research library (CI / a freshly cloned machine)**
+The tests also run without a library (CI, or a fresh clone):
 
 ```bash
 node scripts/selftest-host.mjs      # all pass, exit 0
-node scripts/selftest-actions.mjs   # all pass · 0 failed · content checks skipped
-node scripts/selftest-client.mjs    # all pass · 0 failed · content checks skipped
-python scripts/validate-patch.py    # ✓ patch preflight passed
+node scripts/selftest-actions.mjs   # all pass, content checks skipped
+node scripts/selftest-client.mjs    # all pass, content checks skipped
+python scripts/validate-patch.py    # patch preflight passed
 ```
 
-Every **content** check (the ones that need real drafts / figures / data tables in the library) is recorded as `SKIP` or "not run"; the script prints a line saying so (`未运行：内容类检查需要一个可用的科研库（当前库根 …）`) and **exits 0** — having no library is not a failure.
+Content checks that need a real library are recorded as skipped and the script exits 0. Having no library is not a failure.
 
-**B. Pointing at a real library (measured baseline)**
+With a real library (numbers vary with its contents; these are from a fixture library):
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 passed · 0 failed · 3 skipped (fixture library; counts vary with library content)
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 passed · 0 failed · 3 skipped
+SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 elements · 0 failed
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 252 passed · 0 failed
-node scripts/selftest-live.mjs --real /path/to/Research             # 6 passed · 0 failed (read-only sweep)
+node scripts/selftest-live.mjs --real /path/to/Research             # 6 passed · 0 failed
 ```
 
-- `selftest-host.mjs` — tallies passes and failures only, exit code 0. The only check that can be recorded as "skipped" is one that depends on the real library actually containing a figure file (when there is none, it is not counted as a failure).
-- `selftest-client.mjs` — its summary line likewise has only those two columns; in mode B it measures `252 passed · 0 failed`, exit code 0.
-- `selftest-live.mjs` — the one **real** end-to-end script: a miniature React renders the real `lib/client.js`, the panel's `rpc.call` hits the real `lib/index.js` route, and execution goes through the real `lib/actions.js`, dispatch, plan token and receipt into a temporary library; only the DSH host's model service is faked. Default run: `51 passed · 0 failed · 6 skipped` (temp library, removed afterwards). `--real <library-root>` sweeps the real library's read actions (`6 passed · 0 failed`). It targets exactly what the fixture-based tests miss: parameters polluted by an event object, wrong return shapes, and an empty streamed answer that nobody reports.
-- `validate-patch.py` — prints `✓ 补丁预检通过` (patch preflight passed), exit code 0. It reports the `preset-research` preset's top-level row count (19 rows, 29 leaf rows after recursion, 2 of them disabled by an `!!js` condition), its nested groups (planning / compaction / delegation), the persona length, and confirmation that the inserted `research-library` row belongs to the host plugin rather than to an agent preset.
-- `selftest-actions.mjs` — the write-action stage **requires the library root to point at the isolated copy the script creates**. If it finds the snapshot pointing somewhere else, it prints `FAIL 隔离闸门：snapshot 指向副本` and exits with code 2, having written **not a single byte**. That is by design, not a plugin defect: write actions always run inside the copy and never touch your real library.
+`selftest-live.mjs` is the one real end-to-end script: a miniature React renders the real `lib/client.js`, the panel's `rpc.call` hits the real `lib/index.js` route, and execution goes through the real actions, dispatch, token and receipt into a temporary library. Only the DSH host's model service is faked. Default run: `51 passed · 0 failed · 6 skipped`, and the temp library is removed afterwards.
 
-## Documentation map
+The write section of `selftest-actions.mjs` requires the library root to point at the isolated copy the script creates. If the snapshot points somewhere else it prints `FAIL 隔离闸门：snapshot 指向副本`, exits with code 2, and writes nothing. That is by design.
+
+## Documentation
 
 | File | Contents |
 | --- | --- |
-| [README.md](./README.md) / [README.en.md](./README.en.md) | What this is, what it installs, how to use it |
-| [docs/INSTALL.md](./docs/INSTALL.md) | Installation and first-time library setup (with troubleshooting) |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Internals and contracts: host actions, HTTP endpoint, panel boundary, path resolution, self-test scope |
-| [docs/RELEASE.md](./docs/RELEASE.md) | Maintainer manual: releases, publishing to the plugin marketplace, screenshots, clean-machine checks |
+| [docs/INSTALL.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/INSTALL.md) | Installation and first-time library setup, with troubleshooting |
+| [docs/ARCHITECTURE.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/ARCHITECTURE.md) | Structure and contracts: host actions, HTTP endpoint, panel boundary, path resolution, self-test scope |
+| [docs/RELEASE.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/RELEASE.md) | Maintainer manual: releases, marketplace publishing, screenshots, clean-machine checks |
+| [docs/CYCLE-14D.md](https://github.com/58catmiao/dsh-sciwork/blob/main/docs/CYCLE-14D.md) | Maintainer manual: the 14-day cycle of debugging, feature work and GitHub sync |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history |
 | [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) | Third-party components and credits |
 
 ## License and credits
 
-**License: MIT**, copyright 58catmiao. The license text lives in [LICENSE](./LICENSE).
+MIT, copyright 58catmiao. The license text is in [LICENSE](./LICENSE).
 
-### Credits
+Origin plotting comes from [dsh-origin-plugin](https://github.com/Fantasality/dsh-origin-plugin) (MIT, by Fantasality). This repository does not include it; `skills/origin-plot/references/origin-tools.json` is derived from its tool list for offline lookup.
 
-- **The Origin plotting capability** comes from [**dsh-origin-plugin**](https://github.com/Fantasality/dsh-origin-plugin) (MIT, by **Fantasality**). This repository does not include it; `skills/origin-plot/references/origin-tools.json` is derived from its tool list for offline lookup. Thanks to the author for open-sourcing this local Origin automation.
-- **DSH (DeepSeek Harness)** provides the plugin mechanism, agent presets and tool routing that this plugin extends.
-- The **journal profiles** are this project's own summaries of **numeric requirements, clauses and sources** — not official journal documents.
+DSH provides the plugin mechanism, agent presets and tool routing that this plugin extends.
 
-### On content copyright
-
-This repository **contains no copyrighted paper text or journal PDFs**.
-
-- The 12 journal profiles under `journals/` describe submission requirements as **numbers, clauses and summaries with sources cited** (word limits, figure requirements, reference formats, and so on); where a specific clause matters, the journal's own current author guidelines take precedence.
-- `refs/` holds **your own** reference metadata (title, DOI, URL, …) and attachments you place in `refs/pdf/` yourself; the repository preloads no full text.
-- The journal profiles are an **aid**, not legal or submission advice; any consequence of using them in place of the official guidelines is the user's own.
-
----
-
-<div align="center">
-
-**dsh-sciwork** · every research step lands on your own disk
-
-</div>
+The journal profiles are this project's own summaries of numeric requirements, clauses and sources, not official journal documents. This repository contains no paper text or journal PDFs. The profiles are an aid, not legal or submission advice; the journal's current author guidelines take precedence.

@@ -282,5 +282,5 @@
     #   requestBody: 'buffered', fetch })` 之后：精确路由在 `createSharedFetchHandler` 里
     #   优先于拦截器，与 api-gateway 完全共存；未注册端点仍返回 404，路径逃逸被拒。
     - id: research-library
-      name: 'dsh-sciwork'
+      name: '@58catmiao/dsh-sciwork'
 

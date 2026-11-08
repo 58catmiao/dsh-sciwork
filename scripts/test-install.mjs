@@ -81,7 +81,7 @@ if (fs.existsSync(indexFile)) {
   const index = JSON.parse(fs.readFileSync(indexFile, 'utf8'));
   check('format 是 1', index.format === 1);
   check('标题含 en', typeof index.title === 'string' || (index.title && typeof index.title.en === 'string'));
-  const entry = (index.plugins || []).find((p) => p.name === 'dsh-sciwork');
+  const entry = (index.plugins || []).find((p) => p.name === '@58catmiao/dsh-sciwork');
   check('索引里有 dsh-sciwork', !!entry);
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
   let tagCommit = '';
@@ -94,7 +94,7 @@ if (fs.existsSync(indexFile)) {
   if (tagCommit) {
     // 已发布：索引必须含当前版本，且钉住的 commit 就是 tag 的 commit（市场和安装器照 commit checkout）。
     check(`索引含当前版本 ${version}`, !!hit, (entry && (entry.versions || []).map((v) => v.version).join(', ')) || '');
-    check('版本源是 git（本包没发 npm）', !!hit && hit.source && hit.source.type === 'git');
+    check('版本源是 git（市场索引钉 commit）', !!hit && hit.source && hit.source.type === 'git');
     check('commit 是 40 位小写 hex', !!hit && /^[0-9a-f]{40}$/.test(String(hit.source.commit)));
     check('publishTimestamp 是整数秒', !!hit && Number.isInteger(hit.publishTimestamp) && hit.publishTimestamp > 0);
     check(`索引 commit 与 tag v${version} 一致`, !!hit && hit.source.commit === tagCommit, `tag ${tagCommit.slice(0, 7)} / 索引 ${(hit && hit.source.commit || '').slice(0, 7)}`);
@@ -118,12 +118,14 @@ if (fs.existsSync(indexFile)) {
 
 console.log('\n[3] 包清单');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-for (const dir of ['lib', 'library', 'skills', 'scripts', 'docs', 'market']) {
+for (const dir of ['lib', 'library', 'skills', 'scripts', 'market']) {
   check(`files 里含 ${dir}`, (pkg.files || []).some((f) => f === dir || f === `${dir}/`), (pkg.files || []).join(' '));
 }
+check('files 里只带两份公开文档', (pkg.files || []).includes('docs/INSTALL.md') && (pkg.files || []).includes('docs/ARCHITECTURE.md'), (pkg.files || []).join(' '));
+check('内部规划文档不进包', !(pkg.files || []).some((f) => f === 'docs' || f === 'docs/'), (pkg.files || []).join(' '));
 check('dsh.bundle.patch 指向 cordis.patch.yml', pkg.dsh && pkg.dsh.bundle && pkg.dsh.bundle.patch === './cordis.patch.yml');
 check('dsh.client.platform 是 web', pkg.dsh && pkg.dsh.client && pkg.dsh.client.platform === 'web');
-check('package.json name 是 dsh-sciwork', pkg.name === 'dsh-sciwork');
+check('package.json name 是 @58catmiao/dsh-sciwork', pkg.name === '@58catmiao/dsh-sciwork');
 check('engines.node 声明了', !!(pkg.engines && pkg.engines.node));
 check('零运行期依赖（git 源安装不需要 npm 依赖树）', !pkg.dependencies || Object.keys(pkg.dependencies).length === 0);
 check('scripts.install-plugin 有登记', !!(pkg.scripts && pkg.scripts['install-plugin']));

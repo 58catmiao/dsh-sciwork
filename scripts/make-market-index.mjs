@@ -9,8 +9,8 @@
  * 产物：`market/plugins.json`，git 源 + **钉死 commit**（市场的安装参数是
  * `git+<url>.git#<40 位 commit>`，钉不住 commit 的索引会被校验拒绝）。
  *
- * 为什么不用 npm 源：本包没有发布到 npm（`npm view dsh-sciwork` → 404）。
- * 将来若发了 npm，再给版本加一条 `{type:'npm'}` 即可，格式允许混用。
+ * 索引仍用 git 源：钉死 commit，装到的版本与 tag 完全一致。
+ * 包已发布到 npm（@58catmiao/dsh-sciwork），需要时也可以给版本加 `{type:'npm'}`，格式允许混用。
  *
  * 用法：
  *   node scripts/make-market-index.mjs                 # 按 package.json 版本 + v<版本> tag（没有就 HEAD）生成
@@ -41,7 +41,7 @@ const REPO_URL = `https://github.com/${REPO_SLUG}`;
 /** 索引文件位置（相对仓库根）。 */
 const OUT_FILE = 'market/plugins.json';
 /** 插件包名（必须与 package.json 的 name 一致，市场按包名去重）。 */
-const PKG_NAME = 'dsh-sciwork';
+const PKG_NAME = '@58catmiao/dsh-sciwork';
 
 function usage(message) {
   if (message) console.error(`× ${message}`);
