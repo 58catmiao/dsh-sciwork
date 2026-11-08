@@ -5,6 +5,25 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.10] - 2026-11-08
+
+科研库根目录终于能在面板里改，而且改完不会再被插件升级冲掉。
+
+### Added
+
+- **面板「设置 → 科研库」**：显示当前库根、它由哪一层配置说了算（库内 `.research/config.json` / 环境变量 / 面板设置 / 随包快照 / 默认位置），可直接改库根并落盘到用户级 `<DSH_HOME>/sciwork/config.json`。保存走「计划 → 确认」两步（先摆 diff 与提醒，再带一次性令牌写入），写完立刻读回复核。目录不存在时默认拒绝，勾「目录不存在则新建」才建（只建目录、不铺骨架），并提示用 `scripts/install.mjs --library-root <路径>` 初始化。
+- **动作 `settings.library` / `settings.library_root_set` / `settings.library_root_clear`**（工具 `sciwork_settings_library`、`sciwork_settings_library_root_set`、`sciwork_settings_library_root_clear`）：面板、agent、CLI 三处共用同一套。只读视图会把「环境变量正压过面板设置」「这个目录还不是科研库」「库内启动器不存在」直接说成人话，并列出完整优先级。
+
+### Changed
+
+- **库根优先级新增用户级一层**：库内 `.research/config.json` ＞ 环境变量 ＞ **用户级 `<DSH_HOME>/sciwork/config.json`** ＞ 随包 `library/config.json` ＞ 默认 `<用户目录>/Research`。以前库根只存在包内的安装期快照里，`pnpm install` / 升级插件会整个换掉包目录，用户配好的库位置随之丢失——面板报「科研库根目录不存在：…/Research」正是这么来的。用户级配置在包外，插件升级、重装都活得过。
+- `loadSettings()` 返回值新增 `rootSource` / `envRoot` / `userRoot` / `bundledRoot` / `userConfig` 五个字段（面板据此解释「改了为什么不生效」），原有字段与语义不变。
+
+### Tests
+
+- 新增 `scripts/test-settings.mjs`（29 通过 · 0 失败）：全程隔离在临时 `DSH_HOME` 里跑，不碰真实 `~/.dsh`；覆盖五层优先级、令牌缺失/重放、绝对路径与目录存在性校验、新建目录、清除回退与幂等空操作。门禁 22 → 23 项。
+- `scripts/selftest-client.mjs` 新增 14 项断言（现 266 项）：设置 → 科研库栏能读现状、列出五层优先级、保存先发计划、确认时原样回传 `actionId/planId/token/params`、环境变量压过面板时给出警告、没有用户级配置时「恢复默认」不可点。
+
 ## [0.4.9] - 2026-11-08
 
 修掉切到 npm 包名后桌面重启崩溃的问题。

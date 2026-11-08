@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.4.9 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.4.10 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -182,9 +182,21 @@ agent 会走 Origin 真机绘图、核验、导出，再把溯源信息登记回
 
 面板能看、能筛、能导入、能归档、能删、能对表格做变换、能做投稿前体检和打包。它不出图。所有写入都经库脚本落文件并登记，面板不直接改索引。
 
+「设置」弹层里有「科研库」一栏：显示当前库根、它由哪一层配置说了算，可以直接改库根（写进用户级配置，见下一节）或恢复默认。保存走「计划 → 确认」两步，确认框里会写明改前改后的路径与风险提示。
+
 ## 配置
 
-配置分两层。库内 `<库根>/.research/config.json` 是权威，环境变量负责告诉 DSH 去哪找库、用哪个 Python。
+配置分三层。库内 `<库根>/.research/config.json` 是权威，环境变量负责运行期显式指定，面板「设置 → 科研库」把库根写进用户级配置（包外文件，插件升级不会丢）。
+
+库根按下面的顺序取第一个有值的，上面的赢：
+
+1. 库内 `.research/config.json` 的 `libraryRoot`（最权威，`research.py` 写的）
+2. 环境变量 `SCIWORK_LIBRARY` / `RESEARCH_LIBRARY`（运行期显式指定，自检脚本靠它隔离到临时库）
+3. 用户级 `<DSH_HOME>/sciwork/config.json`（面板「设置 → 科研库」写的；`DSH_HOME` 默认 `~/.dsh`）
+4. 随包 `library/config.json`（安装期快照，升级插件会整个换掉——库位置“过一阵就丢”多是因为它）
+5. 默认 `<用户目录>/Research`
+
+面板的只读视图会把「当前由哪一层说了算」和「环境变量是否正压过设置」直接写出来，不用猜为什么改了没生效。
 
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -313,7 +325,7 @@ python -m pip install pyyaml
 python scripts/validate-patch.py    # cordis.patch.yml 预检
 ```
 
-想一条命令跑完全部，用 `node scripts/cycle.mjs`。0.4.5 起一共 22 项，按 CI 的顺序跑，附一段只读的 git 状态，输出汇总表和退出码，完整报告落在 `out/cycle/<日期>/`（`out/` 已 gitignore）。
+想一条命令跑完全部，用 `node scripts/cycle.mjs`。0.4.5 起一共 23 项，按 CI 的顺序跑，附一段只读的 git 状态，输出汇总表和退出码，完整报告落在 `out/cycle/<日期>/`（`out/` 已 gitignore）。
 
 推送到公开仓库前还有一条门禁：`node scripts/check-local-info.mjs`（`cycle.mjs` 也会跑）。它拿本机的家目录、用户名、主机名、临时目录、库根等标记，去扫所有跟踪文件和还没推出去的提交信息。命中就说明仓库里带了本机信息，换成 `<仓库根>`、`<库根>`、`<系统临时目录>` 之类的占位符再提交。
 

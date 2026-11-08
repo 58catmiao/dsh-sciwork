@@ -155,6 +155,8 @@ for (const [label, script, skip] of [
   ['action 自检（动作契约）', 'scripts/selftest-actions.mjs', false],
   ['registry 自检（登记表形状/参数）', 'scripts/test-registry.mjs', false],
   ['dispatch 自检（令牌/回执/幂等）', 'scripts/test-dispatch.mjs', false],
+  // 科研库根目录设置：用户级配置优先级 / 计划令牌 / 清除回退；全程跑在临时 DSH_HOME 里，不碰真实 ~/.dsh。
+  ['settings 自检（科研库根目录/优先级/令牌）', 'scripts/test-settings.mjs', false],
   ['projects 自检（课题/迁移/备份）', 'scripts/test-projects.mjs', false],
   ['tools 自检（工具暴露/schema 窄化）', 'scripts/test-tools.mjs', false],
   ['契约自检（python 映射/超时）', 'scripts/test-contract.mjs', false],

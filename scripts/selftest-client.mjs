@@ -1513,6 +1513,128 @@ console.log('\n[15] 阶段可选（0.3.10）');
   check('本机对话缓存统计不炸（Node 里没有 localStorage）', typeof T4.countChatTurns() === 'number', String(T4.countChatTurns()));
 }
 
+/* 0.4.10 新增：设置 → 科研库（库根面板）
+ * 面板只做「读现状 → 摆计划 → 确认写入」三件事，一处写错就会把库指到别的地方，
+ * 所以这里把界面文案、参数原样回传、计划层都锁住。夹具里的路径全是假的。 */
+{
+  const T5 = clientExports.__test;
+  const calls = [];
+  const fixture = {
+    root: 'D:/Example/Research',
+    rootSource: 'user',
+    rootSourceLabel: '用户级配置（面板设置）',
+    rootExists: true,
+    looksLikeLibrary: true,
+    inLibraryConfig: true,
+    launcher: 'D:/Example/Research/.research/bin/py.cmd',
+    launcherExists: true,
+    interpreter: null,
+    python: { ok: true, path: 'python', version: '3.12.0' },
+    userConfig: 'C:/Users/example/.dsh/sciwork/config.json',
+    userConfigExists: true,
+    userRoot: 'D:/Example/Research',
+    userUpdatedAt: '2026-11-08T09:00:00.000Z',
+    envRoot: null,
+    envNames: ['SCIWORK_LIBRARY', 'RESEARCH_LIBRARY'],
+    bundledRoot: '/bundle/Research',
+    defaultRoot: 'C:/Users/example/Research',
+    dshHome: 'C:/Users/example/.dsh',
+    priority: [
+      { source: 'in-library', label: '库内 .research/config.json' },
+      { source: 'env', label: '环境变量 SCIWORK_LIBRARY' },
+      { source: 'user', label: '用户级配置（面板设置）' },
+      { source: 'bundled', label: '随包 library/config.json' },
+      { source: 'default', label: '默认 <home>/Research' },
+    ],
+    sources: {},
+    notes: ['面板设置生效中'],
+  };
+  const fake = (action, args) => {
+    calls.push({ action, args: args || {} });
+    if (action === 'settings.library') return Promise.resolve(fixture);
+    if (action === 'llm.info') return Promise.resolve({ available: true, models: [] });
+    if (action === 'system.update_check') return Promise.resolve({ plugin: { version: '0.4.10' } });
+    if (action === 'action.plan') {
+      return Promise.resolve({
+        actionId: args.actionId, planId: 'p1', token: 't1', params: args.params || {},
+        title: '改科研库根目录', summary: '令牌 5 分钟内一次性有效。',
+        writes: [fixture.userConfig], warnings: [],
+      });
+    }
+    if (action === 'action.confirm') return Promise.resolve({ value: { note: '已写入用户级配置' }, receipt: { id: 'r1' } });
+    return Promise.resolve({});
+  };
+  const props = { call: fake, onClose() {}, version: '0.4.10', onReload() { props.reloaded = true; } };
+  let sm = await settle(T5.SettingsModal, props);
+  const navBtn = findByTagText(sm, 'button', '科研库');
+  check('设置里有「科研库」栏', !!navBtn, allText(sm).slice(0, 120));
+  if (navBtn) {
+    navBtn.props.onClick();
+    sm = await settle(T5.SettingsModal, props);
+  }
+  const libText = () => allText(sm);
+  check('科研库栏向宿主要库根现状（settings.library）',
+    calls.some((c) => c.action === 'settings.library'), calls.map((c) => c.action).join(','));
+  check('显示当前库根与「是谁定的」',
+    libText().includes('当前库根') && libText().includes(fixture.root) && libText().includes(fixture.rootSourceLabel),
+    libText().slice(0, 240));
+  check('列出生效优先级五层',
+    libText().includes('生效优先级') && libText().includes('库内 .research/config.json') && libText().includes('随包 library/config.json'),
+    libText().slice(-320));
+  const rootInput = findAll(sm, (n) => n.tag === 'input' && String(n.props.placeholder || '').includes('/path/to/Research'))[0];
+  check('库根输入框预填当前库根（占位符不是本机路径）',
+    !!rootInput && rootInput.props.value === fixture.root, rootInput ? String(rootInput.props.value) : '没有输入框');
+  check('有「目录不存在则新建」开关', libText().includes('目录不存在则新建'), libText().slice(-200));
+
+  const saveBtn = findByTagText(sm, 'button', '保存库根');
+  check('有「保存库根」按钮', !!saveBtn);
+  if (saveBtn) {
+    saveBtn.props.onClick();
+    sm = await settle(T5.SettingsModal, props);
+  }
+  const planCall = calls.filter((c) => c.action === 'action.plan').slice(-1)[0];
+  check('保存库根先发 action.plan（settings.library_root_set）',
+    !!planCall && planCall.args.actionId === 'settings.library_root_set'
+    && planCall.args.params && planCall.args.params.root === fixture.root,
+    JSON.stringify(planCall && planCall.args));
+  check('计划层出现，并写明会写哪个文件',
+    libText().includes('确认执行') && libText().includes(fixture.userConfig), libText().slice(-260));
+  const okBtn = findByTagText(sm, 'button', '确认执行');
+  if (okBtn) {
+    okBtn.props.onClick();
+    sm = await settle(T5.SettingsModal, props);
+  }
+  const confirmCall = calls.filter((c) => c.action === 'action.confirm').slice(-1)[0];
+  check('确认时把 actionId / planId / token / params 一起发回去',
+    !!confirmCall && confirmCall.args.actionId === 'settings.library_root_set'
+    && confirmCall.args.planId === 'p1' && confirmCall.args.token === 't1'
+    && confirmCall.args.params && confirmCall.args.params.root === fixture.root,
+    JSON.stringify(confirmCall && confirmCall.args));
+  check('写入成功后回一句人话', libText().includes('已写入用户级配置'), libText().slice(-200));
+  check('写完会通知面板刷新（onReload）', props.reloaded === true, String(props.reloaded));
+
+  // 来源是环境变量时，必须明说「面板改了也不生效」
+  const envCalls = [];
+  const envFake = (action, args) => {
+    envCalls.push({ action, args: args || {} });
+    if (action === 'settings.library') return Promise.resolve(Object.assign({}, fixture, { rootSource: 'env', rootSourceLabel: '环境变量 SCIWORK_LIBRARY', envRoot: fixture.root, userRoot: null, userConfigExists: false }));
+    if (action === 'llm.info') return Promise.resolve({ available: true, models: [] });
+    if (action === 'system.update_check') return Promise.resolve({});
+    return Promise.resolve({});
+  };
+  // 换一份 props 重新挂载：这个测试渲染器把 state 存在「组件名 + key」桶里，不换 key 会读到上一份状态。
+  const envProps = { key: 'envprobe', call: envFake, onClose() {}, version: '0.4.10' };
+  let envTree = await settle(T5.SettingsModal, envProps);
+  const envNav = findByTagText(envTree, 'button', '科研库');
+  if (envNav) {
+    envNav.props.onClick();
+    envTree = await settle(T5.SettingsModal, envProps);
+  }
+  check('环境变量压过面板时给出警告', allText(envTree).includes('面板这里改了也不会生效'), allText(envTree).slice(-260));
+  check('没有用户级配置时「恢复默认」不可点',
+    (findByTagText(envTree, 'button', '恢复默认') || { props: {} }).props.disabled === true);
+}
+
 /* 汇总 */
 console.log('\n' + '='.repeat(72));
 console.log(`${pass} 通过 · ${fail} 失败`);

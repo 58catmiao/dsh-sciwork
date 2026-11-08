@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.4.9 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.4.10 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -311,7 +311,7 @@ python -m pip install pyyaml
 python scripts/validate-patch.py    # cordis.patch.yml preflight
 ```
 
-To run everything in one go, use `node scripts/cycle.mjs`. Since 0.4.5 it runs 22 checks in CI order, adds a read-only git status, prints a summary table and exit code, and writes the full report to `out/cycle/<date>/` (`out/` is gitignored).
+To run everything in one go, use `node scripts/cycle.mjs`. Since 0.4.5 it runs 23 checks in CI order, adds a read-only git status, prints a summary table and exit code, and writes the full report to `out/cycle/<date>/` (`out/` is gitignored).
 
 Before pushing to a public repository there is one more gate: `node scripts/check-local-info.mjs` (also run by `cycle.mjs`). It takes the machine's home directory, user name, host name, temp directory and library root as markers and scans every tracked file plus any unpushed commit messages. A hit means machine information is in the repository; replace it with placeholders such as `<repo-root>`, `<library-root>` or `<system-temp>` before committing.
 
