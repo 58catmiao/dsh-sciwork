@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.4.10 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.4.11 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -345,7 +345,7 @@ python scripts/validate-patch.py    # 补丁预检通过
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 通过 · 0 失败 · 3 跳过
 SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 个元素 · 0 失败
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 252 通过 · 0 失败
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 278 通过 · 0 失败
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 · 0 失败
 ```
 

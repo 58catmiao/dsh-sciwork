@@ -1284,6 +1284,49 @@ console.log('\n[12b] v2 工作台：库不可读 ≠ 空库');
   check('库根不可读时不再假装「库里还没有课题」', !bt.includes('库里还没有课题'), bt.slice(0, 200));
 }
 
+/* 12c. 回归（2026-11-14 / 0.4.11）：切课题时详情必须复位，读失败 / 乱序回来都不能写错课题 */
+console.log('\n[12c] v2 工作台：切课题不复位详情 ≠ 少一个请求');
+{
+  const T = clientExports.__test;
+  const two = [
+    { slug: 'a', title: '课题甲', stage: 'topic', next: { ready: false, blockers: [{ why: '甲专属阻塞', hint: '甲提示' }] } },
+    { slug: 'b', title: '课题乙', stage: 'draft', next: { ready: false, blockers: [{ why: '乙专属阻塞', hint: '' }] } },
+  ];
+  const bare = (p) => Object.assign({ figures: [], drafts: [], datasets: [], tables: [], opju: [] }, p);
+  const callTwo = (action, args) => {
+    if (action === 'project.list') return Promise.resolve({ projects: two });
+    if (action === 'system.receipts') return Promise.resolve({ receipts: [] });
+    if (action === 'snapshot') {
+      return Promise.resolve({ ok: true, counts: {}, projects: two.map(bare), submissions: [], refs: [] });
+    }
+    if (action === 'project.get') {
+      const slug = args && args.project;
+      if (slug === 'a') {
+        return Promise.resolve({ project: { id: 'a', title: '课题甲', stage: 'topic' }, next: { ready: false, todo: [], blockers: [{ why: '甲详情专属', hint: '' }] } });
+      }
+      return Promise.reject(new Error('盘上读不出来'));
+    }
+    return Promise.resolve({});
+  };
+  let w = await settle(T.Workbench, { call: callTwo, onImport() {} }, 12, 200);
+  const aRow0 = findAll(w, (n) => n.tag === 'button' && allText(n).includes('课题甲'))[0];
+  check('课题甲行可点', !!aRow0);
+  if (aRow0) { aRow0.props.onClick(); w = await settle(T.Workbench, { call: callTwo, onImport() {} }, 12, 200); }
+  check('点课题甲 → 详情读到甲（基线）', allText(w).includes('甲详情专属'), allText(w).slice(0, 200));
+  const bRow = findAll(w, (n) => n.tag === 'button' && allText(n).includes('课题乙'))[0];
+  check('第二个课题行可点', !!bRow);
+  if (bRow) { bRow.props.onClick(); w = await settle(T.Workbench, { call: callTwo, onImport() {} }, 12, 200); }
+  const wt = allText(w);
+  /* 缺陷面孔：以前只在拿到新详情时才覆盖，B 读失败就一直是 A 的阶段 / 阻塞 / 血缘。 */
+  check('切到 B（详情读失败）→ 不再挂着 A 的检查项', !wt.includes('甲详情专属') && !wt.includes('甲专属阻塞'), wt.slice(0, 240));
+  check('切到 B（详情读失败）→ 说清是哪个课题读不出来', wt.includes('课题「b」的详情没读出来') && wt.includes('盘上读不出来'), wt.slice(0, 240));
+  check('切到 B → 右边回落到列表行（有标题与阶段，不白屏）', wt.includes('课题乙') && wt.includes('写作'), wt.slice(0, 240));
+  /* 清掉错后切回 A：详情要能重新读回来（失败没有把状态弄坏） */
+  const aRow = findAll(w, (n) => n.tag === 'button' && allText(n).includes('课题甲'))[0];
+  if (aRow) { aRow.props.onClick(); w = await settle(T.Workbench, { call: callTwo, onImport() {} }); }
+  check('再切回 A → 详情重新读回', allText(w).includes('甲详情专属') && !allText(w).includes('课题「a」的详情没读出来'), allText(w).slice(0, 240));
+}
+
 /* [13] 0.3.3 面板交互：v1/v2 页签、遮罩/Esc 关闭、图卡参数折叠 */
 console.log('\n[13] 面板交互（0.3.3）');
 {
@@ -1339,6 +1382,24 @@ console.log('\n[13] 面板交互（0.3.3）');
   if (pbtn) pbtn.props.onClick();
   pt = await settle(Panel, {});
   check('点开后按钮变「收起参数」', !!findAll(pt, (n) => n.tag === 'button' && allText(n).trim() === '收起参数')[0]);
+
+  /* 0.4.11：筛选到零命中时，v1 页签的空态不能把「筛掉了」说成「库是空的」 */
+  const v1search = inputsByClass(pt, 'rl-search')[0];
+  check('v1 页签行有筛选框', !!v1search, buttonTexts(pt));
+  if (v1search) {
+    v1search.props.onChange({ target: { value: 'zzz-nope' } });
+    pt = await settle(Panel, {});
+    const zt = allText(pt);
+    check('v1 筛选零命中 → 说「没有匹配」而不是「库里还没有课题」',
+      /没有匹配「zzz-nope」的课题/.test(zt) && !zt.includes('库里还没有课题'), zt.slice(0, 220));
+    check('v1 筛选零命中 → 空态不再递第二颗「新建课题」（页头那颗仍在）',
+      findAll(pt, (n) => n.tag === 'button' && allText(n).trim() === '新建课题').length === 1, buttonTexts(pt));
+    const clearQ = findByTagText(pt, 'button', '清空筛选');
+    check('v1 筛选零命中 → 仍有清空筛选的出口', !!clearQ, buttonTexts(pt));
+    if (clearQ) { clearQ.props.onClick(); pt = await settle(Panel, {}); }
+    check('清空筛选后图卡回来', allText(pt).includes('Graph1') || allText(pt).includes('fig1'), allText(pt).slice(0, 160));
+  }
+
   intercept = null;
   const backLive = vbtn(pt, '刷新');
   if (backLive) backLive.props.onClick();

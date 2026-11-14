@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.4.10 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.4.11 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -331,7 +331,7 @@ With a real library (numbers vary with its contents; these are from a fixture li
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 passed · 0 failed · 3 skipped
 SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 elements · 0 failed
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 252 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 278 passed · 0 failed
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 passed · 0 failed
 ```
 
