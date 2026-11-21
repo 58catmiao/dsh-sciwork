@@ -769,9 +769,15 @@ if (searchBox) {
   const pick = names
     .map((n) => ({ n, hits: names.filter((x) => x.includes(n)).length }))
     .sort((a, b) => a.hits - b.hits)[0] || null;
+  /*
+   * 无论真库有没有草稿都要**真的打一次筛选词**：不输入的话「清空筛选」不会出现，
+   * 下面那条按钮断言在空库（CI 就是空库）会假红——2026-11-21 的 CI 四条腿全红就是它。
+   * 空库用哨兵词，只验「筛选生效 → 空态 → 清空」这条通路。
+   */
+  const needle = pick ? pick.n : 'zzz-nope';
+  searchBox.props.onChange({ target: { value: needle } });
+  t = await settle(Panel, {});
   if (pick) {
-    searchBox.props.onChange({ target: { value: pick.n } });
-    t = await settle(Panel, {});
     const shouldShow = names.filter((n) => n.includes(pick.n));
     const shouldHide = names.filter((n) => !n.includes(pick.n));
     // 按「卡片标题是独立文本节点」来比：直接用 includes 会被包含关系带偏
