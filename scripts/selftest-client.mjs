@@ -231,7 +231,13 @@ console.log('\n[3] 渲染（真实库数据经 actions.js → library.js）');
 const Panel = main ? main.comp : () => null;
 let tree = null;
 try {
-  tree = await settle(Panel, {}, 8, 400);
+  /*
+   * 400ms 等不住真库：`load()` 是 project.list + system.receipts + snapshot 三件并行，
+   * 课题产物一多 project.list 就要 ~400ms（2026-11-19 真库涨到 29 条文献 / 18 份数据后
+   * 实测 387ms），正好踩在等时上 → 面板被当成「正在载入库索引…」截图，后面一串断言全红。
+   * 这里给到 900ms；settle 拿到数据后 dirty 复位，第二轮就退出了，不会真的等两倍。
+   */
+  tree = await settle(Panel, {}, 8, 900);
   ok('首次渲染 + 异步取数后重渲染，全程无异常');
 } catch (error) {
   check('首次渲染无异常', false, String(error.message || error));
@@ -245,7 +251,7 @@ check('欢迎卡里七个页签仍然可见', ['图表', '草稿', '文献', '�
 const laterBtn = tree ? findByTagText(tree, 'button', '我自己看') : null;
 check('找到「我自己看」按钮', !!laterBtn, buttonTexts(tree));
 if (laterBtn) laterBtn.props.onClick();
-tree = await settle(Panel, {}, 8, 400);
+tree = await settle(Panel, {}, 8, 900);
 ok('点「我自己看」后进库（重渲染无异常）');
 check('欢迎卡看过一次就记进 localStorage', lsStore.get('research-panel-setup:welcome:local') === '1',
   String(lsStore.get('research-panel-setup:welcome:local')));
@@ -315,12 +321,34 @@ if (draftsTab) {
   draftsTab.props.onClick();
   const t2 = await settle(Panel, {});
   const x2 = allText(t2);
-  if (realDrafts.length) check('切到草稿后渲染草稿卡', x2.includes('bad.md') && x2.includes('good.md'), 'bad.md + good.md'); else skipNote('切到草稿后渲染草稿卡');
+  const draftNames = realDrafts.map((d) => d.name).filter(Boolean);
+  if (draftNames.length) {
+    // 跟着真库走：以前写成 bad.md + good.md，用户把自己草稿改名/删掉就成了假失败
+    // （2026-11-19 真库换成 manuscript-v1.md / 论文框架-v1.md 与其 .bak，这条就红了）。
+    check('切到草稿后渲染草稿卡', draftNames.every((n) => x2.includes(n)), draftNames.join(' + '));
+  } else skipNote('切到草稿后渲染草稿卡');
   const citeBtn = findByTagText(t2, 'button', '引用核查');
-  if (realDrafts.length) check('找到「引用核查」按钮', !!citeBtn, buttonTexts(t2)); else skipNote('找到「引用核查」按钮');
+  if (draftNames.length) check('找到「引用核查」按钮', !!citeBtn, buttonTexts(t2)); else skipNote('找到「引用核查」按钮');
   if (citeBtn) {
+    /*
+     * 核查结果由宿主动作 checkCitations 现算，跟着用户草稿内容走：真库草稿的引用键一改，
+     * 这里就不再是「未通过」，写死的缺失键就成了假失败。面板要验的是「拿到结果怎么显示」，
+     * 所以用确定性信封挡住真实结果；动作本身对不对由 selftest-actions 的 checkCitations 负责。
+     */
+    intercept = (p) => (p && p.action === 'checkCitations'
+      ? {
+        ok: true,
+        value: {
+          cited: ['nope2020madeup', 'should-not-count'],
+          missing: ['nope2020madeup', 'should-not-count'],
+          known: 1,
+          caveat: '只核对键在不在库里，不能证明被引文献的内容真的支持。',
+        },
+      }
+      : null);
     citeBtn.props.onClick();
     const t3 = await settle(Panel, {});
+    intercept = null;
     const x3 = allText(t3);
     check('核查结果：未通过', x3.includes('引用核查未通过'), x3.includes('引用核查未通过') ? '' : x3.slice(0, 120));
     check('核查结果：列出缺失键', x3.includes('nope2020madeup') && x3.includes('should-not-count'));
@@ -371,12 +399,24 @@ if (figuresTab) {
     } else {
       skipNote('幽灵图提示');
     }
-    // 参数 JSON 渲染：断言必须跟着真库那张图走 —— fig1 的 params 里没有 plot_type/figureId
-    // （它是手写的 XRD 叠图侧车），写死 key 名会让「换了张图」变成假失败。
-    const realParamKeys = (realFigs[0] && realFigs[0].params) ? Object.keys(realFigs[0].params) : [];
-    const paramHit = realParamKeys.filter((k) => x5.includes(k));
-    check('参数 JSON 渲染', realParamKeys.length ? paramHit.length > 0 : (x5.includes('plot_type') || x5.includes('figureId')),
-      realParamKeys.length ? `命中 ${paramHit.slice(0, 3).join(' / ')}（共 ${realParamKeys.length} 个 key）` : '库里这张图没有 params');
+    // 参数 JSON：面板要点开「参数（N 项）」才渲染，而且真库的图不一定有 params
+    // （2026-11-21：真库 7 张图 params 全空，旧断言把「没有内容可断言」当成了红）。
+    // 现在点开一张图的参数视图：有 params 就断言里面能看见 key，没有就断言渲染出空对象。
+    const paramBtn = findAllByTagText(t5, 'button', '参数（')[0];
+    check('图详情有「参数（N 项）」入口', !!paramBtn, paramBtn ? allText(paramBtn) : '没有');
+    if (paramBtn) {
+      paramBtn.props.onClick();
+      const t6 = await settle(Panel, {});
+      const jsons = [];
+      walk(t6, (n) => {
+        if (n.tag === 'pre' && /^[{}[\]]/.test(String(allText(n)).trim())) jsons.push(String(allText(n)));
+      });
+      const allParamKeys = [...new Set(realFigs.flatMap((f) => (f.params ? Object.keys(f.params) : [])))];
+      check('参数 JSON 渲染', jsons.length > 0 && (allParamKeys.length
+        ? allParamKeys.some((k) => jsons.join(' ').includes(k))
+        : jsons.some((s) => s.trim() === '{}')),
+        jsons.length ? jsons[0].slice(0, 60).replace(/\s+/g, ' ') : '点开参数后没有 pre');
+    }
   }
 }
 
@@ -718,20 +758,39 @@ if (!liveSlug) {
   check('新建成功提示路径', allText(t).includes('已新建') && allText(t).includes('intro.md'), allText(t).slice(0, 200));
 }
 
-/* 9b. 筛选框：只筛看得见的列表 */
+/* 9b. 筛选框：只筛看得见的列表（跟着真库的草稿名走，不写死 good.md） */
 let searchBox = inputsByClass(t, 'rl-search')[0];
 check('页签行有筛选框', !!searchBox, buttonTexts(t));
 if (searchBox) {
   check('筛选框带 aria-label', searchBox.props['aria-label'] === '筛选');
-  searchBox.props.onChange({ target: { value: 'good' } });
-  t = await settle(Panel, {});
-  if (realDrafts.length) check('筛选 good → 只剩 good.md', allText(t).includes('good.md') && !allText(t).includes('bad.md'), allText(t).slice(0, 120)); else skipNote('筛选 good → 只剩 good.md');
+  const names = realDrafts.map((d) => d.name).filter(Boolean);
+  // 挑一个「被别的草稿名包含得最少」的名字当筛选词：命中集合能自己算出来，
+  // 写死 good.md 时用户改了草稿名就整段假失败（2026-11-19 就换成了 manuscript-v1.md 等）。
+  const pick = names
+    .map((n) => ({ n, hits: names.filter((x) => x.includes(n)).length }))
+    .sort((a, b) => a.hits - b.hits)[0] || null;
+  if (pick) {
+    searchBox.props.onChange({ target: { value: pick.n } });
+    t = await settle(Panel, {});
+    const shouldShow = names.filter((n) => n.includes(pick.n));
+    const shouldHide = names.filter((n) => !n.includes(pick.n));
+    // 按「卡片标题是独立文本节点」来比：直接用 includes 会被包含关系带偏
+    // （筛 manuscript-v1.md.bak-refs-removed 时，文本里必然也含 manuscript-v1.md 这段前缀）。
+    const tokens = new Set(allText(t).split(/\s+/));
+    const missing = shouldShow.filter((n) => !tokens.has(n));
+    const leaked = shouldHide.filter((n) => tokens.has(n));
+    check('筛选草稿名 → 只剩名字含它的草稿',
+      missing.length === 0 && leaked.length === 0,
+      `筛「${pick.n}」：应显示 ${shouldShow.join('、')}${missing.length ? `（缺 ${missing.join('、')}）` : ''}；`
+      + `应隐藏 ${shouldHide.join('、') || '（无）'}${leaked.length ? `（漏出 ${leaked.join('、')}）` : ''}`);
+  } else skipNote('筛选草稿名（真库没有草稿可筛）');
   const clearBtn = findByTagText(t, 'button', '清空筛选');
   check('有「清空筛选」按钮', !!clearBtn);
   if (clearBtn) {
     clearBtn.props.onClick();
     t = await settle(Panel, {});
-    if (realDrafts.length) check('清空筛选后两张卡都回来', allText(t).includes('bad.md') && allText(t).includes('good.md')); else skipNote('清空筛选后两张卡都回来');
+    if (names.length) check('清空筛选后草稿卡都回来', names.every((n) => allText(t).includes(n)), names.join(' + '));
+    else skipNote('清空筛选后草稿卡都回来');
   }
 }
 
@@ -746,13 +805,23 @@ if (editBtn) {
   /*
    * 回归（2026-10-24）：不点「预览」直接点「编辑」时，以前编辑框是空的（body 留空），
    * 连点保存就把整份草稿写成 0 字节。这里钉住「进编辑态时框里已经是原文」。
+   *
+   * 取路径要在**这张卡自己的正文区**里取：以前正则扫整棵树，会先命中 9a「已新建
+   * projects/demo-perovskite/drafts/intro.md」那句假消息（草稿一多、路径不一样，
+   * 就变成拿错路径去 readText，断言假红）。
    */
-  const openText = allText(t);
-  const draftPath = (openText.match(/projects\/[^\s/]+\/drafts\/[^\s]+\.md/) || [])[0] || '';
+  const editorBody = findAll(t, (n) => (n.children || []).some(
+    (c) => c && c.tag === 'textarea' && String((c.props || {}).className || '').includes('rl-edit')
+  ))[0];
+  const pathNode = editorBody
+    ? findAll(editorBody, (n) => typeof n.text === 'string' && /^projects\/.+\/drafts\//.test(n.text))[0]
+    : null;
+  const draftPath = pathNode ? pathNode.text : '';
   if (area) {
-    const orig = draftPath
-      ? String((await handleResearchCall({ action: 'readText', args: { path: draftPath } })).text || '')
-      : '';
+    // handleResearchCall 返回的是信封 { ok, value }，正文在 value.text 里
+    // （以前写成 .text，取到空串；这条以前没被跑到 —— 真库 0 草稿时整段跳过）。
+    const origRes = draftPath ? await handleResearchCall({ action: 'readText', args: { path: draftPath } }) : null;
+    const orig = String((origRes && origRes.value && origRes.value.text) || '');
     check('直接点「编辑」的编辑框带着原文（不是空框）',
       !!orig && String(area.props.value) === orig,
       'path=' + draftPath + ' value=' + JSON.stringify(String(area.props.value || '').slice(0, 40)));

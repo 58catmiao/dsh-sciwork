@@ -269,5 +269,93 @@ console.log('\n[5] 库脚本种子（临时库真装一次）');
   }
 }
 
+/* ------------------------------------- 7. 无包管理器安装器的替换语义 */
+
+console.log('\n[7] 无包管理器安装器的替换语义（--force / 真目录 / 断链）');
+{
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-sciwork-inst-'));
+  const profileDir = path.join(tempHome, 'profiles', 'probe');
+  const linkPath = path.join(profileDir, 'node_modules', '@58catmiao', 'dsh-sciwork');
+  const pkgFile = path.join(profileDir, 'package.json');
+  const altDir = path.join(tempHome, 'elsewhere');
+  const repoRoot = path.resolve(ROOT);
+
+  const writeProfile = () => {
+    fs.mkdirSync(profileDir, { recursive: true });
+    fs.writeFileSync(pkgFile, JSON.stringify({
+      name: 'dsh-profile-probe', private: true, dependencies: {}, dsh: { profile: { bundles: [] } },
+    }, null, 2) + '\n');
+  };
+  const readProfile = () => JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+  const run = (...extra) => {
+    try {
+      const out = execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'install-plugin.mjs'), '--profile', 'probe', ...extra], {
+        encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60_000,
+        env: { ...process.env, DSH_HOME: tempHome },
+      });
+      return { code: 0, out };
+    } catch (error) {
+      return { code: typeof error.status === 'number' ? error.status : 1, out: `${error.stdout || ''}${error.stderr || ''}` };
+    }
+  };
+  const linkTarget = () => { try { return fs.realpathSync(linkPath); } catch { return ''; } };
+  const same = (a, b) => !!a && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+  const dropLink = () => { try { fs.unlinkSync(linkPath); } catch { /* 不存在就算了 */ } };
+
+  try {
+    writeProfile();
+    const first = run();
+    check('全新 profile 装得上（退出码 0）', first.code === 0);
+    check('装完 node_modules 里是指向仓库根的链接', fs.lstatSync(linkPath).isSymbolicLink() && same(linkTarget(), repoRoot), linkTarget());
+    check('依赖写成 link:<源目录>', /^link:/.test(readProfile().dependencies['@58catmiao/dsh-sciwork'] || ''));
+    check('bundles 里登记了包名', (readProfile().dsh.profile.bundles || []).includes('@58catmiao/dsh-sciwork'));
+
+    const beforeFiles = fs.readdirSync(profileDir).length;
+    const again = run();
+    check('重跑不动任何文件（幂等，不再堆 .bak）', again.code === 0 && fs.readdirSync(profileDir).length === beforeFiles, `文件数 ${beforeFiles}`);
+
+    // 真目录顶位 = pnpm 拷出来的安装。旧版会先把 package.json 改成 link: 再失败。
+    dropLink();
+    fs.mkdirSync(linkPath, { recursive: true });
+    fs.writeFileSync(path.join(linkPath, 'marker.txt'), 'pnpm copy\n');
+    writeProfile();
+    const blocked = run();
+    check('真目录顶位时无 --force 退出码非 0', blocked.code !== 0);
+    check('错误里告诉用户加 --force', blocked.out.includes('--force'));
+    check('失败时不改 package.json（不留半截状态）', Object.keys(readProfile().dependencies || {}).length === 0);
+    check('失败时不动旧真目录', fs.existsSync(path.join(linkPath, 'marker.txt')));
+
+    const forced = run('--force');
+    check('--force 能把真目录换成链接', forced.code === 0 && fs.lstatSync(linkPath).isSymbolicLink() && same(linkTarget(), repoRoot), linkTarget());
+    const backups = fs.readdirSync(path.dirname(linkPath)).filter((n) => n.startsWith('dsh-sciwork.bak-'));
+    check('真目录是改名备份（内容还在），不是删掉', backups.length === 1
+      && fs.existsSync(path.join(path.dirname(linkPath), backups[0], 'marker.txt')), backups.join(','));
+
+    // 链接指向别处：不许静默改指。
+    dropLink();
+    fs.mkdirSync(altDir, { recursive: true });
+    fs.symlinkSync(altDir, linkPath, process.platform === 'win32' ? 'junction' : 'dir');
+    const linkedElsewhere = run();
+    check('链接指向别处时无 --force 退出码非 0 且没被改指', linkedElsewhere.code !== 0 && same(linkTarget(), altDir), linkTarget());
+    const relinked = run('--force');
+    check('--force 能把链接改指到仓库根', relinked.code === 0 && same(linkTarget(), repoRoot), linkTarget());
+
+    // 断链 = 链接目标被删了。旧版 existsSync 说不存在，接着 symlinkSync 撞 EEXIST。
+    dropLink();
+    fs.symlinkSync(altDir, linkPath, process.platform === 'win32' ? 'junction' : 'dir');
+    fs.rmSync(altDir, { recursive: true, force: true });
+    const broken = run();
+    check('断链时无 --force 退出码非 0（不再撞 EEXIST）', broken.code !== 0 && !broken.out.includes('EEXIST'), broken.out.trim().split('\n').slice(-1)[0] || '');
+    const repaired = run('--force');
+    check('--force 能修好断链', repaired.code === 0 && same(linkTarget(), repoRoot), linkTarget());
+
+    const dry = run('--dry-run');
+    check('--dry-run 不写盘', dry.code === 0 && dry.out.includes('什么都没写'));
+  } finally {
+    dropLink();
+    try { fs.rmSync(tempHome, { recursive: true, force: true }); } catch { /* 删不掉不影响结论 */ }
+  }
+}
+
 console.log(`\n${pass} 通过 · ${fail} 失败`);
 process.exit(fail ? 1 : 0);

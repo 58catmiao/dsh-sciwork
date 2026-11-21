@@ -60,7 +60,12 @@ node scripts/install-plugin.mjs --profile <profile> --source .
 
 # 只看会改什么，不写盘
 node scripts/install-plugin.mjs --profile <profile> --dry-run
+
+# 那个位置已经有链接 / 真实目录（pnpm 装的）时，换成源码目录
+node scripts/install-plugin.mjs --profile <profile> --source . --force
 ```
+
+`--force` 的语义：旧目录改名成 `dsh-sciwork.bak-<时间戳>` 留着（内容不删，确认没用后自己删），再建新链接；旧链接直接删掉（它指向的目录不动）。没有 `--force` 时脚本**什么都不写**——包括不改 `package.json`，所以不会留下「依赖写着 `link:`、`node_modules` 还是旧副本」的半截状态。
 
 验证接线：`dsh --profile <profile> --dump-config | grep -c dsh-sciwork`（应大于 0）。注意用这条路装进来的目录**不是 git 仓库**，面板里点「检查更新」会如实提示「不是 git 工作树」，更新方式是重新解压新版再跑一遍脚本。
 

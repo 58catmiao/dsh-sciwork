@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.4.11 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.4.12 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -78,6 +78,8 @@ node scripts/install-plugin.mjs --profile <profile> --source .
 ```
 
 It adds a `link:` dependency to the profile's `package.json`, links `<profile>/node_modules/@58catmiao/dsh-sciwork` to that directory, and appends `@58catmiao/dsh-sciwork` to `dsh.profile.bundles`. The existing `package.json` is backed up as `package.json.bak-<timestamp>`. `--dry-run` shows what it would change.
+
+If that path is already taken (for example a real directory left by an earlier pnpm install), nothing is replaced and nothing is written by default; add `--force` to switch it to the source directory. The old directory is then renamed to `dsh-sciwork.bak-<timestamp>` and kept (contents are not deleted — remove it yourself once you are sure). An existing link that points elsewhere, or a link whose target is gone, also needs `--force`.
 
 The plugin page's "add plugin" also accepts that directory's absolute path, with the same result.
 
@@ -331,7 +333,7 @@ With a real library (numbers vary with its contents; these are from a fixture li
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 passed · 0 failed · 3 skipped
 SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 elements · 0 failed
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 278 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 299 passed · 0 failed
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 passed · 0 failed
 ```
 

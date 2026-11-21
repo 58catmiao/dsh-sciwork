@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 
 import { ACTIONS, CLI_COMMANDS, CLI_HINTS, buildCliArgs, handleResearchCall, parseRawArgs, probePathGuard } from '../lib/actions.js';
+import { resetGuardState } from '../lib/host/guards.js';
 
 let pass = 0;
 let fail = 0;
@@ -578,6 +579,14 @@ try {
     check('删前备份了 refs.json.bak', await stat(pathMod.join(copiedRoot, 'refs', 'refs.json.bak')).then(() => true, () => false));
     const bib = await readFile(pathMod.join(copiedRoot, 'refs', 'refs.bib'), 'utf8');
     check('refs.bib 同步移除该键', !bib.includes(firstRefKey), bib.slice(0, 120));
+    /*
+     * dispatch 有 10 分钟幂等窗（lib/host/guards.js）：同一 actionId + 参数 + 库根
+     * 在窗口内重复调用，会直接回放上一次回执而不是再跑一遍。所以「再删一次」之前
+     * 必须先清掉内存态（等价于 10 分钟后再点），否则测到的是回放、永远到不了 not-found。
+     * 这条以前一直没被跑到：真库 0 条文献时整节跳过（2026-11-14 的状态），
+     * 2026-11-19 库里有了 29 条文献，这一节第一次真跑就露了出来。
+     */
+    resetGuardState();
     const rr2 = await handleResearchCall({ action: 'removeRef', args: { key: firstRefKey } });
     check('再删一次 → not-found', rr2.ok === false && rr2.error.code === 'not-found', JSON.stringify(rr2.error || {}));
     const rr3 = await handleResearchCall({ action: 'removeRef', args: {} });

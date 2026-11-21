@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.4.11 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.4.12 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -78,6 +78,8 @@ node scripts/install-plugin.mjs --profile <profile> --source .
 ```
 
 它会往 profile 的 `package.json` 里加一条 `link:` 依赖，把 `<profile>/node_modules/@58catmiao/dsh-sciwork` 链接过去，再把 `@58catmiao/dsh-sciwork` 加进 `dsh.profile.bundles`。改之前会备份一份 `package.json.bak-<时间戳>`。加 `--dry-run` 可以先看它会改什么。
+
+那个位置已经被占了（比如之前用 pnpm 装过、`node_modules` 里是真实目录）时，默认**不替换**、什么都不写；要换成源码目录就加 `--force`：旧目录会改名成 `dsh-sciwork.bak-<时间戳>` 留着（内容不删，确认没用后自己删），然后建链接。链接指向别的目录、或者链接目标已经不在了，同样要 `--force` 才换。
 
 插件页的「添加插件」也可以直接填这个解压目录的绝对路径，效果一样。
 
@@ -343,9 +345,9 @@ python scripts/validate-patch.py    # 补丁预检通过
 指向真库时（数字随库内容浮动，下面是夹具库实测）：
 
 ```bash
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 通过 · 0 失败 · 3 跳过
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 213 通过 · 0 失败 · 1 跳过
 SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 个元素 · 0 失败
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 278 通过 · 0 失败
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 299 通过 · 0 失败
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 · 0 失败
 ```
 

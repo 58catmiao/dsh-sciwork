@@ -16,7 +16,8 @@
  *   node scripts/install-plugin.mjs --profile work                 # 指定 profile
  *   node scripts/install-plugin.mjs --source D:/dl/dsh-sciwork     # 源目录（解压出来的 ZIP）
  *   node scripts/install-plugin.mjs --dry-run                      # 只报告会改什么
- *   node scripts/install-plugin.mjs --force                        # 覆盖已存在的链接
+ *   node scripts/install-plugin.mjs --force                        # 替换已存在的链接 / 真目录
+ *                                                                （真目录改名备份，不删内容）
  *
  * 装完必须**重启 Harness**才生效——面板是客户端 bundle，光刷新页面不算。
  */
@@ -50,6 +51,31 @@ const log = (msg) => console.log(msg);
 const fail = (msg) => { console.error('✗ ' + msg); process.exitCode = 1; };
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const toLinkSpec = (dir) => 'link:' + dir.replace(/\\/g, '/');
+
+// 链接目标与源目录是否同一个（Windows 盘符/大小写不敏感，realpath 回来的大小写可能不同）。
+function sameDir(a, b) {
+  if (!a || !b) return false;
+  const x = path.resolve(a);
+  const y = path.resolve(b);
+  return process.platform === 'win32' ? x.toLowerCase() === y.toLowerCase() : x === y;
+}
+
+// lstat 而不是 existsSync：断掉的链接（目标已被删）existsSync 会说不存在，
+// 然后 symlinkSync 撞 EEXIST —— 用户看到的是一句莫名其妙的报错。
+function linkInfo(linkPath) {
+  try {
+    const st = lstatSync(linkPath);
+    let target = '';
+    if (st.isSymbolicLink()) {
+      try { target = realpathSync(linkPath); } catch { target = ''; }
+    }
+    return { exists: true, isLink: st.isSymbolicLink(), isDir: st.isDirectory(), target };
+  } catch {
+    return { exists: false, isLink: false, isDir: false, target: '' };
+  }
+}
+
+const describeKind = (kind) => (kind === 'dir' ? '真目录（多半是 pnpm 装的）' : kind === 'link' ? '链接' : '文件');
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -99,7 +125,7 @@ function main() {
 
   pkg.dependencies = pkg.dependencies || {};
   const beforeDep = pkg.dependencies[PKG_NAME];
-  pkg.dependencies[PKG_NAME] = toLinkSpec(sourceDir);
+  const nextDep = toLinkSpec(sourceDir);
 
   pkg.dsh = pkg.dsh || {};
   pkg.dsh.profile = pkg.dsh.profile || {};
@@ -108,22 +134,77 @@ function main() {
   if (!hadBundle) bundles.push(PKG_NAME);
   pkg.dsh.profile.bundles = bundles;
 
-  const linkState = existsSync(linkPath) ? realpathSync(linkPath) : '';
-  const linkReady = linkState && path.resolve(linkState) === sourceDir;
+  const link = linkInfo(linkPath);
+  const linkReady = link.exists && link.isLink && sameDir(link.target, sourceDir);
+  const replacing = link.exists && !linkReady;
+  const replaceKind = !replacing ? '' : link.isLink ? 'link' : link.isDir ? 'dir' : 'file';
 
   log('');
   log('会改这些：');
   log('  ' + pkgFile);
-  log(`    dependencies.${PKG_NAME}: ${beforeDep ? JSON.stringify(beforeDep) : '（新增）'} → ${toLinkSpec(sourceDir)}`);
+  log(`    dependencies.${PKG_NAME}: ${beforeDep ? JSON.stringify(beforeDep) : '（新增）'} → ${nextDep}`);
   log(`    dsh.profile.bundles: ${hadBundle ? '已含 ' + PKG_NAME + '（不动）' : '追加 ' + PKG_NAME}`);
   log('  ' + linkPath);
-  log('    ' + (linkReady ? '已指向源目录（不动）' : existsSync(linkPath) ? `现在是 ${linkState}` : '创建指向源目录的链接'));
+  if (linkReady) log('    已指向源目录（不动）');
+  else if (!replacing) log('    创建指向源目录的链接');
+  else if (replaceKind === 'link') log(`    现在指向 ${link.target || '（目标已不存在）'} → ${args.force ? '换成本仓库的链接' : '不加 --force 不替换'}`);
+  else log(`    现在是${describeKind(replaceKind)} → ${args.force ? '改名备份后换成链接' : '不加 --force 不替换'}`);
+
+  // 不加 --force 时，位置已被别的东西占着就停下。旧版是先写 package.json、再在这里
+  // 失败，留下「依赖写着 link:、node_modules 还是旧副本」的半截状态。
+  if (replacing && !args.force) {
+    log('');
+    fail(`已经有一个${describeKind(replaceKind)}在 ${linkPath}；没有 --force 不替换它。\n`
+      + (replaceKind === 'dir'
+        ? '  想换成源码目录：加 --force —— 旧目录会改名成 dsh-sciwork.bak-<时间戳> 留着，内容不删。\n'
+        : '  想换成源码目录：加 --force。\n')
+      + '  这次什么都没写，package.json 原样。');
+    return;
+  }
 
   if (args.dryRun) {
     log('\n--dry-run：什么都没写。');
     return;
   }
 
+  if (!replacing && linkReady && !created && beforeDep === nextDep && hadBundle) {
+    log('\n已经是最新接线，不动任何文件。');
+    return;
+  }
+
+  // 先挪旧链接 / 旧目录，再建链接，最后才写 package.json：任何一步失败都不留半截状态。
+  let backupPath = '';
+  if (replacing) {
+    try {
+      if (replaceKind === 'link') {
+        unlinkSync(linkPath);
+        log('\n已删掉旧链接（它指向的目录没动）');
+      } else {
+        backupPath = linkPath + '.bak-' + Date.now();
+        renameSync(linkPath, backupPath);
+        log(`\n旧${replaceKind === 'dir' ? '目录' : '文件'}改名备份 → ${backupPath}`);
+      }
+    } catch (error) {
+      fail(`替换 ${linkPath} 失败：${String(error.message || error)}\n  旧内容原样留着，package.json 也没改。`);
+      return;
+    }
+  }
+
+  if (!linkReady) {
+    try {
+      mkdirSync(path.dirname(linkPath), { recursive: true });
+      symlinkSync(sourceDir, linkPath, process.platform === 'win32' ? 'junction' : 'dir');
+      log('已创建链接 → ' + sourceDir);
+    } catch (error) {
+      if (backupPath) {
+        try { renameSync(backupPath, linkPath); } catch { /* 回滚不了就照实说 */ }
+      }
+      fail(`创建链接失败：${String(error.message || error)}\n  退路：手动把 ${sourceDir} 复制到 ${linkPath}，然后重启 Harness。`);
+      return;
+    }
+  }
+
+  pkg.dependencies[PKG_NAME] = nextDep;
   if (created) {
     writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
     log('\n已新建 ' + pkgFile);
@@ -132,29 +213,6 @@ function main() {
     renameSync(pkgFile, bak);
     writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
     log('\n备份 → ' + bak + '\n已写 ' + pkgFile);
-  }
-
-  mkdirSync(path.dirname(linkPath), { recursive: true });
-  if (!linkReady && existsSync(linkPath)) {
-    const st = lstatSync(linkPath);
-    if (st.isSymbolicLink() || st.isDirectory()) {
-      // 真目录（pnpm 拷出来的安装）不删内容，只提示：链接换不了就别硬换
-      try {
-        unlinkSync(linkPath);
-      } catch {
-        fail(`node_modules/${PKG_NAME} 是真实目录（多半是 pnpm 装的），没有动它。\n  想换成源目录：先备份后手动删掉这个目录，再跑一次（或加 --force 由你确认）。`);
-        return;
-      }
-    }
-  }
-  if (!linkReady) {
-    try {
-      symlinkSync(sourceDir, linkPath, process.platform === 'win32' ? 'junction' : 'dir');
-      log('已创建链接 → ' + sourceDir);
-    } catch (error) {
-      fail(`创建链接失败：${String(error.message || error)}\n  退路：手动把 ${sourceDir} 复制到 ${linkPath}，然后重启 Harness。`);
-      return;
-    }
   }
 
   log('\n完成。接下来：');
