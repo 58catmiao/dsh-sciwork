@@ -166,6 +166,30 @@ console.log('\n[7] 库快照：Origin 工程只认工程文件');
   fs.rmSync(libRoot, { recursive: true, force: true });
 }
 
+console.log('\n[8] 库快照：草稿备份（.bak）不算草稿');
+{
+  const { snapshot } = await import('../lib/library.js');
+  const libRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sciwork-draft-'));
+  // 真库 2026-11-19 之后就是这个样子：2 篇正文 + 3 份保存备份，面板却显示 5 条草稿
+  write(path.join(libRoot, 'projects', 'draft-demo', 'drafts', 'manuscript.md'), '# 正文\n');
+  write(path.join(libRoot, 'projects', 'draft-demo', 'drafts', 'manuscript.md.bak'), '# 上一版\n');
+  write(path.join(libRoot, 'projects', 'draft-demo', 'drafts', 'manuscript.md.bak-refs-removed'), '# 去引用版\n');
+  write(path.join(libRoot, 'projects', 'draft-demo', 'drafts', 'bak-遗留.md'), '# 名字里带 bak，但不是备份\n');
+  const snapLib = await snapshot(libRoot);
+  const demo = (snapLib.projects || []).find((p) => p.slug === 'draft-demo');
+  const names = (demo ? demo.drafts : []).map((d) => d.name).sort();
+  check('快照：drafts 只列真草稿（2 篇）',
+    names.length === 2 && names.includes('manuscript.md') && names.includes('bak-遗留.md'), names.join(', '));
+  check('快照：.bak* 不进 drafts', !names.some((n) => /\.bak/i.test(n)), names.join(', '));
+  check('快照：备份单列 draftBackups（2 份，含 .bak- 变体）',
+    !!demo && demo.draftBackups.length === 2
+    && demo.draftBackups.some((b) => b.name === 'manuscript.md.bak')
+    && demo.draftBackups.some((b) => b.name === 'manuscript.md.bak-refs-removed'));
+  check('快照：counts.draft 只数真草稿、counts.draftBackup 数备份',
+    snapLib.counts.draft === 2 && snapLib.counts.draftBackup === 2, JSON.stringify(snapLib.counts));
+  fs.rmSync(libRoot, { recursive: true, force: true });
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 fs.rmSync(ckptDir, { recursive: true, force: true });
 

@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-Version 0.4.12 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
+Version 0.4.13 · MIT · by [58catmiao](https://github.com/58catmiao) · repo <https://github.com/58catmiao/dsh-sciwork>
 
 **中文:** [README.md](README.md)
 
@@ -167,7 +167,7 @@ The workbench shows the whole library on one screen: a header with counts (proje
 | --- | --- | --- |
 | Counts row (not a tab) | Library root, live counts for projects / figures / drafts / datasets / references / journal profiles / submissions, index time, collection warnings | Refresh the snapshot; start the guided tour |
 | Figures | Registered figures with data source, script and generated-at, grouped by project | View the figure or a PDF attachment, copy its path, archive, delete |
-| Drafts | Markdown under `drafts/` | Read, create, edit and save, archive, delete |
+| Drafts | Markdown under `drafts/` (a `.bak` is the pre-save rollback copy: counted separately, never listed as a draft) | Read, create, edit and save, archive, delete |
 | Notes | `projects/<project>/notes/*.md` experiment logs | Read the full note, create, save (a `.bak` is kept), delete (moved to `notes/.trash/`) |
 | References | Entries in `refs/refs.json` and local PDFs under `refs/pdf/` | Import (a DOI or URL is mandatory), view PDFs, archive, delete |
 | Data | Data files under `data/`, grouped by project | Preview rows and columns, run a data transform, rename, archive, delete |
@@ -333,7 +333,7 @@ With a real library (numbers vary with its contents; these are from a fixture li
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 202 passed · 0 failed · 3 skipped
 SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 elements · 0 failed
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 299 passed · 0 failed
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 301 passed · 0 failed
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 passed · 0 failed
 ```
 

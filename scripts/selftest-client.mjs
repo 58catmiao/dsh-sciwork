@@ -327,6 +327,24 @@ if (draftsTab) {
     // （2026-11-19 真库换成 manuscript-v1.md / 论文框架-v1.md 与其 .bak，这条就红了）。
     check('切到草稿后渲染草稿卡', draftNames.every((n) => x2.includes(n)), draftNames.join(' + '));
   } else skipNote('切到草稿后渲染草稿卡');
+  /*
+   * 0.4.13：`drafts/` 里的 `.bak` 是保存前留的回滚点，不是草稿。旧版把真库 2 篇正文 + 3 份备份
+   * 显示成 5 条草稿卡 —— 用户看不出哪条是备份，点「编辑」才发现写不进去。
+   * 每张草稿卡恰好一颗「编辑」，所以数按钮就是数卡片。
+   */
+  const realBackups = realFamily('draftBackups');
+  // 真库里名字像备份的那些（`.bak` / `.bak-…`）绝不该长成草稿卡；真草稿 = 剩下的。
+  const realPlainDrafts = realDrafts.filter((d) => !/\.bak/i.test(String(d && d.name)));
+  let editButtons = 0;
+  walk(t2, (n) => { if (n.tag === 'button' && allText(n).trim() === '编辑') editButtons += 1; });
+  if (realPlainDrafts.length) {
+    check('草稿卡只列正文（.bak 备份不算草稿）', editButtons === realPlainDrafts.length,
+      `${editButtons} 张卡 vs 真库正文 ${realPlainDrafts.length} 篇（草稿 ${realDrafts.length} + 备份 ${realBackups.length}）`);
+  } else skipNote('草稿卡只列正文（.bak 备份不算草稿）');
+  if (realBackups.length) {
+    check('草稿页说明备份份数（.bak 不藏起来）', x2.includes('保存前备份 ' + realBackups.length + ' 份'),
+      `真库 ${realBackups.length} 份备份`);
+  } else skipNote('草稿页说明备份份数（.bak 不藏起来）');
   const citeBtn = findByTagText(t2, 'button', '引用核查');
   if (draftNames.length) check('找到「引用核查」按钮', !!citeBtn, buttonTexts(t2)); else skipNote('找到「引用核查」按钮');
   if (citeBtn) {

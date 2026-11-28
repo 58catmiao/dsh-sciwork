@@ -5,6 +5,22 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.13] - 2026-11-28
+
+草稿页把「保存前的备份」也当成草稿列出来了：真库 2 篇正文 + 3 份 `.bak`，面板显示 5 条。
+
+### Fixed
+
+- **`.bak` 备份被当成草稿**（`lib/library.js`）：面板每次保存草稿前都会把原文件复制成同名 `.bak`（`manuscript-v1.md.bak`），手工抢救时还会有 `manuscript-v1.md.bak-refs-removed` 这类变体。旧版 `drafts/` 扫描不区分，把它们一起收进 `drafts` 列表，于是 ①草稿页与页头计数都虚高；②用户看不出哪条是备份，点「编辑」才发现写不进去（`EDITABLE_RE` 只认 `.md|.markdown|.txt` 结尾，`.bak` 必然被拒），白耽误一次。现在与 `lib/notes.js` 的笔记同一口径：`.bak*` 不进 `drafts`，单独收进 `draftBackups`，`counts.draft` 只数正文，另给 `counts.draftBackup`。名字里带 `bak` 但不以 `.bak` 结尾的真草稿（`bak-遗留.md`）不受影响。
+- **备份不该被藏起来**（`lib/client.js` 草稿页）：草稿数突然变小会让人以为文件丢了，所以每个课题标题旁补一行「保存前备份 N 份（.bak，不计入草稿）：…　要还原就用文件管理器把 .bak 去掉」；只剩备份、没有正文的课题也不会被当成「还没有草稿」整块吞掉。
+
+### Tests
+
+- `scripts/test-projects.mjs` 新增 `[8] 库快照：草稿备份（.bak）不算草稿`（4 项，现 40 项）：`drafts` 只列正文、`.bak*` 不进 `drafts`、`draftBackups` 收齐 `.bak` 与 `.bak-` 变体、`counts.draft` / `counts.draftBackup` 分家。
+- `scripts/selftest-client.mjs` 新增 2 项（现 301 项）：草稿页的「编辑」按钮数必须等于真库正文篇数（旧版 5 张卡 vs 正文 2 篇 → 红），以及真库有备份时必须出现「保存前备份 N 份」。
+- **回归证明**：把 `lib/library.js` 的草稿过滤临时去掉，`test-projects` 3 红（`drafts` 多出 2 个 `.bak`、`counts.draft` 4 ）、`selftest-client` 1 红（5 张卡 vs 正文 2 篇）；恢复后 `40 通过` / `301 通过`。
+- 门禁仍是 23 项；本轮 `node scripts/cycle.mjs` 结果见下方发布记录。
+
 ## [0.4.12] - 2026-11-21
 
 「装不上去」时脚本给的解法是假的：`install-plugin.mjs` 的 `--force` 从来没被读过。

@@ -3,7 +3,7 @@
 面向想给这个插件**写代码**或**改它**的人。读完你应该能回答：它由哪几块组成、数据往哪儿落、
 哪些写动作被允许、为什么某些细节必须那样写。
 
-- 包名 `@58catmiao/dsh-sciwork`，版本 0.4.12，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
+- 包名 `@58catmiao/dsh-sciwork`，版本 0.4.13，MIT，仓库 <https://github.com/58catmiao/dsh-sciwork>，作者 58catmiao。
 - 安装：`dsh plugin --profile <profile> add @58catmiao/dsh-sciwork`
 - 安装与配置的动手步骤见 [INSTALL.md](./INSTALL.md)；本文件只讲结构、契约与取舍。
 
@@ -181,6 +181,11 @@ ctx.get('connection').rpc.call('/api', 'research/call', { action, args })
 `data/` `figures/` `drafts/` `tables/` 递归扫描，`opju/` 与 `origin/` 深 2 层；跳过以 `.` 开头的目录与文件。
 `snapshot.projects[].folders` 给出每一类目录下的子文件夹（**含空文件夹**，面板显示成「（空）」而不是隐藏），
 每个数据/图/草稿/表格条目带 `sub`（相对起点目录的 POSIX 子路径，根下直接放的是 `''`）。
+
+草稿目录要**分家**（0.4.13）：`drafts/` 里以 `.bak` 结尾的文件（`x.md.bak`、`x.md.bak-refs-removed`）是
+`writeTextBackup()` 留下的回滚点，不是草稿——它们进 `snapshot.projects[].draftBackups`（面板在课题标题旁
+写「保存前备份 N 份」），不进 `drafts`；`counts.draft` 只数正文，`counts.draftBackup` 数备份。
+判定口径见 `lib/library.js:BACKUP_RE`，与 `lib/notes.js` 列笔记时跳过 `.bak` 一致。
 
 ### 5.6 改稿、归档、真删
 

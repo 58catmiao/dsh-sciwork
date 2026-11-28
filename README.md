@@ -6,7 +6,7 @@
 [![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/58catmiao/dsh-sciwork)
 [![zero dependency](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/58catmiao/dsh-sciwork)
 
-版本 0.4.12 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
+版本 0.4.13 · MIT · 作者 [58catmiao](https://github.com/58catmiao) · 仓库 <https://github.com/58catmiao/dsh-sciwork>
 
 **English:** [README.en.md](README.en.md)
 
@@ -169,7 +169,7 @@ agent 会走 Origin 真机绘图、核验、导出，再把溯源信息登记回
 | --- | --- | --- |
 | 计数行（不是页签） | 库根路径、课题/图/草稿/数据/文献/期刊档案/投稿计数、索引时间、采集警告 | 点「刷新」重取快照，点「引导」走一遍界面导览 |
 | 图表 | 已登记的图，含数据源、脚本、生成时间，按课题分组 | 看图、看 PDF 附带件、复制路径、归档、删除 |
-| 草稿 | `drafts/` 下的 Markdown | 读、新建、编辑保存、归档、删除 |
+| 草稿 | `drafts/` 下的 Markdown（`.bak` 是保存前的回滚点：单独报份数，不列成草稿） | 读、新建、编辑保存、归档、删除 |
 | 文献 | `refs/refs.json` 的条目和 `refs/pdf/` 下的本地 PDF | 导入（必须带 DOI 或 URL）、看 PDF、归档、删除 |
 | 数据 | `data/` 下的数据文件，按课题分组 | 预览行列、数据变换、重命名、归档、删除 |
 | 笔记 | `projects/<课题>/notes/*.md` 实验日志 | 读全文、新建、保存（覆盖前留 `.bak`）、删除（移进 `notes/.trash/`） |
@@ -347,7 +347,7 @@ python scripts/validate-patch.py    # 补丁预检通过
 ```bash
 SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-actions.mjs   # 213 通过 · 0 失败 · 1 跳过
 SCIWORK_LIBRARY=/path/to/Research node scripts/e2e-panel.mjs          # 93 个元素 · 0 失败
-SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 299 通过 · 0 失败
+SCIWORK_LIBRARY=/path/to/Research node scripts/selftest-client.mjs    # 301 通过 · 0 失败
 node scripts/selftest-live.mjs --real /path/to/Research             # 6 通过 · 0 失败
 ```
 
